@@ -1,4 +1,6 @@
 "use strict";
+import x11Module from "x11";
+
 const {
   app,
   BrowserWindow,
@@ -15,7 +17,7 @@ const fs = require("fs");
 if (process.platform === "linux") {
   app.commandLine.appendSwitch("enable-transparent-visuals");
 }
-const x11 = process.platform === "linux" ? require("x11") : null;
+const x11 = process.platform === "linux" ? x11Module : null;
 let tray = null;
 let mainWindow = null;
 let mainWindowReady = false;
