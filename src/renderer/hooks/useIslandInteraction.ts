@@ -36,6 +36,7 @@ export function useIslandInteraction({ setMode, standby, largeStandby }: Options
   const updateDragging = (value: boolean) => {
     isDraggingRef.current = value;
     setIsDragging(value);
+    if (!value && !hovered.current) void window.electronAPI?.setIgnoreMouseEvents(true, true);
   };
   const beginPositionChange = () => {
     positionChanging.current = true;
@@ -46,8 +47,9 @@ export function useIslandInteraction({ setMode, standby, largeStandby }: Options
   };
   const leave = () => {
     setIsHovered(false);
-    if (positionChanging.current || isDraggingRef.current || openId) return;
+    if (isDraggingRef.current) return;
     void window.electronAPI?.setIgnoreMouseEvents(true, true);
+    if (positionChanging.current || openId) return;
     collapse();
   };
   return {

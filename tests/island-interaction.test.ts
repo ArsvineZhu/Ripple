@@ -11,6 +11,7 @@ let host: HTMLDivElement;
 let interaction: ReturnType<typeof useIslandInteraction>;
 let overlay: ReturnType<typeof useOverlay>;
 const setMode = vi.fn();
+const ignoreMouse = vi.fn(async () => {});
 function Harness() {
   const currentInteraction = useIslandInteraction({ setMode, standby: false, largeStandby: false });
   const currentOverlay = useOverlay();
@@ -26,11 +27,17 @@ beforeEach(async () => {
   document.body.append(host);
   root = createRoot(host);
   setMode.mockClear();
+  ignoreMouse.mockClear();
+  Object.defineProperty(window, 'electronAPI', {
+    configurable: true,
+    value: { setIgnoreMouseEvents: ignoreMouse },
+  });
   await act(async () => root.render(createElement(OverlayProvider, null, createElement(Harness))));
 });
 afterEach(async () => {
   await act(async () => root.unmount());
   host.remove();
+  Reflect.deleteProperty(window, 'electronAPI');
   vi.unstubAllGlobals();
 });
 describe('Island position and overlay lifecycle', () => {
@@ -41,6 +48,7 @@ describe('Island position and overlay lifecycle', () => {
       window.dispatchEvent(new FocusEvent('focusout'));
     });
     expect(setMode.mock.calls).toEqual([['large']]);
+    expect(ignoreMouse).toHaveBeenCalledWith(true, true);
     await act(async () => interaction.finishPositionChange());
     expect(setMode.mock.calls).toEqual([['large']]);
     await act(async () => interaction.leave());
@@ -61,6 +69,7 @@ describe('Island position and overlay lifecycle', () => {
     await act(async () => overlay.setOpenId('menu'));
     await act(async () => interaction.leave());
     expect(setMode).not.toHaveBeenCalled();
+    expect(ignoreMouse).toHaveBeenCalledWith(true, true);
     await act(async () => overlay.setOpenId(null));
     const trigger = document.createElement('button');
     host.append(trigger);
