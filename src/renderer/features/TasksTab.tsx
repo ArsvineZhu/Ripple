@@ -1,3 +1,5 @@
+import styles from './TasksTab.module.css';
+import { useTranslation } from 'react-i18next';
 import { AnimatePresence } from 'motion/react';
 import { motion } from 'motion/react';
 import type { IslandController } from '../hooks/useIslandController';
@@ -14,23 +16,25 @@ export function TasksTab({
   textColor,
   bgColor,
 }: Props) {
+  const { t } = useTranslation();
   return (
-    <div id="tasks-container" style={{ animation: 'none' }}>
-      <div id="task-list">
+    <div className={styles.container} id="tasks-container">
+      <div className={styles.list} id="task-list">
         <AnimatePresence propagate>
           {tasks.length === 0 ? (
             <motion.p
+              className={styles.emptyState}
               initial={{ opacity: 0 }}
               animate={{ opacity: 0.5 }}
               exit={{ opacity: 0 }}
-              style={{ textAlign: 'center', marginTop: 30 }}
             >
-              No tasks yet. Add one below!
+              {t('tasksEmpty')}
             </motion.p>
           ) : (
             tasks.map((task, index) => (
               <motion.div
-                className="task-row"
+                className={styles.row}
+                data-island-interactive
                 key={`task-${task}-${index}`}
                 initial={{ opacity: 0, x: -20 }}
                 animate={{ opacity: 1, x: 0 }}
@@ -39,55 +43,42 @@ export function TasksTab({
               >
                 <input
                   type="checkbox"
+                  aria-label={t('completeTask', { name: task })}
                   onChange={() => {
                     removeTask(index);
                   }}
-                  className="task-checkbox"
+                  className={styles.checkbox}
                 />
-                <h3 className="task-item" style={{ flex: 1, margin: 0 }}>
-                  {task}
-                </h3>
+                <h3 className={styles.taskText}>{task}</h3>
               </motion.div>
             ))
           )}
         </AnimatePresence>
       </div>
-      <div id="task-input-container">
+      <div className={styles.inputRow} id="task-input-container">
         <input
           type="text"
-          placeholder="New task..."
+          placeholder={t('newTask')}
           value={taskText}
           onChange={(e) => setTaskText(e.target.value)}
           onKeyDown={(e) => {
             if (e.key === 'Enter') addTask();
           }}
-          className="task-input"
+          className={styles.input}
           style={{
             backgroundColor: `color-mix(in srgb, ${textColor}, transparent 95%)`,
             color: textColor,
             border: `1px solid color-mix(in srgb, ${textColor}, transparent 90%)`,
-            borderRadius: '12px',
-            padding: '8px 12px',
-            outline: 'none',
-            flex: 1,
           }}
         />
         <button
           onClick={() => {
             addTask();
           }}
-          className="task-add-btn"
-          style={{
-            backgroundColor: textColor,
-            color: bgColor,
-            border: 'none',
-            borderRadius: '12px',
-            padding: '8px 16px',
-            fontWeight: 600,
-            cursor: 'pointer',
-          }}
+          className={styles.addButton}
+          style={{ backgroundColor: textColor, color: bgColor }}
         >
-          Add
+          {t('add')}
         </button>
       </div>
     </div>

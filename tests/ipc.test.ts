@@ -20,7 +20,7 @@ vi.mock('electron', () => ({
     getPrimaryDisplay: () => ({ id: 1, bounds: { x: 0, y: 0, width: 1920, height: 1080 } }),
   },
   shell: { openExternal: vi.fn() },
-  app: {},
+  app: { getLocale: () => 'zh-HK' },
 }));
 vi.mock('../src/main/window', () => ({
   getMainWindow: () => mock.window,
@@ -28,6 +28,8 @@ vi.mock('../src/main/window', () => ({
   applyLinuxInputShape: mock.shape,
 }));
 vi.mock('../src/main/services/mediaControl', () => ({ controlSystemMedia: vi.fn() }));
+vi.mock('../src/main/tray', () => ({ setTrayLocale: vi.fn() }));
+import { setTrayLocale } from '../src/main/tray';
 import { registerIPC } from '../src/main/ipc';
 
 describe('IPC boundary', () => {
@@ -51,6 +53,13 @@ describe('IPC boundary', () => {
     expect(mock.shape).not.toHaveBeenCalled();
     send({ sender: mock.window.webContents }, rect);
     expect(mock.shape).toHaveBeenCalledWith(rect);
+  });
+  it('reads the system locale and accepts only supported resolved tray languages', () => {
+    const event = { sender: mock.window.webContents };
+    expect(mock.handlers.get('get-system-locale')!(event)).toBe('zh-HK');
+    expect(() => mock.handlers.get('set-ui-locale')!(event, 'de')).toThrow('Invalid locale');
+    mock.handlers.get('set-ui-locale')!(event, 'ja');
+    expect(setTrayLocale).toHaveBeenCalledWith('ja');
   });
   it('rejects commands outside the media contract before executing platform code', () => {
     expect(() =>

@@ -8,6 +8,8 @@ Ripple provides browser search, workflows and quick apps, time/weather/battery o
 
 Install packages from [this fork's releases](https://github.com/ArsvineZhu/Ripple/releases). Windows uses MSI, macOS uses DMG, and Linux uses DEB/RPM. Built artifacts can also be downloaded from successful Actions runs.
 
+The interface supports Simplified Chinese, English, Traditional Chinese and Japanese. It follows the system language by default; select a language in Settings for an immediate, persistent override.
+
 ## Develop
 
 Use the Node LTS version recorded in [.node-version](.node-version) and npm 11 or newer.

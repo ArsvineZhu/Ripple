@@ -186,6 +186,11 @@ export function useNavigation({
   };
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
+      if (
+        isInteractiveTarget(e.target) ||
+        document.querySelector('[data-island-overlay] [role="listbox"]')
+      )
+        return;
       if (e.key === 'ArrowRight') {
         moveTab(1);
       } else if (e.key === 'ArrowLeft') {

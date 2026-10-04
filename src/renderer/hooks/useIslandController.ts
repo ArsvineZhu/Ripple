@@ -1,4 +1,6 @@
-import { useState, useEffect, useRef, useReducer } from 'react';
+import { useTranslation } from 'react-i18next';
+import { useIslandInteraction } from './useIslandInteraction';
+import { useEffect, useReducer } from 'react';
 
 import { measureTextWidth } from '../lib/text';
 import { storage } from '../lib/storage';
@@ -18,14 +20,8 @@ import { modeReducer, resolveMode } from '../lib/modes';
 import { useNavigation } from './useNavigation';
 import { useWindowInput } from './useWindowInput';
 export function useIslandController() {
+  const { t } = useTranslation();
   const [requestedMode, setMode] = useReducer(modeReducer, 'still');
-  const [isHovered, setIsHovered] = useState(false);
-  const [isDragging, setIsDragging] = useState(false);
-  const isDraggingRef = useRef(false);
-  const updateDragging = (val: boolean) => {
-    isDraggingRef.current = val;
-    setIsDragging(val);
-  };
   const {
     batteryAlertsEnabled,
     islandBorderEnabled,
@@ -78,9 +74,30 @@ export function useIslandController() {
     albumRef,
   } = useMedia();
   const {
+    isHovered,
+    setIsHovered,
+    isDragging,
+    updateDragging,
+    beginPositionChange,
+    finishPositionChange,
+    leave,
+    isOverlayOpen,
+  } = useIslandInteraction({
+    setMode,
+    standby: standbyBorderEnabled,
+    largeStandby: largeStandbyEnabled,
+  });
+  const handlePositionChange = (value: string) => {
+    if (value === positionMode) return;
+    beginPositionChange();
+    setPositionMode(value);
+    storage.setItem('position-mode', value);
+  };
+  const {
     asked,
     setAsked,
     aiAnswer,
+    assistantError,
     setAIAnswer,
     userText,
     setUserText,
@@ -141,9 +158,9 @@ export function useIslandController() {
   } = useNavigation({ spotifyTrack, mode, isDragging, setMode });
   const { islandElementRef, syncLinuxWindowShape } = useWindowInput();
   let isPlaying = spotifyTrack?.state === 'playing';
-  const nowPlayingText = spotifyTrack?.name
-    ? `${spotifyTrack.name}${spotifyTrack.artist ? ` • ${spotifyTrack.artist}` : ''}`
-    : '';
+  const trackTitle = spotifyTrack ? spotifyTrack.name || t('unknownSong') : '';
+  const trackArtist = spotifyTrack ? spotifyTrack.artist || t('unknownArtist') : '';
+  const nowPlayingText = spotifyTrack ? `${trackTitle} • ${trackArtist}` : '';
   const textWidth = measureTextWidth(nowPlayingText) || nowPlayingText.length * 7;
   const nowPlayingWidth = Math.min(300, Math.max(122, Math.ceil(textWidth + 24 + 6 + 20)));
   let width =
@@ -217,45 +234,6 @@ export function useIslandController() {
     }
   }, [currentTab, setDisplays]);
 
-  useEffect(() => {
-    const handleFocusOut = () => {
-      // Reset album hover state when window loses focus
-      setAlbumHovered(false);
-      setAlbumRotation({ x: 0, y: 0 });
-
-      setTimeout(() => {
-        if (!isHovered) {
-          const activeTag = document.activeElement?.tagName;
-          if (activeTag !== 'INPUT' && activeTag !== 'TEXTAREA' && activeTag !== 'SELECT') {
-            if (standbyBorderEnabled) {
-              setMode('quick');
-            } else if (largeStandbyEnabled) {
-              setMode('large');
-            } else {
-              setMode('still');
-            }
-          }
-        }
-      }, 100);
-    };
-
-    window.addEventListener('focusout', handleFocusOut);
-    return () => window.removeEventListener('focusout', handleFocusOut);
-  }, [isHovered, standbyBorderEnabled, largeStandbyEnabled, setAlbumHovered, setAlbumRotation]);
-  useEffect(() => {
-    if (!isDragging && !isHovered) {
-      const activeTag = document.activeElement?.tagName;
-      if (activeTag !== 'INPUT' && activeTag !== 'TEXTAREA') {
-        if (standbyBorderEnabled) {
-          setMode('quick');
-        } else if (largeStandbyEnabled) {
-          setMode('large');
-        } else {
-          setMode('still');
-        }
-      }
-    }
-  }, [isDragging, isHovered, standbyBorderEnabled, largeStandbyEnabled]);
   const handleDragEndChecks = () => {
     updateDragging(false);
     clearClickSuppression();
@@ -281,6 +259,9 @@ export function useIslandController() {
   };
   const sideStyles = getSideStyles();
   return {
+    leave,
+    finishPositionChange,
+    isOverlayOpen,
     islandElementRef,
     setIsHovered,
     mode,
@@ -289,7 +270,6 @@ export function useIslandController() {
     setMode,
     clearClickSuppression,
     consumeClickSuppression,
-    isDraggingRef,
     standbyBorderEnabled,
     largeStandbyEnabled,
     isInteractiveTarget,
@@ -320,6 +300,8 @@ export function useIslandController() {
     cameraAlert,
     microphoneAlert,
     spotifyTrack,
+    trackTitle,
+    trackArtist,
     setAlbumHovered,
     setAlbumRotation,
     albumRotation,
@@ -344,6 +326,7 @@ export function useIslandController() {
     setAsked,
     askAI,
     aiAnswer,
+    assistantError,
     setAIAnswer,
     clipboard,
     copyToClipboard,
@@ -367,7 +350,7 @@ export function useIslandController() {
     toggleTabVisibility,
     setTheme,
     positionMode,
-    setPositionMode,
+    handlePositionChange,
     isFree,
     islandX,
     updateDragging,

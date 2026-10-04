@@ -1,741 +1,546 @@
+import { useTranslation } from 'react-i18next';
+import { AnimatePresence, motion } from 'motion/react';
+import {
+  Eye,
+  EyeOff,
+  GripVertical,
+  ChevronUp,
+  ChevronDown,
+  Plus,
+  Star,
+  Trash2,
+} from 'lucide-react';
+import type { ReactNode } from 'react';
 import { storage } from '../lib/storage';
 import { TABS } from '../lib/tabs';
-import { GripVertical } from 'lucide-react';
-import { Star } from 'lucide-react';
-import { EyeOff } from 'lucide-react';
-import { Eye } from 'lucide-react';
-import { ChevronLeft } from 'lucide-react';
-import { AnimatePresence } from 'motion/react';
-import { motion } from 'motion/react';
-import { Plus } from 'lucide-react';
-import { Trash2 } from 'lucide-react';
+import { Select } from '../components/Select';
+import { useSettingsContext } from '../components/SettingsProvider';
+import { languagePreference } from '../../shared/i18n';
 import type { IslandController } from '../hooks/useIslandController';
+import styles from './SettingsTab.module.css';
+interface SectionProps {
+  title: string;
+  children: ReactNode;
+}
+function Section({ title, children }: SectionProps) {
+  return (
+    <section className={styles.section}>
+      <h3 className={styles.sectionHeading}>{title}</h3>
+      {children}
+    </section>
+  );
+}
+function Field({
+  label,
+  children,
+  stacked = false,
+}: {
+  label: string;
+  children: ReactNode;
+  stacked?: boolean;
+}) {
+  return (
+    <div className={`${styles.row} ${stacked ? styles.stacked : ''}`}>
+      <span className={styles.label}>{label}</span>
+      {children}
+    </div>
+  );
+}
 type Props = Pick<
   IslandController,
-  | 'hourFormat'
-  | 'handleHourFormatChange'
-  | 'autoLaunchEnabled'
-  | 'handleAutoLaunchChange'
-  | 'displays'
-  | 'currentDisplayId'
-  | 'handleDisplayChange'
-  | 'tabOrder'
-  | 'hiddenTabs'
-  | 'textColor'
-  | 'moveTabOrder'
-  | 'setDefaultTabId'
-  | 'defaultTabId'
-  | 'toggleTabVisibility'
-  | 'theme'
-  | 'setTheme'
-  | 'positionMode'
-  | 'setPositionMode'
-  | 'isFree'
-  | 'islandX'
-  | 'updateDragging'
-  | 'handleIslandXChange'
-  | 'savePosition'
-  | 'handleDragEndChecks'
-  | 'islandY'
-  | 'handleIslandYChange'
-  | 'islandBorderEnabled'
-  | 'handleIslandBorderChange'
-  | 'hideNotActiveIslandEnabled'
-  | 'handlehideNotActiveIslandChange'
-  | 'bgColor'
-  | 'handleBgColorChange'
-  | 'handleTextColorChange'
-  | 'bgImage'
-  | 'handleBgImageChange'
-  | 'batteryAlertsEnabled'
-  | 'handleBatteryAlertsChange'
-  | 'standbyBorderEnabled'
-  | 'handleStandbyChange'
-  | 'largeStandbyEnabled'
-  | 'handleLargeStandbyChange'
-  | 'showInfoWhenIdleEnabled'
-  | 'handleShowInfoWhenIdleChange'
-  | 'weatherLocation'
-  | 'setWeatherLocation'
-  | 'weatherUnit'
-  | 'handleWeatherUnitChange'
-  | 'newQuickApp'
-  | 'handleQuickAppInput'
-  | 'selectQuickApp'
-  | 'setShowSuggestions'
   | 'addQuickApp'
-  | 'showSuggestions'
-  | 'appSuggestions'
-  | 'quickApps'
-  | 'handleQaChange'
-  | 'removeQuickApp'
-  | 'aiProvider'
-  | 'setAiProvider'
-  | 'setAiModel'
-  | 'aiModel'
-  | 'workflowName'
-  | 'setWorkflowName'
-  | 'workflowUrls'
-  | 'setWorkflowUrls'
   | 'addWorkflow'
-  | 'workflows'
+  | 'aiModel'
+  | 'aiProvider'
+  | 'appSuggestions'
+  | 'autoLaunchEnabled'
+  | 'batteryAlertsEnabled'
+  | 'bgColor'
+  | 'bgImage'
+  | 'currentDisplayId'
+  | 'defaultTabId'
+  | 'displays'
+  | 'handleAutoLaunchChange'
+  | 'handleBatteryAlertsChange'
+  | 'handleBgColorChange'
+  | 'handleBgImageChange'
+  | 'handleDisplayChange'
+  | 'handleDragEndChecks'
+  | 'handleHourFormatChange'
+  | 'handleIslandBorderChange'
+  | 'handleIslandXChange'
+  | 'handleIslandYChange'
+  | 'handleLargeStandbyChange'
+  | 'handlePositionChange'
+  | 'handleQaChange'
+  | 'handleQuickAppInput'
+  | 'handleShowInfoWhenIdleChange'
+  | 'handleStandbyChange'
+  | 'handleTextColorChange'
+  | 'handleWeatherUnitChange'
+  | 'handlehideNotActiveIslandChange'
+  | 'hiddenTabs'
+  | 'hideNotActiveIslandEnabled'
+  | 'hourFormat'
+  | 'isFree'
+  | 'islandBorderEnabled'
+  | 'islandX'
+  | 'islandY'
+  | 'largeStandbyEnabled'
+  | 'moveTabOrder'
+  | 'newQuickApp'
+  | 'positionMode'
+  | 'quickApps'
+  | 'removeQuickApp'
   | 'removeWorkflow'
+  | 'savePosition'
+  | 'selectQuickApp'
+  | 'setAiModel'
+  | 'setAiProvider'
+  | 'setDefaultTabId'
+  | 'setShowSuggestions'
+  | 'setTheme'
+  | 'setWeatherLocation'
+  | 'setWorkflowName'
+  | 'setWorkflowUrls'
+  | 'showInfoWhenIdleEnabled'
+  | 'showSuggestions'
+  | 'standbyBorderEnabled'
+  | 'tabOrder'
+  | 'textColor'
+  | 'theme'
+  | 'toggleTabVisibility'
+  | 'updateDragging'
+  | 'weatherLocation'
+  | 'weatherUnit'
+  | 'workflowName'
+  | 'workflowUrls'
+  | 'workflows'
 >;
-export function SettingsTab({
-  hourFormat,
-  handleHourFormatChange,
-  autoLaunchEnabled,
-  handleAutoLaunchChange,
-  displays,
-  currentDisplayId,
-  handleDisplayChange,
-  tabOrder,
-  hiddenTabs,
-  textColor,
-  moveTabOrder,
-  setDefaultTabId,
-  defaultTabId,
-  toggleTabVisibility,
-  theme,
-  setTheme,
-  positionMode,
-  setPositionMode,
-  isFree,
-  islandX,
-  updateDragging,
-  handleIslandXChange,
-  savePosition,
-  handleDragEndChecks,
-  islandY,
-  handleIslandYChange,
-  islandBorderEnabled,
-  handleIslandBorderChange,
-  hideNotActiveIslandEnabled,
-  handlehideNotActiveIslandChange,
-  bgColor,
-  handleBgColorChange,
-  handleTextColorChange,
-  bgImage,
-  handleBgImageChange,
-  batteryAlertsEnabled,
-  handleBatteryAlertsChange,
-  standbyBorderEnabled,
-  handleStandbyChange,
-  largeStandbyEnabled,
-  handleLargeStandbyChange,
-  showInfoWhenIdleEnabled,
-  handleShowInfoWhenIdleChange,
-  weatherLocation,
-  setWeatherLocation,
-  weatherUnit,
-  handleWeatherUnitChange,
-  newQuickApp,
-  handleQuickAppInput,
-  selectQuickApp,
-  setShowSuggestions,
-  addQuickApp,
-  showSuggestions,
-  appSuggestions,
-  quickApps,
-  handleQaChange,
-  removeQuickApp,
-  aiProvider,
-  setAiProvider,
-  setAiModel,
-  aiModel,
-  workflowName,
-  setWorkflowName,
-  workflowUrls,
-  setWorkflowUrls,
-  addWorkflow,
-  workflows,
-  removeWorkflow,
-}: Props) {
+export function SettingsTab(p: Props) {
+  const { t, i18n } = useTranslation();
+  const { language, handleLanguageChange } = useSettingsContext();
+  const boolOptions = [
+    { value: 'true', label: t('enabled') },
+    { value: 'false', label: t('disabled') },
+  ];
+  const positions = [
+    { value: 'top-left', label: t('topLeft') },
+    { value: 'top-center', label: t('topCenter') },
+    { value: 'top-right', label: t('topRight') },
+    { value: 'bottom-left', label: t('bottomLeft') },
+    { value: 'bottom-center', label: t('bottomCenter') },
+    { value: 'bottom-right', label: t('bottomRight') },
+  ];
+  const number = (value: number, decimals = 0) =>
+    new Intl.NumberFormat(i18n.language, {
+      minimumFractionDigits: decimals,
+      maximumFractionDigits: decimals,
+    }).format(value);
   return (
-    <div id="settings-container">
-      <div className="settings-section">
-        <h3
-          style={{
-            fontSize: 13,
-            textTransform: 'uppercase',
-            opacity: 0.5,
-            letterSpacing: '0.05em',
-          }}
-        >
-          General
-        </h3>
-        <div className="settings-row">
-          <span className="settings-label">12/24 Hour Format</span>
-          <select value={hourFormat ? '12-hr' : '24-hr'} onChange={handleHourFormatChange}>
-            <option value="12-hr">12-hour</option>
-            <option value="24-hr">24-hour</option>
-          </select>
-        </div>
+    <div id="settings-container" className={styles.container}>
+      <Section title={t('general')}>
+        <Field label={t('language')}>
+          <Select
+            label={t('language')}
+            value={language}
+            onValueChange={(value) => handleLanguageChange(languagePreference(value))}
+            options={[
+              { value: 'system', label: t('system') },
+              { value: 'zh-CN', label: '简体中文' },
+              { value: 'en', label: 'English' },
+              { value: 'zh-TW', label: '繁體中文' },
+              { value: 'ja', label: '日本語' },
+            ]}
+          />
+        </Field>
+        <Field label={t('hourFormat')}>
+          <Select
+            label={t('hourFormat')}
+            value={p.hourFormat ? '12-hr' : '24-hr'}
+            onValueChange={p.handleHourFormatChange}
+            options={[
+              { value: '12-hr', label: t('hour12') },
+              { value: '24-hr', label: t('hour24') },
+            ]}
+          />
+        </Field>
         {window.electronAPI?.platform !== 'darwin' && (
-          <div className="settings-row">
-            <span className="settings-label">Auto Launch on Boot</span>
-            <select value={autoLaunchEnabled ? 'true' : 'false'} onChange={handleAutoLaunchChange}>
-              <option value="true">Enabled</option>
-              <option value="false">Disabled</option>
-            </select>
-          </div>
+          <Field label={t('autoLaunch')}>
+            <Select
+              label={t('autoLaunch')}
+              value={String(p.autoLaunchEnabled)}
+              onValueChange={p.handleAutoLaunchChange}
+              options={boolOptions}
+            />
+          </Field>
         )}
-        {displays.length > 0 && (
-          <div className="settings-row">
-            <span className="settings-label">Target Display</span>
-            <select value={currentDisplayId} onChange={handleDisplayChange}>
-              {displays.map((d) => (
-                <option key={d.id} value={d.id}>
-                  {d.label}
-                </option>
-              ))}
-            </select>
-          </div>
+        {p.displays.length > 0 && (
+          <Field label={t('display')}>
+            <Select
+              label={t('display')}
+              value={p.currentDisplayId || String(p.displays[0].id)}
+              onValueChange={p.handleDisplayChange}
+              options={p.displays.map((display, index) => ({
+                value: String(display.id),
+                label:
+                  display.label === `Display ${display.id}`
+                    ? t('displayFallback', { number: number(index + 1) })
+                    : display.label,
+              }))}
+            />
+          </Field>
         )}
-      </div>
-      <div className="settings-section">
-        <h3
-          style={{
-            fontSize: 13,
-            textTransform: 'uppercase',
-            opacity: 0.5,
-            letterSpacing: '0.05em',
-            marginBottom: '4px',
-          }}
-        >
-          Tab Management
-        </h3>
-        <p style={{ fontSize: 11, opacity: 0.4, marginTop: -8, marginBottom: 8 }}>
-          Drag to reorder, click eye to hide.
-        </p>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
-          {tabOrder.map((id, i) => {
-            const tabDef = TABS.find((t) => t.id === id);
-            if (!tabDef) return null;
-            const isHidden = hiddenTabs.includes(id);
+      </Section>
+      <Section title={t('tabManagement')}>
+        <p className={styles.hint}>{t('tabInstructions')}</p>
+        <div className={styles.tabList}>
+          {p.tabOrder.map((id, index) => {
+            const tab = TABS.find((item) => item.id === id);
+            if (!tab) return null;
+            const hidden = p.hiddenTabs.includes(id);
             return (
               <div
                 key={id}
-                className={`tab-order-item ${isHidden ? 'hidden' : ''}`}
-                style={{ cursor: 'grab' }}
+                className={`${styles.tabItem} ${hidden ? styles.hidden : ''}`}
                 draggable
-                onDragStart={(e) => {
-                  e.dataTransfer.setData('text/plain', String(i));
-                  e.currentTarget.style.opacity = '0.4';
-                  e.currentTarget.style.borderStyle = 'dashed';
+                data-island-interactive
+                onDragStart={(event) => {
+                  event.dataTransfer.setData('text/plain', String(index));
+                  event.currentTarget.dataset.dragging = 'true';
                 }}
-                onDragEnd={(e) => {
-                  e.currentTarget.style.opacity = isHidden ? '0.45' : '1';
-                  e.currentTarget.style.borderStyle = isHidden ? 'dashed' : 'solid';
+                onDragEnd={(event) => {
+                  delete event.currentTarget.dataset.dragging;
                 }}
-                onDragOver={(e) => {
-                  e.preventDefault();
-                  e.currentTarget.style.background = `color-mix(in srgb, ${textColor}, transparent 90%)`;
-                  e.currentTarget.style.transform = 'translateY(-2px)';
+                onDragOver={(event) => {
+                  event.preventDefault();
+                  event.currentTarget.dataset.dropTarget = 'true';
                 }}
-                onDragLeave={(e) => {
-                  e.currentTarget.style.background = '';
-                  e.currentTarget.style.transform = '';
+                onDragLeave={(event) => {
+                  delete event.currentTarget.dataset.dropTarget;
                 }}
-                onDrop={(e) => {
-                  e.preventDefault();
-                  e.currentTarget.style.background = '';
-                  e.currentTarget.style.transform = '';
-                  const fromIdx = parseInt(e.dataTransfer.getData('text/plain'));
-                  moveTabOrder(fromIdx, i);
+                onDrop={(event) => {
+                  event.preventDefault();
+                  delete event.currentTarget.dataset.dropTarget;
+                  p.moveTabOrder(Number(event.dataTransfer.getData('text/plain')), index);
                 }}
               >
-                <GripVertical size={16} style={{ opacity: 0.3, cursor: 'grab' }} />
-                <div style={{ display: 'flex', alignItems: 'center', gap: 10, flex: 1 }}>
-                  {tabDef.icon(textColor)}
-                  <span style={{ fontSize: 14, fontWeight: 500 }}>{tabDef.name}</span>
-                </div>
-                <div style={{ display: 'flex', gap: 4, alignItems: 'center' }}>
-                  <button
-                    className="tab-order-btn"
-                    onClick={() => {
-                      setDefaultTabId(id);
-                      storage.setItem('default-tab', id);
-                    }}
-                    title="Set as default"
-                    style={{
-                      opacity: defaultTabId === id ? 1 : 0.3,
-                      color: defaultTabId === id ? '#FFD700' : textColor,
-                    }}
-                  >
-                    <Star size={16} fill={defaultTabId === id ? '#FFD700' : 'none'} />
-                  </button>
-                  <div
-                    style={{
-                      width: 1,
-                      height: 16,
-                      background: textColor,
-                      opacity: 0.1,
-                      margin: '0 4px',
-                    }}
+                <GripVertical size={14} className={styles.grip} />
+                {tab.icon(p.textColor)}
+                <span className={styles.tabName}>{t(tab.nameKey)}</span>
+                <button
+                  className={styles.iconButton}
+                  title={t('defaultTab')}
+                  aria-label={t('defaultTab')}
+                  onClick={() => {
+                    p.setDefaultTabId(id);
+                    storage.setItem('default-tab', id);
+                  }}
+                >
+                  <Star
+                    size={15}
+                    fill={p.defaultTabId === id ? '#ffd700' : 'none'}
+                    color={p.defaultTabId === id ? '#ffd700' : 'currentColor'}
                   />
-                  <button
-                    className="tab-order-btn"
-                    onClick={() => toggleTabVisibility(id)}
-                    title={isHidden ? 'Show' : 'Hide'}
-                    style={{ opacity: isHidden ? 1 : 0.6 }}
-                  >
-                    {isHidden ? <EyeOff size={16} /> : <Eye size={16} />}
-                  </button>
-                  <div
-                    style={{
-                      width: 1,
-                      height: 16,
-                      background: textColor,
-                      opacity: 0.1,
-                      margin: '0 4px',
-                    }}
-                  />
-                  <button
-                    className="tab-order-btn"
-                    disabled={i === 0}
-                    onClick={() => moveTabOrder(i, i - 1)}
-                  >
-                    <ChevronLeft size={16} style={{ transform: 'rotate(90deg)' }} />
-                  </button>
-                  <button
-                    className="tab-order-btn"
-                    disabled={i === tabOrder.length - 1}
-                    onClick={() => moveTabOrder(i, i + 1)}
-                  >
-                    <ChevronLeft size={16} style={{ transform: 'rotate(-90deg)' }} />
-                  </button>
-                </div>
+                </button>
+                <button
+                  className={styles.iconButton}
+                  title={t(hidden ? 'show' : 'hide')}
+                  aria-label={t(hidden ? 'show' : 'hide')}
+                  onClick={() => p.toggleTabVisibility(id)}
+                >
+                  {hidden ? <EyeOff size={15} /> : <Eye size={15} />}
+                </button>
+                <button
+                  className={styles.iconButton}
+                  disabled={index === 0}
+                  aria-label={t('moveTabUp')}
+                  onClick={() => p.moveTabOrder(index, index - 1)}
+                >
+                  <ChevronUp size={15} />
+                </button>
+                <button
+                  className={styles.iconButton}
+                  disabled={index === p.tabOrder.length - 1}
+                  aria-label={t('moveTabDown')}
+                  onClick={() => p.moveTabOrder(index, index + 1)}
+                >
+                  <ChevronDown size={15} />
+                </button>
               </div>
             );
           })}
         </div>
-      </div>
-
-      <div className="settings-section">
-        <h3
-          style={{
-            fontSize: 13,
-            textTransform: 'uppercase',
-            opacity: 0.5,
-            letterSpacing: '0.05em',
-          }}
-        >
-          Island Style
-        </h3>
-        <div className="settings-row">
-          <span className="settings-label">Theme</span>
-          <select value={theme} onChange={(e) => setTheme(e.target.value)}>
-            <option value="none">Default</option>
-            <option value="sleek-black">Sleek Black</option>
-            <option value="win95">Windows 95</option>
-          </select>
-        </div>
-        <div
-          className="settings-section"
-          style={{
-            alignItems: 'center',
-            background: 'rgba(255,255,255,0.03)',
-            padding: '15px',
-            borderRadius: '18px',
-            border: '1px solid rgba(255,255,255,0.05)',
-          }}
-        >
-          <span
-            className="settings-label"
-            style={{ textAlign: 'center', marginBottom: '8px', opacity: 1, color: textColor }}
-          >
-            Position Mode
-          </span>
-          <div
-            className="radio-group"
-            style={{
-              display: 'grid',
-              gridTemplateColumns: 'repeat(3, 1fr)',
-              width: '100%',
-              gap: '15px 10px',
-            }}
-          >
-            {[
-              { val: 'top-left', label: 'Top L' },
-              { val: 'top-center', label: 'Top C' },
-              { val: 'top-right', label: 'Top R' },
-              { val: 'bottom-left', label: 'Bot L' },
-              { val: 'bottom-center', label: 'Bot C' },
-              { val: 'bottom-right', label: 'Bot R' },
-            ].map((mode) => (
-              <label key={mode.val} className="radio-label" style={{ justifyContent: 'center' }}>
+      </Section>
+      <Section title={t('islandStyle')}>
+        <Field label={t('theme')}>
+          <Select
+            label={t('theme')}
+            value={p.theme === 'default' ? 'none' : p.theme}
+            onValueChange={p.setTheme}
+            options={[
+              { value: 'none', label: t('defaultTheme') },
+              { value: 'sleek-black', label: t('sleekBlack') },
+              { value: 'win95', label: 'Windows 95' },
+            ]}
+          />
+        </Field>
+        <div className={styles.positionCard}>
+          <span className={styles.positionHeading}>{t('positionMode')}</span>
+          <div className={styles.positionGrid}>
+            {positions.map((position) => (
+              <label key={position.value} className={styles.radioLabel}>
                 <input
                   type="radio"
                   name="positionMode"
-                  value={mode.val}
-                  checked={positionMode === mode.val}
-                  onChange={(e) => {
-                    setPositionMode(e.target.value);
-                    storage.setItem('position-mode', e.target.value);
-                  }}
+                  value={position.value}
+                  checked={p.positionMode === position.value}
+                  onChange={() => p.handlePositionChange(position.value)}
                 />
-                <span className="radio-custom"></span>
-                {mode.label}
+                <span className={styles.radioCustom} />
+                <span>{position.label}</span>
               </label>
             ))}
           </div>
-          <div
-            style={{
-              width: '100%',
-              height: '1px',
-              background: 'rgba(255,255,255,0.1)',
-              margin: '10px 0',
-            }}
-          ></div>
-          <label className="radio-label" style={{ justifyContent: 'center' }}>
+          <div className={styles.separator} />
+          <label className={styles.radioLabel}>
             <input
               type="radio"
               name="positionMode"
               value="free"
-              checked={positionMode === 'free'}
-              onChange={(e) => {
-                setPositionMode(e.target.value);
-                storage.setItem('position-mode', e.target.value);
-              }}
+              checked={p.isFree}
+              onChange={() => p.handlePositionChange('free')}
             />
-            <span className="radio-custom"></span>
-            FREE (MANUAL)
+            <span className={styles.radioCustom} />
+            <span>{t('free')}</span>
           </label>
         </div>
         <AnimatePresence propagate>
-          {isFree && (
+          {p.isFree && (
             <motion.div
+              className={styles.manualPosition}
               initial={{ opacity: 0, height: 0 }}
               animate={{ opacity: 1, height: 'auto' }}
               exit={{ opacity: 0, height: 0 }}
               transition={{ duration: 0.15 }}
-              style={{ overflow: 'hidden', display: 'flex', flexDirection: 'column', gap: '12px' }}
             >
-              <div className="settings-row">
-                <span className="settings-label">Position X ({islandX.toFixed(1)}%)</span>
+              <Field label={t('positionX', { value: number(p.islandX, 1) })}>
                 <input
+                  aria-label={t('positionX', { value: number(p.islandX, 1) })}
                   type="range"
                   min="0"
                   max="100"
                   step="0.1"
-                  value={islandX}
-                  onPointerDown={(e) => {
-                    e.stopPropagation();
-                    updateDragging(true);
+                  value={p.islandX}
+                  onPointerDown={(event) => {
+                    event.stopPropagation();
+                    p.updateDragging(true);
                   }}
-                  onChange={handleIslandXChange}
-                  onPointerUp={(e) => {
-                    e.stopPropagation();
-                    savePosition();
-                    handleDragEndChecks();
-                    e.currentTarget.blur();
+                  onChange={p.handleIslandXChange}
+                  onPointerUp={(event) => {
+                    event.stopPropagation();
+                    p.savePosition();
+                    p.handleDragEndChecks();
+                    event.currentTarget.blur();
                   }}
-                  list="tickmarks"
-                  style={{ flex: 1, accentColor: textColor }}
                 />
-                <datalist id="tickmarks">
-                  <option value="50" label="50%"></option>
-                </datalist>
-              </div>
-              <div className="settings-row">
-                <span className="settings-label">Position Y ({islandY}px)</span>
+              </Field>
+              <Field label={t('positionY', { value: number(p.islandY) })}>
                 <input
+                  aria-label={t('positionY', { value: number(p.islandY) })}
                   type="range"
                   min="0"
                   max="500"
-                  value={islandY}
-                  onPointerDown={(e) => {
-                    e.stopPropagation();
-                    updateDragging(true);
+                  value={p.islandY}
+                  onPointerDown={(event) => {
+                    event.stopPropagation();
+                    p.updateDragging(true);
                   }}
-                  onChange={handleIslandYChange}
-                  onPointerUp={(e) => {
-                    e.stopPropagation();
-                    savePosition();
-                    handleDragEndChecks();
-                    e.currentTarget.blur();
+                  onChange={p.handleIslandYChange}
+                  onPointerUp={(event) => {
+                    event.stopPropagation();
+                    p.savePosition();
+                    p.handleDragEndChecks();
+                    event.currentTarget.blur();
                   }}
-                  style={{ flex: 1, accentColor: textColor }}
                 />
-              </div>
+              </Field>
             </motion.div>
           )}
         </AnimatePresence>
-        <div className="settings-row">
-          <span className="settings-label">Island Border</span>
-          <select
-            value={islandBorderEnabled ? 'true' : 'false'}
-            onChange={handleIslandBorderChange}
-          >
-            <option value="true">Show</option>
-            <option value="false">Hide</option>
-          </select>
-        </div>
-        <div className="settings-row">
-          <span className="settings-label">Hide When Inactive</span>
-          <select
-            value={hideNotActiveIslandEnabled ? 'true' : 'false'}
-            onChange={handlehideNotActiveIslandChange}
-          >
-            <option value="true">Yes</option>
-            <option value="false">No</option>
-          </select>
-        </div>
-      </div>
-
-      <div className="settings-section">
-        <h3
-          style={{
-            fontSize: 13,
-            textTransform: 'uppercase',
-            opacity: 0.5,
-            letterSpacing: '0.05em',
-          }}
-        >
-          Colors & Assets
-        </h3>
-        <div className="settings-row">
-          <span className="settings-label">Island Color</span>
+        <Field label={t('islandBorder')}>
+          <Select
+            label={t('islandBorder')}
+            value={String(p.islandBorderEnabled)}
+            onValueChange={p.handleIslandBorderChange}
+            options={[
+              { value: 'true', label: t('show') },
+              { value: 'false', label: t('hide') },
+            ]}
+          />
+        </Field>
+        <Field label={t('hideInactive')}>
+          <Select
+            label={t('hideInactive')}
+            value={String(p.hideNotActiveIslandEnabled)}
+            onValueChange={p.handlehideNotActiveIslandChange}
+            options={[
+              { value: 'true', label: t('yes') },
+              { value: 'false', label: t('no') },
+            ]}
+          />
+        </Field>
+      </Section>
+      <Section title={t('colorsAssets')}>
+        <Field label={t('islandColor')}>
           <input
-            className="select-input"
-            style={{ width: '100px' }}
+            className={`${styles.input} ${styles.colorInput}`}
+            aria-label={t('islandColor')}
             placeholder="#000000"
-            value={bgColor}
-            onChange={handleBgColorChange}
+            value={p.bgColor}
+            onChange={p.handleBgColorChange}
           />
-        </div>
-        <div className="settings-row">
-          <span className="settings-label">Text Color</span>
+        </Field>
+        <Field label={t('textColor')}>
           <input
-            className="select-input"
-            style={{ width: '100px' }}
+            className={`${styles.input} ${styles.colorInput}`}
+            aria-label={t('textColor')}
             placeholder="#FAFAFA"
-            value={textColor}
-            onChange={handleTextColorChange}
+            value={p.textColor}
+            onChange={p.handleTextColorChange}
           />
-        </div>
-        <div className="settings-row" style={{ flexDirection: 'column', alignItems: 'flex-start' }}>
-          <span className="settings-label">Background Image URL</span>
+        </Field>
+        <Field label={t('backgroundImage')} stacked>
           <input
-            className="select-input"
+            className={styles.input}
+            aria-label={t('backgroundImage')}
             placeholder="https://..."
-            value={bgImage}
-            onChange={handleBgImageChange}
+            value={p.bgImage}
+            onChange={p.handleBgImageChange}
           />
-        </div>
-      </div>
-
-      <div className="settings-section">
-        <h3
-          style={{
-            fontSize: 13,
-            textTransform: 'uppercase',
-            opacity: 0.5,
-            letterSpacing: '0.05em',
-          }}
-        >
-          Features
-        </h3>
-        <div className="settings-row">
-          <span className="settings-label">Low Battery Alerts</span>
-          <select
-            value={batteryAlertsEnabled ? 'true' : 'false'}
-            onChange={handleBatteryAlertsChange}
-          >
-            <option value="true">Enabled</option>
-            <option value="false">Disabled</option>
-          </select>
-        </div>
-        <div className="settings-row">
-          <span className="settings-label">Standby Mode</span>
-          <select value={standbyBorderEnabled ? 'true' : 'false'} onChange={handleStandbyChange}>
-            <option value="true">Enabled</option>
-            <option value="false">Disabled</option>
-          </select>
-        </div>
-        <div className="settings-row">
-          <span className="settings-label">Large Standby Mode</span>
-          <select
-            value={largeStandbyEnabled ? 'true' : 'false'}
-            onChange={handleLargeStandbyChange}
-          >
-            <option value="true">Enabled</option>
-            <option value="false">Disabled</option>
-          </select>
-        </div>
-        <div className="settings-row">
-          <span className="settings-label">Show Info when idle</span>
-          <select
-            value={showInfoWhenIdleEnabled ? 'true' : 'false'}
-            onChange={handleShowInfoWhenIdleChange}
-          >
-            <option value="true">Enabled</option>
-            <option value="false">Disabled</option>
-          </select>
-        </div>
-      </div>
-
-      <div className="settings-section">
-        <h3
-          style={{
-            fontSize: 13,
-            textTransform: 'uppercase',
-            opacity: 0.5,
-            letterSpacing: '0.05em',
-          }}
-        >
-          Weather
-        </h3>
-        <div className="settings-row">
-          <span className="settings-label">Location</span>
+        </Field>
+      </Section>
+      <Section title={t('features')}>
+        <Field label={t('batteryAlerts')}>
+          <Select
+            label={t('batteryAlerts')}
+            value={String(p.batteryAlertsEnabled)}
+            onValueChange={p.handleBatteryAlertsChange}
+            options={boolOptions}
+          />
+        </Field>
+        <Field label={t('standby')}>
+          <Select
+            label={t('standby')}
+            value={String(p.standbyBorderEnabled)}
+            onValueChange={p.handleStandbyChange}
+            options={boolOptions}
+          />
+        </Field>
+        <Field label={t('largeStandby')}>
+          <Select
+            label={t('largeStandby')}
+            value={String(p.largeStandbyEnabled)}
+            onValueChange={p.handleLargeStandbyChange}
+            options={boolOptions}
+          />
+        </Field>
+        <Field label={t('idleInfo')}>
+          <Select
+            label={t('idleInfo')}
+            value={String(p.showInfoWhenIdleEnabled)}
+            onValueChange={p.handleShowInfoWhenIdleChange}
+            options={boolOptions}
+          />
+        </Field>
+      </Section>
+      <Section title={t('weather')}>
+        <Field label={t('location')}>
           <input
-            className="select-input"
-            placeholder="City, ST, Country"
-            value={weatherLocation}
-            onChange={(e) => {
-              setWeatherLocation(e.target.value);
-              storage.setItem('location', e.target.value);
+            className={styles.input}
+            aria-label={t('location')}
+            placeholder={t('locationHint')}
+            value={p.weatherLocation}
+            onChange={(event) => {
+              p.setWeatherLocation(event.target.value);
+              storage.setItem('location', event.target.value);
             }}
           />
-        </div>
-        <div className="settings-row">
-          <span className="settings-label">Unit</span>
-          <select value={weatherUnit} onChange={handleWeatherUnitChange}>
-            <option value="f">Fahrenheit (°F)</option>
-            <option value="c">Celsius (°C)</option>
-          </select>
-        </div>
-      </div>
-
-      <div className="settings-section">
-        <h3
-          style={{
-            fontSize: 13,
-            textTransform: 'uppercase',
-            opacity: 0.5,
-            letterSpacing: '0.05em',
-          }}
-        >
-          Quick Apps
-        </h3>
-        <div
-          style={{
-            display: 'flex',
-            gap: '8px',
-            marginBottom: '12px',
-            position: 'relative',
-            flexDirection: 'column',
-          }}
-        >
-          <div style={{ display: 'flex', gap: '8px' }}>
+        </Field>
+        <Field label={t('unit')}>
+          <Select
+            label={t('unit')}
+            value={p.weatherUnit}
+            onValueChange={p.handleWeatherUnitChange}
+            options={[
+              { value: 'f', label: t('fahrenheit') },
+              { value: 'c', label: t('celsius') },
+            ]}
+          />
+        </Field>
+      </Section>
+      <Section title={t('quickApps')}>
+        <div className={styles.appSearch}>
+          <div className={styles.row}>
             <input
-              className="select-input"
-              style={{ flex: 1 }}
-              value={newQuickApp}
-              placeholder="Add app (e.g. Apple Music)"
-              onChange={(e) => handleQuickAppInput(e.target.value)}
-              onKeyDown={(e) => {
-                if (e.key === 'Enter') addQuickApp();
-                if (e.key === 'Escape') setShowSuggestions(false);
+              className={styles.input}
+              aria-label={t('addApp')}
+              value={p.newQuickApp}
+              placeholder={t('addAppHint')}
+              onChange={(event) => p.handleQuickAppInput(event.target.value)}
+              onKeyDown={(event) => {
+                if (event.key === 'Enter') p.addQuickApp();
+                if (event.key === 'Escape') p.setShowSuggestions(false);
               }}
-              onBlur={() => setTimeout(() => setShowSuggestions(false), 150)}
+              onBlur={() => p.setShowSuggestions(false)}
             />
             <button
-              onClick={addQuickApp}
-              style={{
-                backgroundColor: textColor,
-                color: bgColor,
-                border: 'none',
-                borderRadius: '12px',
-                padding: '8px 12px',
-                fontWeight: 600,
-                cursor: 'pointer',
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'center',
-              }}
+              className={styles.primaryButton}
+              aria-label={t('addApp')}
+              onClick={p.addQuickApp}
             >
               <Plus size={18} />
             </button>
           </div>
-          {showSuggestions && appSuggestions.length > 0 && (
-            <div
-              style={{
-                position: 'absolute',
-                top: '100%',
-                left: 0,
-                right: 0,
-                zIndex: 999,
-                borderRadius: '12px',
-                overflow: 'hidden',
-                boxShadow: '0 4px 20px rgba(0,0,0,0.3)',
-                backgroundColor: bgColor,
-                border: `1px solid ${textColor}22`,
-                marginTop: '4px',
-              }}
-            >
-              {appSuggestions.map((s, i) => (
-                <div
-                  key={i}
-                  onMouseDown={() => selectQuickApp(s)}
-                  style={{
-                    padding: '8px 12px',
-                    cursor: 'pointer',
-                    color: textColor,
-                    fontSize: 13,
-                    borderBottom:
-                      i < appSuggestions.length - 1 ? `1px solid ${textColor}11` : 'none',
+          {p.showSuggestions && p.appSuggestions.length > 0 && (
+            <div className={styles.suggestions} data-island-interactive>
+              {p.appSuggestions.map((app) => (
+                <button
+                  key={app.launch}
+                  className={styles.suggestion}
+                  onPointerDown={(event) => {
+                    event.preventDefault();
+                    p.selectQuickApp(app);
                   }}
-                  onMouseEnter={(e) => (e.currentTarget.style.backgroundColor = `${textColor}11`)}
-                  onMouseLeave={(e) => (e.currentTarget.style.backgroundColor = 'transparent')}
                 >
-                  <div style={{ fontWeight: 600 }}>{s.name}</div>
-                  <div
-                    style={{
-                      opacity: 0.4,
-                      fontSize: 11,
-                      overflow: 'hidden',
-                      textOverflow: 'ellipsis',
-                      whiteSpace: 'nowrap',
-                    }}
-                  >
-                    {s.launch}
-                  </div>
-                </div>
+                  <span>{app.name}</span>
+                  <span className={styles.launchHint}>{app.launch}</span>
+                </button>
               ))}
             </div>
           )}
         </div>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: '5px' }}>
+        <div className={styles.appList}>
           <AnimatePresence propagate>
-            {quickApps.map((app, idx) => (
+            {p.quickApps.map((app, index) => (
               <motion.div
-                key={`qa-${idx}`}
-                className="settings-row"
-                style={{ justifyContent: 'space-between', padding: '5px 0' }}
+                key={`qa-${index}`}
+                className={styles.appRow}
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: 'auto' }}
                 exit={{ opacity: 0, x: -20, height: 0, padding: 0 }}
                 transition={{ duration: 0.2 }}
               >
                 <input
-                  className="select-input"
-                  style={{ flex: 1, border: 'none', background: 'transparent', padding: 0 }}
+                  className={styles.appName}
+                  aria-label={t('appName')}
                   value={app.name}
-                  onChange={(e) => handleQaChange(idx, e.target.value)}
+                  onChange={(event) => p.handleQaChange(index, event.target.value)}
                 />
                 <button
-                  onClick={() => removeQuickApp(idx)}
-                  style={{
-                    color: '#ff4d4d',
-                    background: 'none',
-                    border: 'none',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}
+                  className={styles.dangerButton}
+                  aria-label={t('removeApp', { name: app.name })}
+                  onClick={() => p.removeQuickApp(index)}
                 >
                   <Trash2 size={16} />
                 </button>
@@ -743,174 +548,105 @@ export function SettingsTab({
             ))}
           </AnimatePresence>
         </div>
-      </div>
-
-      <div className="settings-section" style={{ marginBottom: 30 }}>
-        <h3
-          style={{
-            fontSize: 13,
-            textTransform: 'uppercase',
-            opacity: 0.5,
-            letterSpacing: '0.05em',
-          }}
-        >
-          Integrations
-        </h3>
-        <div className="settings-row">
-          <span className="settings-label">AI Provider</span>
-          <select
-            value={aiProvider}
-            onChange={(e) => {
-              setAiProvider(e.target.value);
-              storage.setItem('ai-provider', e.target.value);
+      </Section>
+      <Section title={t('integrations')}>
+        <Field label={t('aiProvider')}>
+          <Select
+            label={t('aiProvider')}
+            value={p.aiProvider}
+            onValueChange={(value) => {
+              p.setAiProvider(value);
+              storage.setItem('ai-provider', value);
               const model =
-                e.target.value === 'groq'
-                  ? 'llama-3.3-70b-versatile'
-                  : 'meta-llama/llama-3.3-70b-instruct';
-              setAiModel(model);
+                value === 'groq' ? 'llama-3.3-70b-versatile' : 'meta-llama/llama-3.3-70b-instruct';
+              p.setAiModel(model);
               storage.setItem('ai-model', model);
             }}
-          >
-            <option value="groq">Groq</option>
-            <option value="openrouter">OpenRouter</option>
-          </select>
-        </div>
-        <div className="settings-row" style={{ flexDirection: 'column', alignItems: 'flex-start' }}>
-          <span className="settings-label">AI Model</span>
+            options={[
+              { value: 'groq', label: 'Groq' },
+              { value: 'openrouter', label: 'OpenRouter' },
+            ]}
+          />
+        </Field>
+        <Field label={t('aiModel')} stacked>
           <input
-            className="select-input"
-            value={aiModel}
+            className={styles.input}
+            aria-label={t('aiModel')}
+            value={p.aiModel}
             placeholder={
-              aiProvider === 'groq'
+              p.aiProvider === 'groq'
                 ? 'llama-3.3-70b-versatile'
                 : 'meta-llama/llama-3.3-70b-instruct'
             }
-            onChange={(e) => {
-              setAiModel(e.target.value);
-              storage.setItem('ai-model', e.target.value);
+            onChange={(event) => {
+              p.setAiModel(event.target.value);
+              storage.setItem('ai-model', event.target.value);
             }}
           />
-        </div>
-        <div className="settings-row" style={{ flexDirection: 'column', alignItems: 'flex-start' }}>
-          <span className="settings-label">API Key</span>
+        </Field>
+        <Field label={t('apiKey')} stacked>
           <input
-            className="select-input"
+            className={styles.input}
+            aria-label={t('apiKey')}
             type="password"
-            placeholder={aiProvider === 'groq' ? 'gsk_...' : 'sk-or-...'}
-            onChange={(e) => storage.setItem('api-key', e.target.value)}
+            placeholder={p.aiProvider === 'groq' ? 'gsk_...' : 'sk-or-...'}
+            defaultValue={storage.getItem('api-key') || ''}
+            onChange={(event) => storage.setItem('api-key', event.target.value)}
           />
-        </div>
-      </div>
-
-      <div className="settings-section" style={{ marginBottom: 30 }}>
-        <h3
-          style={{
-            fontSize: 13,
-            textTransform: 'uppercase',
-            opacity: 0.5,
-            letterSpacing: '0.05em',
-          }}
-        >
-          Manage Workflows
-        </h3>
-
-        <div
-          id="add-workflow-form"
-          style={{
-            display: 'flex',
-            flexDirection: 'column',
-            gap: '6px',
-            width: '100%',
-            boxSizing: 'border-box',
-          }}
-        >
-          <span className="settings-label" style={{ opacity: 0.8 }}>
-            Workflow Name
-          </span>
+        </Field>
+      </Section>
+      <Section title={t('manageWorkflows')}>
+        <div id="add-workflow-form" className={styles.workflowForm}>
+          <label className={styles.label} htmlFor="workflow-name">
+            {t('workflowName')}
+          </label>
           <input
-            className="select-input"
-            style={{ width: '100%', boxSizing: 'border-box' }}
-            placeholder="e.g. Work Tools"
-            value={workflowName}
-            onChange={(e) => setWorkflowName(e.target.value)}
+            id="workflow-name"
+            className={styles.input}
+            placeholder={t('workflowNameHint')}
+            value={p.workflowName}
+            onChange={(event) => p.setWorkflowName(event.target.value)}
           />
-          <span className="settings-label" style={{ marginTop: 15, opacity: 0.8 }}>
-            Apps or URLs (Comma Separated)
-          </span>
+          <label className={styles.workflowLabel} htmlFor="workflow-apps">
+            {t('workflowApps')}
+          </label>
           <textarea
-            className="select-input"
-            style={{ width: '100%', minHeight: '50px', padding: '8px', boxSizing: 'border-box' }}
-            placeholder="e.g. Spotify, docs.google.com"
-            value={workflowUrls}
-            onChange={(e) => setWorkflowUrls(e.target.value)}
+            id="workflow-apps"
+            className={`${styles.input} ${styles.workflowInput}`}
+            placeholder={t('workflowAppsHint')}
+            value={p.workflowUrls}
+            onChange={(event) => p.setWorkflowUrls(event.target.value)}
           />
-          <button
-            onClick={() => {
-              addWorkflow();
-            }}
-            style={{
-              backgroundColor: textColor,
-              color: bgColor,
-              border: 'none',
-              borderRadius: '12px',
-              padding: '8px',
-              fontWeight: 600,
-              cursor: 'pointer',
-              marginTop: 2,
-            }}
-          >
-            Save Workflow
+          <button className={styles.primaryButton} onClick={p.addWorkflow}>
+            {t('saveWorkflow')}
           </button>
         </div>
-
-        <div id="workflows-list" style={{ marginTop: '15px' }}>
+        <div id="workflows-list" className={styles.workflowList}>
           <AnimatePresence propagate>
-            {workflows.map((wf, idx) => (
+            {p.workflows.map((workflow, index) => (
               <motion.div
-                key={`wf-${wf.name}-${idx}`}
-                className="settings-row"
-                style={{
-                  justifyContent: 'space-between',
-                  padding: '10px 0',
-                  borderBottom: `1px solid color-mix(in srgb, ${textColor}, transparent 95%)`,
-                }}
+                key={`wf-${workflow.name}-${index}`}
+                className={styles.workflowRow}
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: 'auto' }}
                 exit={{ opacity: 0, x: -20, height: 0, padding: 0 }}
                 transition={{ duration: 0.2 }}
               >
-                <div
-                  style={{
-                    display: 'flex',
-                    flexDirection: 'column',
-                    overflow: 'hidden',
-                    paddingRight: '10px',
-                  }}
-                >
-                  <span style={{ fontWeight: 600 }}>{wf.name}</span>
-                  <span style={{ fontSize: 11, opacity: 0.6 }}>{wf.urls.length} items</span>
+                <div className={styles.workflowSummary}>
+                  <strong>{workflow.name}</strong>
+                  <span className={styles.itemCount}>
+                    {t('items', { count: workflow.urls.length })}
+                  </span>
                 </div>
-                <button
-                  onClick={() => removeWorkflow(idx)}
-                  style={{
-                    color: '#ff4d4d',
-                    background: 'none',
-                    border: 'none',
-                    cursor: 'pointer',
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                    gap: 4,
-                  }}
-                >
+                <button className={styles.dangerButton} onClick={() => p.removeWorkflow(index)}>
                   <Trash2 size={14} />
-                  <span style={{ fontSize: 12 }}>Remove</span>
+                  <span>{t('remove')}</span>
                 </button>
               </motion.div>
             ))}
           </AnimatePresence>
         </div>
-      </div>
+      </Section>
     </div>
   );
 }

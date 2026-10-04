@@ -7,12 +7,44 @@ import { List } from 'lucide-react';
 import { Check } from 'lucide-react';
 import { Settings } from 'lucide-react';
 export const TABS = [
-  { id: 0, name: 'Browser Search', icon: (color: string) => <Search size={16} color={color} /> },
-  { id: 1, name: 'Workflows & QA', icon: (color: string) => <Zap size={16} color={color} /> },
-  { id: 2, name: 'Overview', icon: (color: string) => <Sun size={16} color={color} /> },
-  { id: 3, name: 'Now Playing', icon: (color: string) => <Music size={16} color={color} /> },
-  { id: 4, name: 'AI Assistant', icon: (color: string) => <Mic size={16} color={color} /> },
-  { id: 5, name: 'Clipboard', icon: (color: string) => <List size={16} color={color} /> },
-  { id: 6, name: 'Tasks', icon: (color: string) => <Check size={16} color={color} /> },
-  { id: 7, name: 'Settings', icon: (color: string) => <Settings size={16} color={color} /> },
+  {
+    id: 0,
+    nameKey: 'tabSearch' as const,
+    icon: (color: string) => <Search size={16} color={color} />,
+  },
+  {
+    id: 1,
+    nameKey: 'tabWorkflows' as const,
+    icon: (color: string) => <Zap size={16} color={color} />,
+  },
+  {
+    id: 2,
+    nameKey: 'tabOverview' as const,
+    icon: (color: string) => <Sun size={16} color={color} />,
+  },
+  {
+    id: 3,
+    nameKey: 'tabPlaying' as const,
+    icon: (color: string) => <Music size={16} color={color} />,
+  },
+  {
+    id: 4,
+    nameKey: 'tabAssistant' as const,
+    icon: (color: string) => <Mic size={16} color={color} />,
+  },
+  {
+    id: 5,
+    nameKey: 'tabClipboard' as const,
+    icon: (color: string) => <List size={16} color={color} />,
+  },
+  {
+    id: 6,
+    nameKey: 'tabTasks' as const,
+    icon: (color: string) => <Check size={16} color={color} />,
+  },
+  {
+    id: 7,
+    nameKey: 'tabSettings' as const,
+    icon: (color: string) => <Settings size={16} color={color} />,
+  },
 ];

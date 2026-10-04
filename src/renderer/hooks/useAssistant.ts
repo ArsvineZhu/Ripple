@@ -2,12 +2,17 @@ import { useState } from 'react';
 
 import { storage } from '../lib/storage';
 export function useAssistant() {
+  const [assistantError, setAssistantError] = useState<{
+    kind: 'missingApiKey' | 'noAiResponse' | 'aiError';
+    detail?: string;
+  } | null>(null);
   const [asked, setAsked] = useState(false);
   const [aiAnswer, setAIAnswer] = useState<string | null>(null);
   const [userText, setUserText] = useState('');
   const [aiProvider, setAiProvider] = useState(storage.getItem('ai-provider') || 'groq');
   const [aiModel, setAiModel] = useState(storage.getItem('ai-model') || 'llama-3.3-70b-versatile');
   async function askAI() {
+    setAssistantError(null);
     try {
       const apiKey = (storage.getItem('api-key') || '').trim();
       const provider = storage.getItem('ai-provider') || 'groq';
@@ -16,7 +21,7 @@ export function useAssistant() {
         (provider === 'groq' ? 'llama-3.3-70b-versatile' : 'meta-llama/llama-3.3-70b-instruct');
 
       if (!apiKey) {
-        setAIAnswer('Enter your API key in settings');
+        setAssistantError({ kind: 'missingApiKey' });
         return;
       }
 
@@ -54,7 +59,7 @@ export function useAssistant() {
       });
 
       if (!response.ok) {
-        throw new Error(`API Error: ${response.status} ${response.statusText}`);
+        throw new Error(`HTTP ${response.status} ${response.statusText}`);
       }
 
       const reader = response.body!.getReader();
@@ -86,14 +91,18 @@ export function useAssistant() {
       }
 
       if (!fullText) {
-        setAIAnswer('No response received. Check your settings.');
+        setAssistantError({ kind: 'noAiResponse' });
       }
     } catch (err) {
-      setAIAnswer(`Error: ${err instanceof Error ? err.message : String(err)}`);
+      setAssistantError({
+        kind: 'aiError',
+        detail: err instanceof Error ? err.message : String(err),
+      });
       console.error('askAI error:', err);
     }
   }
   return {
+    assistantError,
     asked,
     setAsked,
     aiAnswer,

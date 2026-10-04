@@ -8,6 +8,8 @@ function invoke<K extends keyof InvokeMap>(
   return ipcRenderer.invoke(channel, ...args);
 }
 const api: ElectronAPI = {
+  getSystemLocale: () => invoke('get-system-locale'),
+  setUILocale: (locale) => invoke('set-ui-locale', locale),
   setIgnoreMouseEvents: (ignore, forward) => {
     return invoke('set-ignore-mouse-events', ignore, forward);
   },

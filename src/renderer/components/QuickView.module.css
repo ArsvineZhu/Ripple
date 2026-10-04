@@ -1,0 +1,140 @@
+.playing {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  min-width: 0;
+  box-sizing: border-box;
+  padding: 0 9px;
+}
+
+.trackRow {
+  display: flex;
+  align-items: center;
+  gap: 6px;
+  overflow: visible;
+  flex: 1;
+  min-width: 0;
+  user-select: none;
+  perspective: 1200px;
+}
+
+.artworkFrame {
+  perspective: 1200px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+
+.artwork {
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  flex-shrink: 0;
+  cursor: pointer;
+  transition:
+    transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1),
+    filter 0.3s ease-out;
+  transform-style: preserve-3d;
+  will-change: transform;
+}
+
+.artworkPlaceholder {
+  width: 24px;
+  height: 24px;
+  border-radius: 4px;
+  background-color: rgba(255, 255, 255, 0.1);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  font-size: 12px;
+  flex-shrink: 0;
+}
+
+.trackClip {
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+  position: relative;
+  transform: translateZ(0);
+}
+
+.trackText {
+  display: inline-block;
+  white-space: nowrap;
+  font-size: 13px;
+  font-weight: 600;
+  will-change: transform;
+}
+
+.artist {
+  opacity: 0.7;
+  font-weight: 400;
+}
+
+.trackRepeat {
+  padding-right: 30px;
+}
+
+.artistRepeat {
+  opacity: 0.7;
+  font-weight: 400;
+}
+
+.playButton {
+  background: none;
+  border: none;
+  color: #ffffff;
+  cursor: pointer;
+  padding: 0;
+  margin-left: 1px;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  overflow: hidden;
+  z-index: 100;
+  will-change: opacity, width;
+  -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
+  transform: translateZ(0);
+}
+
+.status {
+  width: 100%;
+  height: 100%;
+  position: relative;
+}
+
+.statusLeft {
+  position: absolute;
+  top: 50%;
+  left: 15px;
+  transform: translateY(-50%);
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 6px;
+  line-height: 1;
+}
+
+.statusRight {
+  position: absolute;
+  top: 50%;
+  right: 15px;
+  transform: translateY(-50%);
+  font-size: 16px;
+  font-weight: 600;
+  margin: 0;
+  display: flex;
+  align-items: center;
+}
+
+.weather {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}

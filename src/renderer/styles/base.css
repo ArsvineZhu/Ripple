@@ -1,0 +1,87 @@
+html,
+body {
+  margin: 0;
+  padding: 0;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+  box-sizing: border-box;
+  font-family: 'OpenRunde', Helvetica;
+  background: transparent;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: flex-start;
+}
+
+* {
+  font-family: inherit;
+  box-sizing: border-box;
+}
+
+*::-webkit-scrollbar {
+  display: none;
+}
+
+@font-face {
+  font-family: 'OpenRunde';
+  src: url('../../assets/fonts/OpenRunde-Regular.woff') format('woff');
+  font-weight: 400;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'OpenRunde';
+  src: url('../../assets/fonts/OpenRunde-Medium.woff') format('woff');
+  font-weight: 500;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'OpenRunde';
+  src: url('../../assets/fonts/OpenRunde-Semibold.woff') format('woff');
+  font-weight: 600;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'OpenRunde';
+  src: url('../../assets/fonts/OpenRunde-Bold.woff') format('woff');
+  font-weight: 700;
+  font-style: normal;
+  font-display: swap;
+}
+
+@font-face {
+  font-family: 'w95';
+  src: url('../../assets/fonts/w95fa.woff') format('woff');
+  font-style: normal;
+  font-display: swap;
+}
+
+@keyframes appear {
+  0% {
+    -webkit-filter: blur(5px);
+    filter: blur(5px);
+    opacity: 0;
+  }
+
+  100% {
+    -webkit-filter: blur(0px);
+    filter: blur(0px);
+    opacity: 1;
+  }
+}
+
+#root {
+  margin: 0;
+  padding: 0;
+  width: 100vw;
+  height: 100vh;
+  position: absolute;
+  top: 0;
+  left: 0;
+}

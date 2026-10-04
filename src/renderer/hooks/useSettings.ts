@@ -1,3 +1,6 @@
+import { languagePreference } from '../../shared/i18n';
+import type { LanguagePreference } from '../../shared/i18n';
+import { changeLanguagePreference } from '../i18n';
 import type { ChangeEvent } from 'react';
 import { useState, useEffect } from 'react';
 
@@ -5,6 +8,11 @@ import type { DisplayInfo } from '../../shared/contracts';
 
 import { storage } from '../lib/storage';
 export function useSettings() {
+  const [language, setLanguage] = useState(() => languagePreference(storage.getItem('language')));
+  const handleLanguageChange = (value: LanguagePreference) => {
+    setLanguage(value);
+    void changeLanguagePreference(value);
+  };
   const [batteryAlertsEnabled, setBatteryAlertsEnabled] = useState(
     storage.getItem('battery-alerts') !== 'false',
   );
@@ -88,51 +96,49 @@ export function useSettings() {
       storage.setItem('auto-launch', 'false');
     }
   }, []);
-  const handleBatteryAlertsChange = (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const value = e.target.value === 'true';
+  const handleBatteryAlertsChange = (input: string) => {
+    const value = input === 'true';
     setBatteryAlertsEnabled(value);
     storage.setItem('battery-alerts', value ? 'true' : 'false');
   };
-  const handleIslandBorderChange = (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const value = e.target.value === 'true';
+  const handleIslandBorderChange = (input: string) => {
+    const value = input === 'true';
     setIslandBorderEnabled(value);
     storage.setItem('island-border', value ? 'true' : 'false');
   };
-  const handleStandbyChange = (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const value = e.target.value === 'true';
+  const handleStandbyChange = (input: string) => {
+    const value = input === 'true';
     setStandbyEnabled(value);
     storage.setItem('standby-mode', value ? 'true' : 'false');
   };
-  const handleLargeStandbyChange = (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const value = e.target.value === 'true';
+  const handleLargeStandbyChange = (input: string) => {
+    const value = input === 'true';
     setLargeStandbyEnabled(value);
     storage.setItem('large-standby-mode', value ? 'true' : 'false');
   };
-  const handleHourFormatChange = (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const value = e.target.value;
+  const handleHourFormatChange = (input: string) => {
+    const value = input;
     setHourFormat(value === '12-hr');
     storage.setItem('hour-format', value);
   };
-  const handleAutoLaunchChange = (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const value = e.target.value === 'true';
+  const handleAutoLaunchChange = (input: string) => {
+    const value = input === 'true';
     setAutoLaunchEnabled(value);
     storage.setItem('auto-launch', value ? 'true' : 'false');
     window.electronAPI?.setAutoLaunch(value);
   };
-  const handlehideNotActiveIslandChange = (
-    e: ChangeEvent<HTMLInputElement | HTMLSelectElement>,
-  ) => {
-    const value = e.target.value === 'true';
+  const handlehideNotActiveIslandChange = (input: string) => {
+    const value = input === 'true';
     sethideNotActiveIslandEnabled(value);
     storage.setItem('hide-island-notactive', value ? 'true' : 'false');
   };
-  const handleShowInfoWhenIdleChange = (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const value = e.target.value === 'true';
+  const handleShowInfoWhenIdleChange = (input: string) => {
+    const value = input === 'true';
     setShowInfoWhenIdleEnabled(value);
     storage.setItem('show-info-when-idle', value ? 'true' : 'false');
   };
-  const handleWeatherUnitChange = (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const value = e.target.value === 'c' ? 'c' : 'f';
+  const handleWeatherUnitChange = (input: string) => {
+    const value = input === 'c' ? 'c' : 'f';
     setweatherUnit(value);
     storage.setItem('weather-unit', value);
   };
@@ -146,8 +152,8 @@ export function useSettings() {
     setTextColor(value);
     storage.setItem('text-color', value);
   };
-  const handleDisplayChange = (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const displayId = e.target.value;
+  const handleDisplayChange = (input: string) => {
+    const displayId = input;
     setCurrentDisplayId(displayId);
     storage.setItem('display-id', displayId);
     if (window.electronAPI?.setDisplay) {
@@ -202,6 +208,8 @@ export function useSettings() {
     void window.electronAPI?.setAutoLaunch(autoLaunchEnabled);
   }, [autoLaunchEnabled]);
   return {
+    language,
+    handleLanguageChange,
     batteryAlertsEnabled,
     islandBorderEnabled,
     standbyBorderEnabled,

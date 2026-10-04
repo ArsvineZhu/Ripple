@@ -1,0 +1,26 @@
+:root {
+  --font-ui: 'OpenRunde', system-ui, -apple-system, BlinkMacSystemFont, 'Segoe UI';
+  --font-cjk: 'Noto Sans CJK SC', 'Noto Sans SC', 'Microsoft YaHei', sans-serif;
+}
+:root:lang(zh-TW) {
+  --font-cjk: 'Noto Sans CJK TC', 'Noto Sans TC', 'Microsoft JhengHei', sans-serif;
+}
+:root:lang(ja) {
+  --font-cjk: 'Noto Sans CJK JP', 'Noto Sans JP', 'Yu Gothic', sans-serif;
+}
+:root:lang(en) {
+  --font-cjk: sans-serif;
+}
+[data-island] {
+  --control-bg: color-mix(in srgb, var(--island-text-color), transparent 95%);
+  --control-hover: color-mix(in srgb, var(--island-text-color), transparent 88%);
+  --control-border: color-mix(in srgb, var(--island-text-color), transparent 90%);
+  --control-focus: color-mix(in srgb, var(--island-text-color), transparent 65%);
+  --menu-bg: color-mix(in srgb, rgb(from var(--island-bg-color) r g b), #161616 15%);
+  --control-radius: 12px;
+  font-family: var(--font-ui), var(--font-cjk);
+}
+[data-island][data-theme='win95'] {
+  --control-radius: 0px;
+  font-family: 'w95', var(--font-cjk);
+}

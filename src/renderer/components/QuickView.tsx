@@ -1,3 +1,6 @@
+import styles from './QuickView.module.css';
+import typography from '../styles/typography.module.css';
+import { useTranslation } from 'react-i18next';
 import { AnimatePresence } from 'motion/react';
 import { motion } from 'motion/react';
 import { openMusicPlayer } from '../lib/launch';
@@ -21,6 +24,8 @@ type Props = Pick<
   | 'bluetoothAlert'
   | 'cameraAlert'
   | 'microphoneAlert'
+  | 'trackTitle'
+  | 'trackArtist'
   | 'spotifyTrack'
   | 'hideNotActiveIslandEnabled'
   | 'setAlbumHovered'
@@ -47,6 +52,8 @@ export function QuickView({
   cameraAlert,
   microphoneAlert,
   spotifyTrack,
+  trackTitle,
+  trackArtist,
   hideNotActiveIslandEnabled,
   setAlbumHovered,
   setAlbumRotation,
@@ -61,6 +68,11 @@ export function QuickView({
   standbyBorderEnabled,
   weather,
 }: Props) {
+  const { t, i18n } = useTranslation();
+  const number = (value: number | string | null) =>
+    value === null || value === ''
+      ? '??'
+      : new Intl.NumberFormat(i18n.language).format(Number(value));
   return (
     <>
       {mode !== 'large' &&
@@ -80,6 +92,7 @@ export function QuickView({
           !cameraAlert &&
           !microphoneAlert ? (
             <motion.div
+              className={styles['playing']}
               key={
                 spotifyTrack?.name
                   ? `playing-${spotifyTrack.name}-${spotifyTrack.artist}`
@@ -90,39 +103,15 @@ export function QuickView({
               exit={{ opacity: 0, filter: 'blur(4px)', scale: 0.98 }}
               transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1], filter: { duration: 0.05 } }}
               style={{
-                display: 'flex',
-                alignItems: 'center',
-                justifyContent: 'space-between',
-                width: '100%',
-                minWidth: 0,
-                boxSizing: 'border-box',
                 opacity: showPausedQuickView ? 0.5 : hideNotActiveIslandEnabled ? 0.6 : 1,
                 filter: showPausedQuickView ? 'grayscale(1)' : 'none',
-                padding: '0 9px',
               }}
             >
-              <div
-                style={{
-                  display: 'flex',
-                  alignItems: 'center',
-                  gap: 6,
-                  overflow: 'visible',
-                  flex: 1,
-                  minWidth: 0,
-                  userSelect: 'none',
-                  perspective: '1200px',
-                }}
-              >
+              <div className={styles['trackRow']}>
                 {spotifyTrack?.artwork_url ? (
-                  <div
-                    style={{
-                      perspective: '1200px',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                    }}
-                  >
+                  <div className={styles['artworkFrame']}>
                     <img
+                      className={styles['artwork']}
                       src={spotifyTrack.artwork_url}
                       onClick={() => openMusicPlayer(spotifyTrack.source)}
                       onMouseEnter={() => setAlbumHovered(true)}
@@ -143,46 +132,21 @@ export function QuickView({
                         setAlbumRotation({ x: angleX, y: angleY });
                       }}
                       style={{
-                        width: 24,
-                        height: 24,
-                        borderRadius: 4,
-                        flexShrink: 0,
-                        cursor: 'pointer',
-                        transition:
-                          'transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.3s ease-out',
                         transform: `rotateX(${albumRotation.x}deg) rotateY(${albumRotation.y}deg) scale(${albumHovered ? 1.25 : 1}) translateZ(0)`,
-                        transformStyle: 'preserve-3d',
                         filter: albumHovered
                           ? 'drop-shadow(0 10px 20px rgba(0,0,0,0.4))'
                           : 'drop-shadow(0 2px 4px rgba(0,0,0,0.1))',
-                        willChange: 'transform',
                       }}
                     />
                   </div>
                 ) : (
-                  <div
-                    style={{
-                      width: 24,
-                      height: 24,
-                      borderRadius: 4,
-                      backgroundColor: 'rgba(255,255,255,0.1)',
-                      display: 'flex',
-                      alignItems: 'center',
-                      justifyContent: 'center',
-                      fontSize: 12,
-                      flexShrink: 0,
-                    }}
-                  >
+                  <div className={styles['artworkPlaceholder']}>
                     <Music size={14} color={textColor} />
                   </div>
                 )}
                 <div
+                  className={styles['trackClip']}
                   style={{
-                    flex: 1,
-                    minWidth: 0,
-                    overflow: 'hidden',
-                    position: 'relative',
-                    transform: 'translateZ(0)',
                     WebkitMaskImage:
                       textWidth > nowPlayingWidth - (isHovered ? 80 : 45)
                         ? 'linear-gradient(to right, transparent, black 15px, black calc(100% - 15px), transparent)'
@@ -194,6 +158,7 @@ export function QuickView({
                   }}
                 >
                   <motion.div
+                    className={styles['trackText']}
                     animate={
                       textWidth > nowPlayingWidth - (isHovered ? 80 : 45)
                         ? { x: [0, -(textWidth + 30)] }
@@ -204,33 +169,19 @@ export function QuickView({
                         ? { duration: 12, repeat: Infinity, ease: 'linear' }
                         : { duration: 0.3, ease: 'easeInOut' }
                     }
-                    style={{
-                      display: 'inline-block',
-                      whiteSpace: 'nowrap',
-                      fontSize: 13,
-                      fontWeight: 600,
-                      color: textColor,
-                      willChange: 'transform',
-                    }}
+                    style={{ color: textColor }}
                   >
                     <span
                       style={{
                         paddingRight: textWidth > nowPlayingWidth - (isHovered ? 80 : 45) ? 30 : 0,
                       }}
                     >
-                      {spotifyTrack?.name}{' '}
-                      <span style={{ opacity: 0.7, fontWeight: 400 }}>
-                        {' '}
-                        • {spotifyTrack?.artist}
-                      </span>
+                      {trackTitle} <span className={styles['artist']}> • {trackArtist}</span>
                     </span>
                     {textWidth > nowPlayingWidth - (isHovered ? 80 : 45) && (
-                      <span style={{ paddingRight: 30 }}>
-                        {spotifyTrack?.name}{' '}
-                        <span style={{ opacity: 0.7, fontWeight: 400 }}>
-                          {' '}
-                          • {spotifyTrack?.artist}
-                        </span>
+                      <span className={styles['trackRepeat']}>
+                        {trackTitle}{' '}
+                        <span className={styles['artistRepeat']}> • {trackArtist}</span>
                       </span>
                     )}
                   </motion.div>
@@ -238,7 +189,9 @@ export function QuickView({
                 <AnimatePresence>
                   {isHovered && (
                     <motion.button
+                      className={styles['playButton']}
                       key="play-pause-hover"
+                      aria-label={t('playPause')}
                       initial={{ opacity: 0, width: 0 }}
                       animate={{ opacity: 1, width: 30 }}
                       exit={{ opacity: 0, width: 0 }}
@@ -250,24 +203,6 @@ export function QuickView({
                       onMouseEnter={() => {
                         if (window.electronAPI)
                           window.electronAPI.setIgnoreMouseEvents(false, false);
-                      }}
-                      style={{
-                        background: 'none',
-                        border: 'none',
-                        color: '#FFFFFF',
-                        cursor: 'pointer',
-                        padding: 0,
-                        marginLeft: 1,
-                        display: 'flex',
-                        alignItems: 'center',
-                        justifyContent: 'center',
-                        flexShrink: 0,
-                        overflow: 'hidden',
-                        zIndex: 100,
-                        willChange: 'opacity, width',
-                        WebkitBackfaceVisibility: 'hidden',
-                        backfaceVisibility: 'hidden',
-                        transform: 'translateZ(0)',
                       }}
                     >
                       {spotifyTrack?.state === 'playing' ? (
@@ -282,6 +217,7 @@ export function QuickView({
             </motion.div>
           ) : (
             <motion.div
+              className={styles['status']}
               key={
                 chargingAlert
                   ? 'charging'
@@ -299,18 +235,10 @@ export function QuickView({
               animate={{ opacity: 1, filter: 'blur(0px)', scale: 1 }}
               exit={{ opacity: 0, filter: 'blur(4px)', scale: 0.98 }}
               transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1], filter: { duration: 0.05 } }}
-              style={{ width: '100%', height: '100%', position: 'relative' }}
             >
               <h1
-                className="text"
+                className={[typography['text'], styles['statusLeft']].join(' ')}
                 style={{
-                  position: 'absolute',
-                  top: '50%',
-                  left: '15px',
-                  transform: 'translateY(-50%)',
-                  fontSize: 16,
-                  fontWeight: 600,
-                  margin: 0,
                   color: chargingAlert
                     ? '#6fff7bff'
                     : alert
@@ -320,11 +248,6 @@ export function QuickView({
                         : microphoneAlert
                           ? '#ff9a00ff'
                           : textColor,
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  gap: 6,
-                  lineHeight: 1,
                 }}
               >
                 {chargingAlert ? (
@@ -342,15 +265,8 @@ export function QuickView({
                 )}
               </h1>
               <h1
-                className="text"
+                className={[typography['text'], styles['statusRight']].join(' ')}
                 style={{
-                  position: 'absolute',
-                  top: '50%',
-                  right: '15px',
-                  transform: 'translateY(-50%)',
-                  fontSize: 16,
-                  fontWeight: 600,
-                  margin: 0,
                   color: chargingAlert
                     ? '#6fff7bff'
                     : alert
@@ -360,29 +276,27 @@ export function QuickView({
                         : microphoneAlert
                           ? '#ff9a00ff'
                           : `${textColor}`,
-                  display: 'flex',
-                  alignItems: 'center',
                 }}
               >
                 {alert === true ? (
-                  `${percent}%`
+                  `${number(percent)}%`
                 ) : chargingAlert === true ? (
-                  `${percent}%`
+                  `${number(percent)}%`
                 ) : standbyBorderEnabled ? (
-                  `${percent}%`
+                  `${number(percent)}%`
                 ) : cameraAlert ? (
-                  'Camera'
+                  t('camera')
                 ) : microphoneAlert ? (
-                  'Microphone'
+                  t('microphone')
                 ) : bluetoothAlert ? (
-                  'Connected'
+                  t('connected')
                 ) : weather.temp ? (
-                  <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
+                  <div className={styles['weather']}>
                     <WeatherIcon status={weather.status} size={14} color={textColor} />
-                    <span>{weather.temp}º</span>
+                    <span>{number(weather.temp)}º</span>
                   </div>
                 ) : (
-                  `${percent}%`
+                  `${number(percent)}%`
                 )}
               </h1>
             </motion.div>

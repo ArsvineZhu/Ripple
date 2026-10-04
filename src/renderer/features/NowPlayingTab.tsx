@@ -1,3 +1,5 @@
+import styles from './NowPlayingTab.module.css';
+import { useTranslation } from 'react-i18next';
 import { AnimatePresence } from 'motion/react';
 import { motion } from 'motion/react';
 import { openMusicPlayer } from '../lib/launch';
@@ -17,7 +19,6 @@ type Props = Pick<
   | 'albumHovered'
   | 'albumRotation'
   | 'textColor'
-  | 'theme'
 >;
 export function NowPlayingTab({
   spotifyTrack,
@@ -27,41 +28,27 @@ export function NowPlayingTab({
   albumHovered,
   albumRotation,
   textColor,
-  theme,
 }: Props) {
+  const { t } = useTranslation();
   return (
-    <div
-      style={{
-        display: 'flex',
-        alignItems: 'center',
-        width: '100%',
-        height: '100%',
-        userSelect: 'none',
-      }}
-    >
+    <div className={styles['container']}>
       <AnimatePresence propagate mode="wait">
         {spotifyTrack ? (
           <motion.div
+            className={styles['track']}
             key={spotifyTrack.name + spotifyTrack.artist}
             initial={{ opacity: 0, filter: 'blur(10px)', scale: 0.95 }}
             animate={{ opacity: 1, filter: 'blur(0px)', scale: 1 }}
             exit={{ opacity: 0, filter: 'blur(10px)', scale: 0.95 }}
             transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
             style={{
-              display: 'flex',
-              alignItems: 'center',
-              justifyContent: 'flex-start',
-              width: '100%',
-              height: '100%',
-              gap: '8px',
-              paddingLeft: '17px',
               opacity: spotifyTrack.state === 'playing' ? 1 : 0.5,
               filter: spotifyTrack.state === 'playing' ? 'none' : 'grayscale(1)',
-              transition: 'opacity 0.3s ease, filter 0.3s ease',
             }}
           >
             {spotifyTrack.artwork_url ? (
               <img
+                className={styles['artwork']}
                 ref={albumRef}
                 src={spotifyTrack.artwork_url}
                 onClick={() => openMusicPlayer(spotifyTrack.source)}
@@ -85,55 +72,22 @@ export function NowPlayingTab({
                   }
                 }}
                 style={{
-                  width: 110,
-                  height: 110,
-                  minWidth: 110,
-                  flexShrink: 0,
-                  borderRadius: 13,
-                  objectFit: 'cover',
                   boxShadow: albumHovered
                     ? '0 8px 24px rgba(0,0,0,0.35)'
                     : '0 4px 12px rgba(0,0,0,0.2)',
-                  cursor: 'pointer',
-                  transition: 'transform 0.3s ease-out, box-shadow 0.3s ease-out',
                   transform: `perspective(600px) rotateX(${albumRotation.x}deg) rotateY(${albumRotation.y}deg) scale(${albumHovered ? 1.08 : 1})`,
-                  transformStyle: 'preserve-3d',
                 }}
               />
             ) : (
-              <div
-                style={{
-                  width: 110,
-                  height: 110,
-                  minWidth: 110,
-                  flexShrink: 0,
-                  borderRadius: 12,
-                  background: 'rgba(255,255,255,0.1)',
-                  display: 'flex',
-                  alignItems: 'center',
-                  justifyContent: 'center',
-                  fontSize: 24,
-                }}
-              >
+              <div className={styles['artworkPlaceholder']}>
                 <Music size={40} color={textColor} />
               </div>
             )}
 
-            <div
-              style={{
-                display: 'flex',
-                flexDirection: 'column',
-                overflow: 'hidden',
-                flex: 1,
-                justifyContent: 'center',
-                textAlign: 'left',
-                minWidth: 0,
-              }}
-            >
+            <div className={styles['details']}>
               <div
+                className={styles['titleClip']}
                 style={{
-                  width: '175px',
-                  overflow: 'hidden',
                   WebkitMaskImage:
                     measureTextWidth(spotifyTrack.name, 18) > 175
                       ? 'linear-gradient(to right, transparent, black 15px, black 160px, transparent)'
@@ -145,36 +99,30 @@ export function NowPlayingTab({
                 }}
               >
                 <motion.h2
+                  className={styles['title']}
                   animate={
                     measureTextWidth(spotifyTrack.name, 18) > 175
                       ? { x: [0, -(measureTextWidth(spotifyTrack.name, 18) + 30)] }
                       : {}
                   }
                   transition={{ duration: 10, repeat: Infinity, ease: 'linear' }}
-                  style={{
-                    margin: '0 0 0 5px',
-                    fontSize: 18,
-                    fontWeight: 600,
-                    whiteSpace: 'nowrap',
-                    display: 'inline-block',
-                    color: textColor,
-                    fontFamily: theme === 'win95' ? 'w95' : 'OpenRunde',
-                  }}
+                  style={{ color: textColor }}
                 >
                   <span
                     style={{ paddingRight: measureTextWidth(spotifyTrack.name, 18) > 175 ? 30 : 0 }}
                   >
-                    {spotifyTrack.name || 'Unknown Title'}
+                    {spotifyTrack.name || t('unknownSong')}
                   </span>
                   {measureTextWidth(spotifyTrack.name, 18) > 175 && (
-                    <span style={{ paddingRight: 30 }}>{spotifyTrack.name || 'Unknown Title'}</span>
+                    <span className={styles['titleRepeat']}>
+                      {spotifyTrack.name || t('unknownSong')}
+                    </span>
                   )}
                 </motion.h2>
               </div>
               <div
+                className={styles['artistClip']}
                 style={{
-                  width: '175px',
-                  overflow: 'hidden',
                   WebkitMaskImage:
                     measureTextWidth(spotifyTrack.artist, 13) > 175
                       ? 'linear-gradient(to right, transparent, black 15px, black 160px, transparent)'
@@ -186,79 +134,47 @@ export function NowPlayingTab({
                 }}
               >
                 <motion.p
+                  className={styles['artist']}
                   animate={
                     measureTextWidth(spotifyTrack.artist, 13) > 175
                       ? { x: [0, -(measureTextWidth(spotifyTrack.artist, 13) + 30)] }
                       : {}
                   }
                   transition={{ duration: 10, repeat: Infinity, ease: 'linear' }}
-                  style={{
-                    margin: '4px 0 0 5px',
-                    fontSize: 13,
-                    opacity: 0.8,
-                    whiteSpace: 'nowrap',
-                    display: 'inline-block',
-                    color: textColor,
-                    fontFamily: theme === 'win95' ? 'w95' : 'OpenRunde',
-                  }}
+                  style={{ color: textColor }}
                 >
                   <span
                     style={{
                       paddingRight: measureTextWidth(spotifyTrack.artist, 13) > 175 ? 30 : 0,
                     }}
                   >
-                    {spotifyTrack.artist || 'Unknown Artist'}
+                    {spotifyTrack.artist || t('unknownArtist')}
                   </span>
                   {measureTextWidth(spotifyTrack.artist, 13) > 175 && (
-                    <span style={{ paddingRight: 30 }}>
-                      {spotifyTrack.artist || 'Unknown Artist'}
+                    <span className={styles['artistRepeat']}>
+                      {spotifyTrack.artist || t('unknownArtist')}
                     </span>
                   )}
                 </motion.p>
               </div>
-              <div
-                style={{
-                  display: 'flex',
-                  gap: 15,
-                  marginTop: 15,
-                  alignItems: 'center',
-                  marginLeft: 5,
-                }}
-              >
+              <div className={styles['controls']}>
                 <button
-                  className="media-btn"
+                  className={[styles['media-btn'], styles['previousButton']].join(' ')}
+                  aria-label={t('previous')}
                   onClick={() => {
                     window.electronAPI.controlSystemMedia('previous');
                   }}
-                  style={{
-                    background: 'none',
-                    border: 'none',
-                    color: textColor,
-                    cursor: 'pointer',
-                    padding: 4,
-                    opacity: 0.8,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}
+                  style={{ color: textColor }}
                 >
                   <SkipBackIcon size={20} color={textColor} fill={textColor} />
                 </button>
                 <button
-                  className="media-btn"
+                  className={[styles['media-btn'], styles['playButton']].join(' ')}
+                  aria-label={t('playPause')}
                   onClick={() => {
                     window.electronAPI.controlSystemMedia('playpause');
                   }}
-                  style={{
-                    background: 'none',
-                    border: 'none',
-                    color: textColor,
-                    cursor: 'pointer',
-                    padding: 4,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}
+                  style={{ color: textColor }}
                 >
                   {spotifyTrack.state === 'playing' ? (
                     <Pause size={24} color={textColor} fill={textColor} />
@@ -267,21 +183,12 @@ export function NowPlayingTab({
                   )}
                 </button>
                 <button
-                  className="media-btn"
+                  className={[styles['media-btn'], styles['nextButton']].join(' ')}
+                  aria-label={t('next')}
                   onClick={() => {
                     window.electronAPI.controlSystemMedia('next');
                   }}
-                  style={{
-                    background: 'none',
-                    border: 'none',
-                    color: textColor,
-                    cursor: 'pointer',
-                    padding: 4,
-                    opacity: 0.8,
-                    display: 'flex',
-                    alignItems: 'center',
-                    justifyContent: 'center',
-                  }}
+                  style={{ color: textColor }}
                 >
                   <SkipForwardIcon size={20} color={textColor} fill={textColor} />
                 </button>
@@ -290,21 +197,15 @@ export function NowPlayingTab({
           </motion.div>
         ) : (
           <motion.div
+            className={styles['emptyState']}
             key="nothing"
             initial={{ opacity: 0 }}
             animate={{ opacity: 1 }}
             exit={{ opacity: 0 }}
-            style={{
-              width: '100%',
-              textAlign: 'center',
-              color: textColor,
-              fontFamily: theme === 'win95' ? 'w95' : 'OpenRunde',
-            }}
+            style={{ color: textColor }}
           >
-            <h3 style={{ margin: 0, fontSize: 16 }}>Nothing Playing</h3>
-            <p style={{ margin: '5px 0 0 0', opacity: 0.7, fontSize: 13 }}>
-              Play music on Spotify or Apple Music
-            </p>
+            <h3 className={styles['emptyTitle']}>{t('nothingPlaying')}</h3>
+            <p className={styles['emptyHint']}>{t('playMusicHint')}</p>
           </motion.div>
         )}
       </AnimatePresence>

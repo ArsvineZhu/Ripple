@@ -22,6 +22,14 @@ export function useMedia() {
   }, [spotifyTrack?.state]);
   const albumRef = useRef<HTMLImageElement | null>(null);
   useEffect(() => {
+    const resetArtworkHover = () => {
+      setAlbumHovered(false);
+      setAlbumRotation({ x: 0, y: 0 });
+    };
+    window.addEventListener('blur', resetArtworkHover);
+    return () => window.removeEventListener('blur', resetArtworkHover);
+  }, []);
+  useEffect(() => {
     const fetchMedia = async () => {
       if (window.electronAPI?.getSystemMedia) {
         try {

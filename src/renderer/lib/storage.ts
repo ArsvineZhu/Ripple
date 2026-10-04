@@ -1,6 +1,7 @@
 import type { AppEntry, Workflow } from '../../shared/contracts';
 
 type StorageKey =
+  | 'language'
   | 'ai-model'
   | 'ai-provider'
   | 'api-key'

@@ -1,3 +1,6 @@
+import { app } from 'electron';
+import { isLocale } from '../shared/i18n';
+import { setTrayLocale } from './tray';
 import type { InputRect } from '../shared/contracts';
 import { ipcMain, screen, shell } from 'electron';
 import type { InvokeMap } from '../shared/contracts';
@@ -25,6 +28,11 @@ function text(value: string) {
   return value;
 }
 export function registerIPC() {
+  handle('get-system-locale', () => app.getLocale());
+  handle('set-ui-locale', (locale) => {
+    if (!isLocale(locale)) throw new TypeError('Invalid locale');
+    setTrayLocale(locale);
+  });
   handle('set-ignore-mouse-events', (ignore, forward) => {
     const window = getMainWindow();
     if (process.platform !== 'linux' && window)

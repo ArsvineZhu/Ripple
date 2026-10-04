@@ -1,3 +1,5 @@
+import styles from './styles/Island.module.css';
+import { useOverlay } from './components/OverlayProvider';
 import { motion } from 'motion/react';
 import { AnimatePresence } from 'motion/react';
 import { useIslandController } from './hooks/useIslandController';
@@ -12,7 +14,11 @@ import { TasksTab } from './features/TasksTab';
 import { SettingsTab } from './features/SettingsTab';
 export default function Island() {
   const controller = useIslandController();
+  const { setContainer } = useOverlay();
   const {
+    leave,
+    finishPositionChange,
+    isOverlayOpen,
     islandElementRef,
     setIsHovered,
     mode,
@@ -21,9 +27,6 @@ export default function Island() {
     setMode,
     clearClickSuppression,
     consumeClickSuppression,
-    isDraggingRef,
-    standbyBorderEnabled,
-    largeStandbyEnabled,
     isInteractiveTarget,
     handleWheelSwipe,
     handlePointerDown,
@@ -55,6 +58,9 @@ export default function Island() {
   return (
     <motion.div
       id="Island"
+      className={styles.Island}
+      data-island
+      data-theme={theme}
       ref={islandElementRef}
       onMouseEnter={() => {
         setIsHovered(true);
@@ -69,24 +75,10 @@ export default function Island() {
       }}
       onMouseLeave={() => {
         clearClickSuppression();
-        if (isDraggingRef.current) return;
-        setIsHovered(false);
-        if (window.electronAPI) {
-          window.electronAPI.setIgnoreMouseEvents(true, true);
-        }
-
-        const activeTag = document.activeElement?.tagName;
-        if (activeTag === 'INPUT' || activeTag === 'TEXTAREA') return;
-
-        if (standbyBorderEnabled) {
-          setMode('quick');
-        } else if (largeStandbyEnabled) {
-          setMode('large');
-        } else {
-          setMode('still');
-        }
+        leave();
       }}
       onClick={(e) => {
+        if (isOverlayOpen) return;
         if (consumeClickSuppression()) {
           return;
         }
@@ -102,7 +94,9 @@ export default function Island() {
           window.electronAPI.setIgnoreMouseEvents(false, false);
         }
       }}
-      onWheel={handleWheelSwipe}
+      onWheel={(event) => {
+        if (!isOverlayOpen) handleWheelSwipe(event);
+      }}
       onPointerDown={handlePointerDown}
       onPointerMove={handlePointerMove}
       onPointerUp={handlePointerUp}
@@ -134,7 +128,10 @@ export default function Island() {
                 : 14,
       }}
       onUpdate={syncLinuxWindowShape}
-      onAnimationComplete={syncLinuxWindowShape}
+      onAnimationComplete={() => {
+        syncLinuxWindowShape();
+        finishPositionChange();
+      }}
       transition={{
         type: 'spring',
         stiffness: 400,
@@ -143,15 +140,8 @@ export default function Island() {
         x: { duration: 0.15 },
       }}
       style={{
-        display: 'flex',
-        alignItems: 'center',
         backgroundImage: `url('${bgImage}')`,
-        backgroundRepeat: 'no-repeat',
-        backgroundPosition: 'center',
-        backgroundSize: 'cover',
         justifyContent: mode === 'large' && currentTab === 3 ? 'flex-start' : 'center',
-        overflow: 'hidden',
-        fontFamily: theme === 'win95' ? 'w95' : 'OpenRunde',
         border:
           theme === 'win95'
             ? '2px solid rgb(254, 254, 254)'
@@ -182,10 +172,6 @@ export default function Island() {
           '--island-text-color': textColor,
           '--island-bg-color': bgColor,
         } as import('motion/react').MotionStyle),
-        position: 'fixed',
-        margin: 0,
-        transition: 'box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-        pointerEvents: 'auto',
       }}
     >
       {/*Quickview*/}
@@ -204,15 +190,7 @@ export default function Island() {
               x: { type: 'spring', stiffness: 400, damping: 40 },
               opacity: { duration: 0.15 },
             }}
-            style={{
-              width: '100%',
-              height: '100%',
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'center',
-              justifyContent: 'center',
-              position: 'absolute',
-            }}
+            className={styles.tabPanel}
           >
             {/*Browser Search*/}
             {currentTab === 0 && <BrowserSearchTab {...controller} />}
@@ -239,6 +217,7 @@ export default function Island() {
           </motion.div>
         )}
       </AnimatePresence>
+      <div ref={setContainer} data-island-overlay className={styles.overlay} />
     </motion.div>
   );
 }

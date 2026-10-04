@@ -1,3 +1,4 @@
+import type { Locale } from './i18n';
 export interface MediaTrack {
   name: string;
   artist: string;
@@ -29,6 +30,8 @@ export interface InputRect {
 export type MediaCommand = 'previous' | 'playpause' | 'next';
 export type IslandMode = 'still' | 'quick' | 'large';
 export interface InvokeMap {
+  'get-system-locale': { args: []; result: string };
+  'set-ui-locale': { args: [locale: Locale]; result: void };
   'set-ignore-mouse-events': { args: [ignore: boolean, forward: boolean]; result: void };
   'get-system-media': { args: []; result: MediaTrack | null };
   'get-bluetooth-status': { args: []; result: boolean };
@@ -45,6 +48,8 @@ export interface InvokeMap {
   'focus-window': { args: []; result: void };
 }
 export interface ElectronAPI {
+  getSystemLocale(): Promise<string>;
+  setUILocale(locale: Locale): Promise<void>;
   platform: string;
   setIgnoreMouseEvents(ignore: boolean, forward: boolean): Promise<void>;
   setWindowInputShape(rect: InputRect): void;
