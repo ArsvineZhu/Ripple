@@ -1,7 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import styles from './OverviewTab.module.css';
 import typography from '../styles/typography.module.css';
-import { storage } from '../lib/storage';
 import { Zap } from 'lucide-react';
 import { WeatherIcon } from '../components/WeatherIcon';
 import { formatDateShort } from '../lib/date';
@@ -22,7 +21,7 @@ export function OverviewTab({ bgColor, charging, percent, weather, textColor, ti
         <div
           className={styles.batteryBar}
           id="battery-bar"
-          style={{ backgroundColor: storage.getItem('text-color') ?? undefined, color: bgColor }}
+          style={{ backgroundColor: textColor, color: bgColor }}
         >
           <h1 className={[typography['text'], styles.batteryText].join(' ')}>
             {charging && <Zap size={16} />}

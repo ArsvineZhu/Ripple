@@ -41,9 +41,9 @@
 .content {
   z-index: 2;
   pointer-events: auto;
-  min-width: var(--radix-select-trigger-width);
-  max-width: var(--radix-select-content-available-width);
-  max-height: var(--radix-select-content-available-height);
+  min-width: var(--radix-dropdown-menu-trigger-width);
+  max-width: var(--radix-dropdown-menu-content-available-width);
+  max-height: var(--radix-dropdown-menu-content-available-height);
   color: var(--island-text-color);
   background: var(--menu-bg);
   border: 1px solid var(--control-focus);
@@ -53,6 +53,8 @@
   font-size: 14px;
 }
 .viewport {
+  overflow-y: auto;
+  max-height: var(--radix-dropdown-menu-content-available-height);
   padding: 4px;
 }
 .item {
@@ -79,9 +81,4 @@
   position: absolute;
   right: 8px;
   display: flex;
-}
-.scroll {
-  display: flex;
-  justify-content: center;
-  padding: 4px;
 }

@@ -14,7 +14,7 @@ import { TasksTab } from './features/TasksTab';
 import { SettingsTab } from './features/SettingsTab';
 export default function Island() {
   const controller = useIslandController();
-  const { setContainer } = useOverlay();
+  const { setContainer, beginPointerGesture, consumeShellClick } = useOverlay();
   const {
     leave,
     finishPositionChange,
@@ -78,7 +78,7 @@ export default function Island() {
         leave();
       }}
       onClick={(e) => {
-        if (isOverlayOpen) return;
+        if (consumeShellClick() || isOverlayOpen) return;
         if (consumeClickSuppression()) {
           return;
         }
@@ -97,9 +97,14 @@ export default function Island() {
       onWheel={(event) => {
         if (!isOverlayOpen) handleWheelSwipe(event);
       }}
-      onPointerDown={handlePointerDown}
+      onPointerDownCapture={beginPointerGesture}
+      onPointerDown={(event) => {
+        if (!isOverlayOpen) handlePointerDown(event);
+      }}
       onPointerMove={handlePointerMove}
-      onPointerUp={handlePointerUp}
+      onPointerUp={(event) => {
+        if (!isOverlayOpen) handlePointerUp(event);
+      }}
       initial={{
         x: sideStyles.x,
         left: sideStyles.left,

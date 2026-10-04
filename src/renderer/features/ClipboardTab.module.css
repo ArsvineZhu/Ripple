@@ -8,8 +8,9 @@
 }
 
 .row {
-  display: flex;
-  flex-direction: column;
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  align-items: start;
   width: 100%;
   background: color-mix(in srgb, var(--island-text-color), transparent 96%);
   border-radius: 12px;
@@ -56,12 +57,9 @@
   -webkit-line-clamp: 3;
   line-clamp: 3;
   -webkit-box-orient: vertical;
-  padding-right: 45px;
+  min-width: 0;
 }
 
 .copyButton {
-  position: absolute;
-  top: 10px;
-  right: 10px;
-  z-index: 10;
+  align-self: start;
 }

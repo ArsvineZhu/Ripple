@@ -110,6 +110,8 @@
 }
 
 .input {
+  min-width: 0;
+  width: 0;
   font-family: inherit;
   font-size: 14px;
   transition: 0.2s;

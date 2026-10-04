@@ -49,3 +49,8 @@
   pointer-events: none;
   z-index: 10000;
 }
+
+.Island button {
+  white-space: nowrap;
+  flex-shrink: 0;
+}

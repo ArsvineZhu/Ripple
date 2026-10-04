@@ -1,5 +1,5 @@
-import * as Primitive from '@radix-ui/react-select';
-import { Check, ChevronDown, ChevronUp } from 'lucide-react';
+import * as Primitive from '@radix-ui/react-dropdown-menu';
+import { Check, ChevronDown } from 'lucide-react';
 import { useEffect, useId } from 'react';
 import { useOverlay } from './OverlayProvider';
 import styles from './Select.module.css';
@@ -17,7 +17,7 @@ interface Props {
 }
 export function Select({ value, options, onValueChange, label, disabled }: Props) {
   const id = useId();
-  const { container, openId, setOpenId } = useOverlay();
+  const { container, openId, setOpenId, suppressShellClick } = useOverlay();
   const open = openId === id;
   useEffect(
     () => () => {
@@ -26,55 +26,54 @@ export function Select({ value, options, onValueChange, label, disabled }: Props
     [open, setOpenId, id],
   );
   return (
-    <Primitive.Root
-      value={value}
-      onValueChange={onValueChange}
-      open={open}
-      disabled={disabled}
-      onOpenChange={(next) => setOpenId(next ? id : null)}
-    >
-      <Primitive.Trigger className={styles.trigger} aria-label={label} data-island-interactive>
-        <Primitive.Value placeholder={label} />
-        <Primitive.Icon>
+    <Primitive.Root modal={false} open={open} onOpenChange={(next) => setOpenId(next ? id : null)}>
+      <Primitive.Trigger
+        className={styles.trigger}
+        aria-label={label}
+        disabled={disabled}
+        data-island-interactive
+      >
+        <span>{options.find((option) => option.value === value)?.label ?? label}</span>
+        <span>
           <ChevronDown size={14} />
-        </Primitive.Icon>
+        </span>
       </Primitive.Trigger>
       {container && (
         <Primitive.Portal container={container}>
           <Primitive.Content
             className={styles.content}
-            position="popper"
             sideOffset={6}
             align="end"
             collisionBoundary={container}
             collisionPadding={12}
+            hideWhenDetached
+            onPointerDownOutside={(event) => {
+              const target = event.detail.originalEvent.target;
+              if (target instanceof Element && target.closest('#Island')) suppressShellClick();
+            }}
             data-island-interactive
             onPointerDown={(event) => event.stopPropagation()}
             onClick={(event) => event.stopPropagation()}
             onKeyDown={(event) => event.stopPropagation()}
           >
-            <Primitive.ScrollUpButton className={styles.scroll}>
-              <ChevronUp size={14} />
-            </Primitive.ScrollUpButton>
-            <Primitive.Viewport className={styles.viewport}>
-              {options.map((option) => (
-                <Primitive.Item
-                  className={styles.item}
-                  key={option.value}
-                  value={option.value}
-                  disabled={option.disabled}
-                  textValue={option.label}
-                >
-                  <Primitive.ItemText>{option.label}</Primitive.ItemText>
-                  <Primitive.ItemIndicator className={styles.indicator}>
-                    <Check size={14} />
-                  </Primitive.ItemIndicator>
-                </Primitive.Item>
-              ))}
-            </Primitive.Viewport>
-            <Primitive.ScrollDownButton className={styles.scroll}>
-              <ChevronDown size={14} />
-            </Primitive.ScrollDownButton>
+            <div className={styles.viewport}>
+              <Primitive.RadioGroup value={value} onValueChange={onValueChange}>
+                {options.map((option) => (
+                  <Primitive.RadioItem
+                    className={styles.item}
+                    key={option.value}
+                    value={option.value}
+                    disabled={option.disabled}
+                    textValue={option.label}
+                  >
+                    {option.label}
+                    <Primitive.ItemIndicator className={styles.indicator}>
+                      <Check size={14} />
+                    </Primitive.ItemIndicator>
+                  </Primitive.RadioItem>
+                ))}
+              </Primitive.RadioGroup>
+            </div>
           </Primitive.Content>
         </Primitive.Portal>
       )}

@@ -188,7 +188,9 @@ export function useNavigation({
     const handleKeyDown = (e: KeyboardEvent) => {
       if (
         isInteractiveTarget(e.target) ||
-        document.querySelector('[data-island-overlay] [role="listbox"]')
+        document.querySelector(
+          '[data-island-overlay] [role="menu"], [data-island-overlay] [role="listbox"]',
+        )
       )
         return;
       if (e.key === 'ArrowRight') {

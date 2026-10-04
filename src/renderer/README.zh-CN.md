@@ -9,3 +9,5 @@ Renderer 拥有 Island 显示与交互。Island.tsx 组合功能视图和 QuickV
 `styles/base.css` 拥有透明文档、字体和共享动画，`styles/tokens.css` 拥有主题及字体变量；Island、共享控件和各功能视图分别拥有 CSS Modules。静态样式放入所属模块，Motion 参数和运行时颜色／几何值由原有职责模块管理。OverlayProvider 将 Select 菜单挂载在 Island 边界内，useIslandInteraction 统一管理移动、焦点、hover 和菜单打开时的交互。
 
 参见 [开发指南](../../docs/development.zh-CN.md) 和 [仓库地图](../../INDEX.zh-CN.md)。
+
+下拉控件采用非模态单选菜单：打开时设置页面仍可滚动，在 Island 内关闭菜单不会切换展开状态。剪贴板历史仅记录可见文本，跳过纯图片与空内容。

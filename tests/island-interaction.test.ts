@@ -41,6 +41,15 @@ afterEach(async () => {
   vi.unstubAllGlobals();
 });
 describe('Island position and overlay lifecycle', () => {
+  it('consumes a menu dismissal click once and clears it for the next pointer gesture', () => {
+    overlay.beginPointerGesture();
+    overlay.suppressShellClick();
+    expect(overlay.consumeShellClick()).toBe(true);
+    expect(overlay.consumeShellClick()).toBe(false);
+    overlay.suppressShellClick();
+    overlay.beginPointerGesture();
+    expect(overlay.consumeShellClick()).toBe(false);
+  });
   it('retains expansion through movement-generated leave/focus events and resumes normal leave after animation', async () => {
     await act(async () => {
       interaction.beginPositionChange();
@@ -106,7 +115,7 @@ describe('Island position and overlay lifecycle', () => {
     expect(navigation!.currentTabId).toBe(3);
     const overlay = document.createElement('div');
     overlay.setAttribute('data-island-overlay', '');
-    overlay.innerHTML = '<div role="listbox"></div>';
+    overlay.innerHTML = '<div role="menu"></div>';
     host.append(overlay);
     await act(async () =>
       document.body.dispatchEvent(
