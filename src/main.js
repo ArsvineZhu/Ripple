@@ -1,23 +1,14 @@
-"use strict";
-import x11Module from "x11";
+'use strict';
+import x11Module from 'x11';
 
-const {
-  app,
-  BrowserWindow,
-  screen,
-  ipcMain,
-  shell,
-  Tray,
-  Menu,
-  nativeImage,
-} = require("electron");
-const path = require("node:path");
-const fs = require("fs");
+const { app, BrowserWindow, screen, ipcMain, shell, Tray, Menu, nativeImage } = require('electron');
+const path = require('node:path');
+const fs = require('fs');
 
-if (process.platform === "linux") {
-  app.commandLine.appendSwitch("enable-transparent-visuals");
+if (process.platform === 'linux') {
+  app.commandLine.appendSwitch('enable-transparent-visuals');
 }
-const x11 = process.platform === "linux" ? x11Module : null;
+const x11 = process.platform === 'linux' ? x11Module : null;
 let tray = null;
 let mainWindow = null;
 let mainWindowReady = false;
@@ -29,18 +20,15 @@ let inputShapeCheckPending = false;
 
 const showMainWindow = () => {
   if (!mainWindow || !mainWindowReady) return;
-  if (process.platform === "linux" && !mainWindowInputShapeReady) return;
+  if (process.platform === 'linux' && !mainWindowInputShapeReady) return;
 
   mainWindow.show();
-  mainWindow.setAlwaysOnTop(
-    true,
-    process.platform === "linux" ? "screen-saver" : "pop-up-menu",
-  );
+  mainWindow.setAlwaysOnTop(true, process.platform === 'linux' ? 'screen-saver' : 'pop-up-menu');
   mainWindow.focus();
 };
 
 const applyLinuxInputShape = (rect) => {
-  if (!mainWindow || process.platform !== "linux") return;
+  if (!mainWindow || process.platform !== 'linux') return;
 
   pendingInputShape = rect;
   const { x, y, width, height } = rect;
@@ -50,9 +38,8 @@ const applyLinuxInputShape = (rect) => {
   if (!x11Display || !x11Shape) return;
 
   const windowId = mainWindow.getNativeWindowHandle().readUInt32LE(0);
-  const scaleFactor = Number.isFinite(rect.scaleFactor) && rect.scaleFactor > 0
-    ? rect.scaleFactor
-    : 1;
+  const scaleFactor =
+    Number.isFinite(rect.scaleFactor) && rect.scaleFactor > 0 ? rect.scaleFactor : 1;
   const inputRect = [
     Math.floor(x * scaleFactor),
     Math.floor(y * scaleFactor),
@@ -75,16 +62,20 @@ const applyLinuxInputShape = (rect) => {
   x11Shape.GetRectangles(windowId, x11Shape.Kind.Input, (error, result) => {
     inputShapeCheckPending = false;
     if (error) {
-      console.error("Failed to read Linux window input shape:", error);
+      console.error('Failed to read Linux window input shape:', error);
       return;
     }
 
     const actual = result.rectangles?.[0];
     const bounds = mainWindow?.getBounds();
     const scale = rect.scaleFactor || 1;
-    if (!actual || !bounds ||
-        actual[2] >= bounds.width * scale || actual[3] >= bounds.height * scale) {
-      console.error("Linux window input shape still covers the full window:", result.rectangles);
+    if (
+      !actual ||
+      !bounds ||
+      actual[2] >= bounds.width * scale ||
+      actual[3] >= bounds.height * scale
+    ) {
+      console.error('Linux window input shape still covers the full window:', result.rectangles);
       return;
     }
 
@@ -94,20 +85,20 @@ const applyLinuxInputShape = (rect) => {
 };
 
 const initializeLinuxInputShape = () => {
-  if (process.platform !== "linux") return;
+  if (process.platform !== 'linux') return;
 
   x11.createClient((error, display) => {
     if (error) {
-      console.error("Failed to connect to X11 for input shaping:", error);
+      console.error('Failed to connect to X11 for input shaping:', error);
       return;
     }
 
-    display.client.on("error", (clientError) => {
-      console.error("X11 input-shape connection error:", clientError);
+    display.client.on('error', (clientError) => {
+      console.error('X11 input-shape connection error:', clientError);
     });
-    display.client.require("shape", (shapeError, shape) => {
+    display.client.require('shape', (shapeError, shape) => {
       if (shapeError) {
-        console.error("X11 Shape extension is unavailable:", shapeError);
+        console.error('X11 Shape extension is unavailable:', shapeError);
         display.client.terminate();
         return;
       }
@@ -148,7 +139,7 @@ foreach ($dir in $dirs) {
 }
 @($results) | ConvertTo-Json -Compress -Depth 2
 `;
-    const enc = Buffer.from(script, "utf16le").toString("base64");
+    const enc = Buffer.from(script, 'utf16le').toString('base64');
     exec(
       `powershell -NoProfile -EncodedCommand ${enc}`,
       { maxBuffer: 5 * 1024 * 1024 },
@@ -179,7 +170,7 @@ Get-StartApps -EA SilentlyContinue | ForEach-Object {
 }
 @($results) | ConvertTo-Json -Compress -Depth 2
 `;
-    const enc = Buffer.from(script, "utf16le").toString("base64");
+    const enc = Buffer.from(script, 'utf16le').toString('base64');
     exec(
       `powershell -NoProfile -EncodedCommand ${enc}`,
       { maxBuffer: 2 * 1024 * 1024 },
@@ -199,16 +190,12 @@ Get-StartApps -EA SilentlyContinue | ForEach-Object {
 // Converts provider-specific shapes to { name, launch } and deduplicates.
 // win32: launch = exe path   |   uwp: launch = shell:AppsFolder\\appId
 async function buildCache() {
-  const [startMenu, uwp] = await Promise.all([
-    discoverStartMenu(),
-    discoverUWP(),
-  ]);
+  const [startMenu, uwp] = await Promise.all([discoverStartMenu(), discoverUWP()]);
   const seen = new Set();
   const entries = [];
   for (const item of [...startMenu, ...uwp]) {
     if (!item.name || !(item.path || item.appId)) continue;
-    const launch =
-      item.type === "uwp" ? `shell:AppsFolder\\${item.appId}` : item.path;
+    const launch = item.type === 'uwp' ? `shell:AppsFolder\\${item.appId}` : item.path;
     const key = launch.toLowerCase();
     if (!seen.has(key)) {
       seen.add(key);
@@ -227,7 +214,7 @@ function tokenizeArgs(str) {
   while (i < str.length) {
     while (i < str.length && /\s/.test(str[i])) i++;
     if (i >= str.length) break;
-    let token = "";
+    let token = '';
     while (i < str.length && !/\s/.test(str[i])) {
       if (str[i] === '"') {
         i++;
@@ -246,7 +233,7 @@ function tokenizeArgs(str) {
 // Normalizes forward slashes and expands %ENV_VAR% before splitting.
 function parseCommand(input) {
   const prepared = input
-    .replace(/\//g, "\\")
+    .replace(/\//g, '\\')
     .replace(/%([^%]+)%/g, (_, v) => process.env[v] || `%${v}%`);
 
   // Quoted exe path: "C:\path with spaces\app.exe" [args...]
@@ -260,9 +247,7 @@ function parseCommand(input) {
 
   // Unquoted path: find exe boundary by known extension so that spaces inside
   // the path (C:\Program Files\...) don't cause premature splitting.
-  const extMatch = prepared.match(
-    /^(.+?\.(?:exe|cmd|bat|com|ps1))(?:\s+(.*))?$/i,
-  );
+  const extMatch = prepared.match(/^(.+?\.(?:exe|cmd|bat|com|ps1))(?:\s+(.*))?$/i);
   if (extMatch) {
     return {
       exe: extMatch[1],
@@ -284,11 +269,9 @@ function launchWindows(input) {
   const trimmed = input.trim();
 
   // UWP apps and schemes
-  if (trimmed.startsWith("shell:")) {
+  if (trimmed.startsWith('shell:')) {
     const safe = trimmed.replace(/'/g, "''");
-    exec(
-      `powershell -NoProfile -WindowStyle Hidden -Command "Start-Process '${safe}'"`,
-    );
+    exec(`powershell -NoProfile -WindowStyle Hidden -Command "Start-Process '${safe}'"`);
     return;
   }
 
@@ -298,9 +281,9 @@ function launchWindows(input) {
 
     // If no arguments, use native OS approach for best compatibility
     if (args.length === 0) {
-      if (exe.toLowerCase().endsWith(".url")) {
+      if (exe.toLowerCase().endsWith('.url')) {
         try {
-          const content = fs.readFileSync(exe, "utf8");
+          const content = fs.readFileSync(exe, 'utf8');
           const m = content.match(/^URL=(.+)$/im);
           if (m) shell.openExternal(m[1].trim());
         } catch {}
@@ -313,16 +296,16 @@ function launchWindows(input) {
     }
 
     // Arguments provided - spawn exactly to prevent execution escaping vulnerabilities
-    const finalExe = /[\\/]/.test(exe) && !/\.[^\\.]+$/.test(exe) ? exe + ".exe" : exe;
+    const finalExe = /[\\/]/.test(exe) && !/\.[^\\.]+$/.test(exe) ? exe + '.exe' : exe;
 
     // cmd / bat scripts must run via cmd.exe
     if (/\.(cmd|bat)$/i.test(finalExe)) {
-      const child = spawn("cmd.exe", ["/c", finalExe, ...args], {
+      const child = spawn('cmd.exe', ['/c', finalExe, ...args], {
         shell: false,
         detached: true,
-        stdio: "ignore",
+        stdio: 'ignore',
       });
-      child.on("error", () => {});
+      child.on('error', () => {});
       child.unref();
       return;
     }
@@ -330,11 +313,11 @@ function launchWindows(input) {
     // powershell scripts
     if (/\.ps1$/i.test(finalExe)) {
       const child = spawn(
-        "powershell.exe",
-        ["-NoProfile", "-ExecutionPolicy", "Bypass", "-File", finalExe, ...args],
-        { shell: false, detached: true, stdio: "ignore" },
+        'powershell.exe',
+        ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', finalExe, ...args],
+        { shell: false, detached: true, stdio: 'ignore' },
       );
-      child.on("error", () => {});
+      child.on('error', () => {});
       child.unref();
       return;
     }
@@ -342,35 +325,33 @@ function launchWindows(input) {
     const child = spawn(finalExe, args, {
       shell: false,
       detached: true,
-      stdio: "ignore",
+      stdio: 'ignore',
     });
-    child.on("error", () => {}); 
+    child.on('error', () => {});
     child.unref();
     return;
   }
 
   // App Paths or raw executables
-  if (trimmed.includes(" ")) {
+  if (trimmed.includes(' ')) {
     const safe = trimmed.replace(/'/g, "''");
-    exec(
-      `powershell -NoProfile -WindowStyle Hidden -Command "Start-Process '${safe}'"`,
-    );
+    exec(`powershell -NoProfile -WindowStyle Hidden -Command "Start-Process '${safe}'"`);
   } else {
     exec(`start "" ${trimmed}`);
   }
 }
 
-ipcMain.handle("set-ignore-mouse-events", (event, ignore, forward) => {
+ipcMain.handle('set-ignore-mouse-events', (event, ignore, forward) => {
   if (mainWindow) {
     // Linux cannot forward mouse movement while events are ignored. Keep the
     // window interactive there and use its native shape for click-through.
-    if (process.platform === "linux") return;
+    if (process.platform === 'linux') return;
     mainWindow.setIgnoreMouseEvents(ignore, { forward: forward || false });
   }
 });
 
-ipcMain.on("set-window-input-shape", (event, rect) => {
-  if (process.platform !== "linux" || !mainWindow) return;
+ipcMain.on('set-window-input-shape', (event, rect) => {
+  if (process.platform !== 'linux' || !mainWindow) return;
 
   const { x, y, width, height } = rect || {};
   if (![x, y, width, height].every(Number.isFinite) || width <= 0 || height <= 0) {
@@ -380,7 +361,7 @@ ipcMain.on("set-window-input-shape", (event, rect) => {
   try {
     applyLinuxInputShape(rect);
   } catch (error) {
-    console.error("Failed to set Linux window input shape:", error);
+    console.error('Failed to set Linux window input shape:', error);
   }
 });
 
@@ -390,36 +371,40 @@ ipcMain.handle('debug-get-system-media-raw', async () => {
   const psScript = `[Console]::OutputEncoding = [System.Text.Encoding]::UTF8; Add-Type -AssemblyName System.Runtime.WindowsRuntime; $manager = [Windows.Media.Control.GlobalSystemMediaTransportControlsSessionManager, Windows.Media.Control, ContentType = WindowsRuntime]::RequestAsync().GetAwaiter().GetResult(); $session = $manager.GetCurrentSession(); if ($session) { $props = $session.TryGetMediaPropertiesAsync().GetAwaiter().GetResult(); $playback = $session.GetPlaybackInfo(); $status = $playback.PlaybackStatus; $thumbnail = $props.Thumbnail; $artwork = ''; if ($thumbnail) { try { $stream = $thumbnail.OpenReadAsync().GetAwaiter().GetResult(); $buffer = New-Object byte[] $stream.Size; $reader = New-Object Windows.Storage.Streams.DataReader $stream; $reader.LoadAsync($stream.Size).GetAwaiter().GetResult() | Out-Null; $reader.ReadBytes($buffer); $artwork = 'data:image/png;base64,' + [Convert]::ToBase64String($buffer); $reader.Close(); $stream.Close(); } catch { } } $info = @{ Title = $props.Title; Artist = $props.Artist; Album = $props.AlbumTitle; Status = $status.ToString().ToLower(); Source = $session.SourceAppUserModelId; Artwork = $artwork }; return $info | ConvertTo-Json -Compress; } return 'null';`;
   const enc = Buffer.from(psScript, 'utf16le').toString('base64');
   return new Promise((resolve) => {
-    exec(`powershell -NoProfile -EncodedCommand ${enc}`, { maxBuffer: 10 * 1024 * 1024, encoding: 'utf8' }, (error, stdout) => {
-      resolve({ error: error ? String(error) : null, stdout: stdout ? stdout : null });
-    });
+    exec(
+      `powershell -NoProfile -EncodedCommand ${enc}`,
+      { maxBuffer: 10 * 1024 * 1024, encoding: 'utf8' },
+      (error, stdout) => {
+        resolve({ error: error ? String(error) : null, stdout: stdout ? stdout : null });
+      },
+    );
   });
 });
 
-ipcMain.handle("focus-window", () => {
+ipcMain.handle('focus-window', () => {
   if (mainWindow) {
     mainWindow.focus();
   }
 });
 
-ipcMain.handle("open-external", async (event, url) => {
+ipcMain.handle('open-external', async (event, url) => {
   await shell.openExternal(url);
 });
 
-ipcMain.handle("launch-app", async (event, appName) => {
+ipcMain.handle('launch-app', async (event, appName) => {
   const platform = process.platform;
-  if (platform === "darwin") {
+  if (platform === 'darwin') {
     exec(`open -a "${appName}"`);
-  } else if (platform === "win32") {
+  } else if (platform === 'win32') {
     launchWindows(appName);
   } else {
     exec(appName);
   }
 });
 
-ipcMain.handle("build-app-cache", async () => {
-  if (process.platform !== "win32") return;
-  const cacheFile = path.join(app.getPath("userData"), "app-cache.json");
+ipcMain.handle('build-app-cache', async () => {
+  if (process.platform !== 'win32') return;
+  const cacheFile = path.join(app.getPath('userData'), 'app-cache.json');
   try {
     const entries = await buildCache();
     fs.writeFileSync(cacheFile, JSON.stringify(entries));
@@ -428,22 +413,20 @@ ipcMain.handle("build-app-cache", async () => {
   }
 });
 
-ipcMain.handle("search-apps", async (event, query) => {
-  if (process.platform !== "win32" || !query) return [];
-  const cacheFile = path.join(app.getPath("userData"), "app-cache.json");
+ipcMain.handle('search-apps', async (event, query) => {
+  if (process.platform !== 'win32' || !query) return [];
+  const cacheFile = path.join(app.getPath('userData'), 'app-cache.json');
   try {
     if (!fs.existsSync(cacheFile)) return [];
-    const data = JSON.parse(fs.readFileSync(cacheFile, "utf8"));
+    const data = JSON.parse(fs.readFileSync(cacheFile, 'utf8'));
     const q = query.toLowerCase();
-    return data
-      .filter((a) => a.name && a.name.toLowerCase().includes(q))
-      .slice(0, 8);
+    return data.filter((a) => a.name && a.name.toLowerCase().includes(q)).slice(0, 8);
   } catch {
     return [];
   }
 });
 
-ipcMain.handle("get-displays", () => {
+ipcMain.handle('get-displays', () => {
   const displays = screen.getAllDisplays();
   return displays.map((d) => ({
     id: d.id,
@@ -452,15 +435,14 @@ ipcMain.handle("get-displays", () => {
   }));
 });
 
-ipcMain.handle("set-display", (event, displayId) => {
+ipcMain.handle('set-display', (event, displayId) => {
   if (mainWindow) {
     const displays = screen.getAllDisplays();
     const targetDisplay =
-      displays.find((d) => d.id.toString() === displayId.toString()) ||
-      screen.getPrimaryDisplay();
+      displays.find((d) => d.id.toString() === displayId.toString()) || screen.getPrimaryDisplay();
 
     const { x, y, width, height } = targetDisplay.bounds;
-    const isLinux = process.platform === "linux";
+    const isLinux = process.platform === 'linux';
 
     mainWindow.setBounds({ x, y, width, height });
     if (!isLinux) {
@@ -472,16 +454,12 @@ ipcMain.handle("set-display", (event, displayId) => {
   }
 });
 
-ipcMain.handle("update-window-position", (event, xPerc, yPx) => {});
+ipcMain.handle('update-window-position', (event, xPerc, yPx) => {});
 
-ipcMain.handle("set-auto-launch", (event, enable) => {
-  if (process.platform === "linux") {
-    const autostartPath = path.join(
-      app.getPath("home"),
-      ".config",
-      "autostart",
-    );
-    const desktopFilePath = path.join(autostartPath, "ripple.desktop");
+ipcMain.handle('set-auto-launch', (event, enable) => {
+  if (process.platform === 'linux') {
+    const autostartPath = path.join(app.getPath('home'), '.config', 'autostart');
+    const desktopFilePath = path.join(autostartPath, 'ripple.desktop');
 
     try {
       if (enable) {
@@ -493,7 +471,7 @@ Type=Application
 Version=1.0
 Name=Ripple
 Comment=Ripple Desktop Assistant
-Exec="${app.getPath("exe")}"\nIcon=${getIconPath()}
+Exec="${app.getPath('exe')}"\nIcon=${getIconPath()}
 Terminal=false
 `;
         fs.writeFileSync(desktopFilePath, desktopFileContent);
@@ -503,28 +481,25 @@ Terminal=false
         }
       }
     } catch (e) {
-      console.error("Failed to set auto-launch on Linux:", e);
+      console.error('Failed to set auto-launch on Linux:', e);
     }
-  } else if (process.platform === "win32") {
+  } else if (process.platform === 'win32') {
     try {
       app.setLoginItemSettings({
         openAtLogin: enable,
-        path: app.getPath("exe"),
+        path: app.getPath('exe'),
       });
     } catch (e) {
-      console.error("Failed to set login item settings on Windows:", e);
+      console.error('Failed to set login item settings on Windows:', e);
     }
   }
 });
 
 const getIconPath = () => {
-  const ext = "png";
+  const ext = 'png';
   if (app.isPackaged) {
     const resPath = path.join(process.resourcesPath, `icon.${ext}`);
-    const assetsPath = path.join(
-      process.resourcesPath,
-      `assets/icons/icon.${ext}`,
-    );
+    const assetsPath = path.join(process.resourcesPath, `assets/icons/icon.${ext}`);
 
     if (fs.existsSync(resPath)) return resPath;
     if (fs.existsSync(assetsPath)) return assetsPath;
@@ -539,23 +514,23 @@ const createWindow = () => {
   mainWindowInputShapeReady = false;
   const primaryDisplay = screen.getPrimaryDisplay();
   const { x, y, width, height } = primaryDisplay.bounds;
-  const isLinux = process.platform === "linux";
-  const isWindows = process.platform === "win32";
-  const isMac = process.platform === "darwin";
+  const isLinux = process.platform === 'linux';
+  const isWindows = process.platform === 'win32';
+  const isMac = process.platform === 'darwin';
 
   const winWidth = width;
   const winHeight = height;
   const winX = x;
   const winY = y;
 
-  const windowType = isWindows ? "toolbar" : "panel";
+  const windowType = isWindows ? 'toolbar' : 'panel';
 
   mainWindow = new BrowserWindow({
     width: winWidth,
     height: winHeight,
     x: winX,
     y: winY,
-    backgroundColor: "#00000000",
+    backgroundColor: '#00000000',
     transparent: true,
     alwaysOnTop: true,
     resizable: false,
@@ -570,7 +545,7 @@ const createWindow = () => {
     visibleOnFullScreen: true,
     acceptFirstMouse: true,
     webPreferences: {
-      preload: path.join(__dirname, "preload.js"),
+      preload: path.join(__dirname, 'preload.js'),
       devTools: false,
     },
     show: !isLinux,
@@ -584,7 +559,7 @@ const createWindow = () => {
 
   const showDelay = isLinux ? 500 : 0;
 
-  mainWindow.once("ready-to-show", () => {
+  mainWindow.once('ready-to-show', () => {
     setTimeout(() => {
       mainWindowReady = true;
       showMainWindow();
@@ -598,7 +573,7 @@ const createWindow = () => {
     }
   }, 5000);
 
-  mainWindow.on("closed", () => {
+  mainWindow.on('closed', () => {
     mainWindow = null;
   });
 
@@ -606,24 +581,21 @@ const createWindow = () => {
     mainWindow.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
   } catch (_) {}
 
-  if (!app.isPackaged || process.env.NODE_ENV === "development") {
-    mainWindow.loadURL("http://localhost:5173");
+  if (!app.isPackaged || process.env.NODE_ENV === 'development') {
+    mainWindow.loadURL('http://localhost:5173');
   } else {
-    const rendererPath = path.join(
-      __dirname,
-      "../renderer/main_window/index.html",
-    );
+    const rendererPath = path.join(__dirname, '../renderer/main_window/index.html');
     mainWindow.loadFile(rendererPath);
   }
 };
 
 app.whenReady().then(() => {
-  if (process.platform === "darwin") {
+  if (process.platform === 'darwin') {
     app.dock.hide();
   }
   initializeLinuxInputShape();
   createWindow();
-  app.on("activate", () => {
+  app.on('activate', () => {
     if (BrowserWindow.getAllWindows().length === 0) {
       createWindow();
     }
@@ -636,7 +608,7 @@ app.whenReady().then(() => {
     tray = new Tray(trayIcon);
     const contextMenu = Menu.buildFromTemplate([
       {
-        label: "Show/Hide Ripple",
+        label: 'Show/Hide Ripple',
         click: () => {
           if (mainWindow) {
             if (mainWindow.isVisible()) {
@@ -647,30 +619,30 @@ app.whenReady().then(() => {
           }
         },
       },
-      { type: "separator" },
+      { type: 'separator' },
       {
-        label: "Quit",
+        label: 'Quit',
         click: () => {
           app.quit();
         },
       },
     ]);
-    tray.setToolTip("Ripple");
+    tray.setToolTip('Ripple');
     tray.setContextMenu(contextMenu);
   } catch (e) {
-    console.error("Failed to create tray:", e);
+    console.error('Failed to create tray:', e);
   }
 });
 
-app.on("before-quit", () => {
+app.on('before-quit', () => {
   if (x11Display?.client) x11Display.client.terminate();
 });
 
-ipcMain.handle("get-system-media", async () => {
+ipcMain.handle('get-system-media', async () => {
   return new Promise((resolve) => {
     const platform = process.platform;
 
-    if (platform === "darwin") {
+    if (platform === 'darwin') {
       const script = `
             tell application "System Events"
                 set spotifyRunning to (name of every process) contains "Spotify"
@@ -715,64 +687,70 @@ ipcMain.handle("get-system-media", async () => {
         }
         const output = stdout.trim();
 
-        if (!output || output === "None" || output === "Error")
-          return resolve(null);
+        if (!output || output === 'None' || output === 'Error') return resolve(null);
 
-        const parts = output.split("||");
+        const parts = output.split('||');
         if (parts.length >= 4) {
           resolve({
             name: parts[2],
             artist: parts[3],
             album: parts[4],
             artwork_url: parts[5] || null,
-            state: parts[1] === "playing" ? "playing" : "paused",
+            state: parts[1] === 'playing' ? 'playing' : 'paused',
             source: parts[0],
           });
         } else {
           resolve(null);
         }
       });
-    } else if (platform === "win32") {
+    } else if (platform === 'win32') {
       const psScript = `[Console]::OutputEncoding = [System.Text.Encoding]::UTF8; Add-Type -AssemblyName System.Runtime.WindowsRuntime; $manager = [Windows.Media.Control.GlobalSystemMediaTransportControlsSessionManager, Windows.Media.Control, ContentType = WindowsRuntime]::RequestAsync().GetAwaiter().GetResult(); $session = $manager.GetCurrentSession(); if ($session) { $props = $session.TryGetMediaPropertiesAsync().GetAwaiter().GetResult(); $playback = $session.GetPlaybackInfo(); $status = $playback.PlaybackStatus; $thumbnail = $props.Thumbnail; $artwork = ''; if ($thumbnail) { try { $stream = $thumbnail.OpenReadAsync().GetAwaiter().GetResult(); $buffer = New-Object byte[] $stream.Size; $reader = New-Object Windows.Storage.Streams.DataReader $stream; $reader.LoadAsync($stream.Size).GetAwaiter().GetResult() | Out-Null; $reader.ReadBytes($buffer); $artwork = 'data:image/png;base64,' + [Convert]::ToBase64String($buffer); $reader.Close(); $stream.Close(); } catch { } } $info = @{ Title = $props.Title; Artist = $props.Artist; Album = $props.AlbumTitle; Status = $status.ToString().ToLower(); Source = $session.SourceAppUserModelId; Artwork = $artwork }; return $info | ConvertTo-Json -Compress; } return 'null';`;
 
       // Use EncodedCommand to avoid quoting/escaping issues and increase buffer
-      const enc = Buffer.from(psScript, "utf16le").toString("base64");
+      const enc = Buffer.from(psScript, 'utf16le').toString('base64');
       exec(
         `powershell -NoProfile -EncodedCommand ${enc}`,
-        { maxBuffer: 10 * 1024 * 1024, encoding: "utf8" },
+        { maxBuffer: 10 * 1024 * 1024, encoding: 'utf8' },
         (error, stdout) => {
           // Debug logging for Windows media retrieval
-          if (error) console.error("get-system-media: PowerShell error:", error);
-          if (stdout) console.debug("get-system-media: raw stdout length:", Buffer.from(stdout || "", "utf8").length);
+          if (error) console.error('get-system-media: PowerShell error:', error);
+          if (stdout)
+            console.debug(
+              'get-system-media: raw stdout length:',
+              Buffer.from(stdout || '', 'utf8').length,
+            );
 
-          if (
-            error ||
-            !stdout ||
-            stdout.trim() === "null" ||
-            stdout.trim() === "'null'"
-          ) {
+          if (error || !stdout || stdout.trim() === 'null' || stdout.trim() === "'null'") {
             // Fallback: try reading Spotify window title
             exec(
               `powershell -NoProfile -Command "[Console]::OutputEncoding = [System.Text.Encoding]::UTF8; Get-Process | Where-Object {$_.ProcessName -eq 'Spotify'} | Select-Object MainWindowTitle"`,
-              { encoding: "utf8" },
+              { encoding: 'utf8' },
               (err, out) => {
                 if (err || !out) {
-                  console.debug("get-system-media: spotify title fallback failed", err, out && out.trim());
+                  console.debug(
+                    'get-system-media: spotify title fallback failed',
+                    err,
+                    out && out.trim(),
+                  );
                   return resolve(null);
                 }
                 const title = out
-                  .split("\n")
-                  .find((l) => l.includes("-"))
+                  .split('\n')
+                  .find((l) => l.includes('-'))
                   ?.trim();
                 if (title) {
-                  const [artist, ...songParts] = title.split(" - ");
-                  const song = songParts.join(" - ");
-                  console.debug("get-system-media: parsed spotify title fallback:", { title, artist, song });
+                  const [artist, ...songParts] = title.split(' - ');
+                  const song = songParts.join(' - ');
+                  console.debug('get-system-media: parsed spotify title fallback:', {
+                    title,
+                    artist,
+                    song,
+                  });
                   resolve({
                     name: song || title,
-                    artist: artist || "Unknown",
-                    state: "playing",
-                    source: "Spotify",
+                    artist: artist || 'Unknown',
+                    state: 'playing',
+                    source: 'Spotify',
                   });
                 } else {
                   resolve(null);
@@ -784,33 +762,45 @@ ipcMain.handle("get-system-media", async () => {
 
           try {
             const data = JSON.parse(stdout);
-            console.debug("get-system-media: parsed data:", data && { Title: data.Title, Artist: data.Artist, Album: data.Album, ArtworkLen: data.Artwork ? data.Artwork.length : 0 });
+            console.debug(
+              'get-system-media: parsed data:',
+              data && {
+                Title: data.Title,
+                Artist: data.Artist,
+                Album: data.Album,
+                ArtworkLen: data.Artwork ? data.Artwork.length : 0,
+              },
+            );
             resolve({
-              name: data.Title || "Unknown Title",
-              artist: data.Artist || "Unknown Artist",
-              album: data.Album || "",
+              name: data.Title || 'Unknown Title',
+              artist: data.Artist || 'Unknown Artist',
+              album: data.Album || '',
               artwork_url: data.Artwork || null,
-              state: data.Status === "playing" ? "playing" : "paused",
-              source: data.Source || "System",
+              state: data.Status === 'playing' ? 'playing' : 'paused',
+              source: data.Source || 'System',
             });
           } catch (e) {
-            console.error("get-system-media: failed to parse PowerShell JSON:", e, stdout && stdout.slice(0, 200));
+            console.error(
+              'get-system-media: failed to parse PowerShell JSON:',
+              e,
+              stdout && stdout.slice(0, 200),
+            );
             resolve(null);
           }
         },
       );
-    } else if (platform === "linux") {
+    } else if (platform === 'linux') {
       exec(
         'playerctl metadata --format "{{title}}||{{artist}}||{{album}}||{{status}}"',
         (err, stdout) => {
           if (err || !stdout) return resolve(null);
-          const parts = stdout.trim().split("||");
+          const parts = stdout.trim().split('||');
           resolve({
             name: parts[0],
             artist: parts[1],
             album: parts[2],
             state: parts[3].toLowerCase(),
-            source: "System",
+            source: 'System',
           });
         },
       );
@@ -820,31 +810,30 @@ ipcMain.handle("get-system-media", async () => {
   });
 });
 
-ipcMain.handle("get-bluetooth-status", async () => {
+ipcMain.handle('get-bluetooth-status', async () => {
   return new Promise((resolve) => {
     const platform = process.platform;
-    if (platform === "darwin") {
-      exec("system_profiler SPBluetoothDataType -json", (error, stdout) => {
+    if (platform === 'darwin') {
+      exec('system_profiler SPBluetoothDataType -json', (error, stdout) => {
         if (error) return resolve(false);
         try {
           const data = JSON.parse(stdout);
           const bluetoothData = data.SPBluetoothDataType[0];
           const hasConnectedDevices =
-            bluetoothData.device_connected &&
-            bluetoothData.device_connected.length > 0;
+            bluetoothData.device_connected && bluetoothData.device_connected.length > 0;
           resolve(hasConnectedDevices);
         } catch (e) {
           resolve(false);
         }
       });
-    } else if (platform === "win32") {
+    } else if (platform === 'win32') {
       const psScript = `@(Get-PnpDevice -Class Bluetooth -ErrorAction SilentlyContinue | Where-Object { $_.Status -eq 'OK' -and $_.Present -eq $true -and $_.InstanceId -match 'BTHENUM' }).Count -gt 0`;
       exec(`powershell -NoProfile -Command "${psScript}"`, (error, stdout) => {
         if (error) return resolve(false);
-        resolve(stdout.trim().toLowerCase() === "true");
+        resolve(stdout.trim().toLowerCase() === 'true');
       });
-    } else if (platform === "linux") {
-      exec("bluetoothctl devices Connected", (error, stdout) => {
+    } else if (platform === 'linux') {
+      exec('bluetoothctl devices Connected', (error, stdout) => {
         if (error) return resolve(false);
         resolve(stdout.trim().length > 0);
       });
@@ -854,14 +843,14 @@ ipcMain.handle("get-bluetooth-status", async () => {
   });
 });
 
-ipcMain.handle("get-camera-status", async () => {
+ipcMain.handle('get-camera-status', async () => {
   return new Promise((resolve) => {
     const platform = process.platform;
-    if (platform === "darwin") {
+    if (platform === 'darwin') {
       exec('ioreg -l | grep -E "FrontCameraActive|FrontCameraStreaming"', (error, stdout) => {
         resolve(stdout ? stdout.includes('= Yes') : false);
       });
-    } else if (platform === "win32") {
+    } else if (platform === 'win32') {
       const psScript = `
         $inUse = $false
         $keys = Get-ChildItem -Path "HKCU:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\CapabilityAccessManager\\ConsentStore\\webcam" -Recurse -ErrorAction SilentlyContinue
@@ -876,10 +865,10 @@ ipcMain.handle("get-camera-status", async () => {
       `;
       exec(`powershell -NoProfile -Command "${psScript}"`, (error, stdout) => {
         if (error) return resolve(false);
-        resolve(stdout.trim().toLowerCase() === "true");
+        resolve(stdout.trim().toLowerCase() === 'true');
       });
-    } else if (platform === "linux") {
-      exec("fuser /dev/video* 2>/dev/null", (error, stdout) => {
+    } else if (platform === 'linux') {
+      exec('fuser /dev/video* 2>/dev/null', (error, stdout) => {
         resolve(stdout.trim().length > 0);
       });
     } else {
@@ -888,20 +877,23 @@ ipcMain.handle("get-camera-status", async () => {
   });
 });
 
-ipcMain.handle("get-microphone-status", async () => {
+ipcMain.handle('get-microphone-status', async () => {
   return new Promise((resolve) => {
     const platform = process.platform;
-    if (platform === "darwin") {
-      exec('ioreg -l | grep -E "IOAudioStreamActive|IOAudioEngine|IOAudioStream" | grep -i "Yes"', (error, stdout) => {
-        resolve(stdout ? stdout.trim().length > 0 : false);
-      });
-    } else if (platform === "win32") {
+    if (platform === 'darwin') {
+      exec(
+        'ioreg -l | grep -E "IOAudioStreamActive|IOAudioEngine|IOAudioStream" | grep -i "Yes"',
+        (error, stdout) => {
+          resolve(stdout ? stdout.trim().length > 0 : false);
+        },
+      );
+    } else if (platform === 'win32') {
       const psScript = `@(Get-ChildItem -Path "HKCU:\\SOFTWARE\\Microsoft\\Windows\\CurrentVersion\\CapabilityAccessManager\\ConsentStore\\microphone" -Recurse -ErrorAction SilentlyContinue | ForEach-Object { Get-ItemProperty -Path $_.PSPath -Name "LastUsedTimeStop" -ErrorAction SilentlyContinue } | Where-Object { $_ -and $_.LastUsedTimeStop -eq 0 }).Count -gt 0`;
       exec(`powershell -NoProfile -Command "${psScript}"`, (error, stdout) => {
         if (error) return resolve(false);
-        resolve(stdout.trim().toLowerCase() === "true");
+        resolve(stdout.trim().toLowerCase() === 'true');
       });
-    } else if (platform === "linux") {
+    } else if (platform === 'linux') {
       exec("pactl list source-outputs | grep -q 'Source #'", (error) => {
         resolve(!error);
       });
@@ -911,16 +903,16 @@ ipcMain.handle("get-microphone-status", async () => {
   });
 });
 
-app.on("window-all-closed", () => {
-  if (process.platform === "linux" && !tray) {
+app.on('window-all-closed', () => {
+  if (process.platform === 'linux' && !tray) {
     app.quit();
   }
 });
 
 // System Media Controls Handler
-ipcMain.handle("control-system-media", async (event, command) => {
+ipcMain.handle('control-system-media', async (event, command) => {
   const platform = process.platform;
-  if (platform === "darwin") {
+  if (platform === 'darwin') {
     const script = `
         tell application "System Events"
             set spotifyRunning to (name of every process) contains "Spotify"
@@ -933,9 +925,9 @@ ipcMain.handle("control-system-media", async (event, command) => {
         end if
         `;
     exec(`osascript -e '${script}'`);
-  } else if (platform === "linux") {
+  } else if (platform === 'linux') {
     let cmd = command;
-    if (command === "playpause") cmd = "play-pause";
+    if (command === 'playpause') cmd = 'play-pause';
     exec(`playerctl ${cmd}`);
   }
 });

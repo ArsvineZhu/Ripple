@@ -7,14 +7,15 @@ module.exports = {
     asar: true,
     executableName: 'ripple',
     icon: 'src/assets/icons/icon',
-    extraResource: [
-      path.join(__dirname, 'src/assets/icons/icon.png'),
-    ],
-    ...(process.platform === 'darwin' ? {
-      extendInfo: {
-        NSAppleEventsUsageDescription: 'Ripple needs to control media players like Spotify and AppleMusic.',
-      },
-    } : {}),
+    extraResource: [path.join(__dirname, 'src/assets/icons/icon.png')],
+    ...(process.platform === 'darwin'
+      ? {
+          extendInfo: {
+            NSAppleEventsUsageDescription:
+              'Ripple needs to control media players like Spotify and AppleMusic.',
+          },
+        }
+      : {}),
   },
   hooks: {
     postPackage: async (forgeConfig, options) => {
@@ -26,14 +27,16 @@ module.exports = {
 
       for (const outPath of options.outputPaths) {
         const files = fs.readdirSync(outPath);
-        const appFile = files.find(f => f.endsWith('.app'));
+        const appFile = files.find((f) => f.endsWith('.app'));
         if (appFile) {
           const appPath = path.join(outPath, appFile);
           console.log(`Waiting for file lock release...`);
-          await new Promise(resolve => setTimeout(resolve, 2000));
+          await new Promise((resolve) => setTimeout(resolve, 2000));
           console.log(`Signing ${appPath}...`);
           try {
-            execSync(`codesign --deep --force --verbose -s - --entitlements "${path.resolve(__dirname, 'entitlements.plist')}" "${appPath}"`);
+            execSync(
+              `codesign --deep --force --verbose -s - --entitlements "${path.resolve(__dirname, 'entitlements.plist')}" "${appPath}"`,
+            );
             console.log('Signed successfully.');
           } catch (e) {
             console.error('Sign failed, retrying without deep...');
@@ -105,8 +108,8 @@ module.exports = {
       config: {
         name: 'RippleInstaller',
         format: 'UDZO',
-        overwrite: true
-      }
+        overwrite: true,
+      },
     },
     {
       name: '@electron-forge/maker-deb',
@@ -116,7 +119,7 @@ module.exports = {
           executableName: 'ripple',
           name: 'ripple',
           desktopTemplate: path.join(__dirname, 'scripts/ripple.desktop.ejs'),
-        }
+        },
       },
     },
     {
@@ -126,7 +129,7 @@ module.exports = {
           icon: path.join(__dirname, 'src/assets/icons/icon.png'),
           name: 'ripple',
           execArguments: ['--ozone-platform=x11'],
-        }
+        },
       },
     },
     {

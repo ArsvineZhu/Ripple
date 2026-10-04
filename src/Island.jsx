@@ -1,39 +1,74 @@
-import { useState, useEffect, useRef } from "react";
-import { Groq } from "groq-sdk";
-import { motion, AnimatePresence } from "framer-motion";
-import ReactMarkdown from "react-markdown";
-import { Camera, Mic, SkipBackIcon, Play, Pause, SkipForwardIcon, Music, Headphones, Zap, Settings, Sun, Cloud, Droplets, Trash2, ChevronRight, ChevronLeft, Plus, Check, X, CloudRain, CloudSnow, CloudLightning, CloudSun, Moon, Eye, EyeOff, GripVertical, List, Search, Star } from "lucide-react";
-import "./App.css";
+import { useState, useEffect, useRef } from 'react';
+import { Groq } from 'groq-sdk';
+import { motion, AnimatePresence } from 'framer-motion';
+import ReactMarkdown from 'react-markdown';
+import {
+  Camera,
+  Mic,
+  SkipBackIcon,
+  Play,
+  Pause,
+  SkipForwardIcon,
+  Music,
+  Headphones,
+  Zap,
+  Settings,
+  Sun,
+  Cloud,
+  Droplets,
+  Trash2,
+  ChevronRight,
+  ChevronLeft,
+  Plus,
+  Check,
+  X,
+  CloudRain,
+  CloudSnow,
+  CloudLightning,
+  CloudSun,
+  Moon,
+  Eye,
+  EyeOff,
+  GripVertical,
+  List,
+  Search,
+  Star,
+} from 'lucide-react';
+import './App.css';
 
 //Get Date
 function formatDateShort(input) {
   const date = input ? new Date(input) : new Date();
   if (isNaN(date.getTime())) {
-    throw new Error("Invalid date provided to formatDateShort");
+    throw new Error('Invalid date provided to formatDateShort');
   }
-  const weekday = date.toLocaleDateString(undefined, { weekday: "short" });
-  const month = date.toLocaleDateString(undefined, { month: "short" });
+  const weekday = date.toLocaleDateString(undefined, { weekday: 'short' });
+  const month = date.toLocaleDateString(undefined, { month: 'short' });
   const day = date.getDate();
   return `${weekday}, ${month} ${day}`;
 }
 
-const textMeasureCanvas = typeof document !== "undefined" ? document.createElement("canvas") : null;
-function measureTextWidth(text, font = "600 13px OpenRunde, Arial, sans-serif") {
+const textMeasureCanvas = typeof document !== 'undefined' ? document.createElement('canvas') : null;
+function measureTextWidth(text, font = '600 13px OpenRunde, Arial, sans-serif') {
   if (!textMeasureCanvas || !textMeasureCanvas.getContext) return null;
-  const ctx = textMeasureCanvas.getContext("2d");
+  const ctx = textMeasureCanvas.getContext('2d');
   if (!ctx) return null;
   ctx.font = font;
   return ctx.measureText(text).width;
 }
 
-const WeatherIcon = ({ status, size = 16, color = "currentColor" }) => {
-  const s = status?.toLowerCase() || "";
-  if (s.includes("sunny") || s.includes("clear")) return <Sun size={size} color={color} />;
-  if (s.includes("partly cloudy")) return <CloudSun size={size} color={color} />;
-  if (s.includes("cloudy") || s.includes("overcast") || s.includes("mist") || s.includes("fog")) return <Cloud size={size} color={color} />;
-  if (s.includes("rain") || s.includes("drizzle") || s.includes("showers")) return <CloudRain size={size} color={color} />;
-  if (s.includes("snow") || s.includes("sleet") || s.includes("ice") || s.includes("blizzard")) return <CloudSnow size={size} color={color} />;
-  if (s.includes("thunder") || s.includes("storm")) return <CloudLightning size={size} color={color} />;
+const WeatherIcon = ({ status, size = 16, color = 'currentColor' }) => {
+  const s = status?.toLowerCase() || '';
+  if (s.includes('sunny') || s.includes('clear')) return <Sun size={size} color={color} />;
+  if (s.includes('partly cloudy')) return <CloudSun size={size} color={color} />;
+  if (s.includes('cloudy') || s.includes('overcast') || s.includes('mist') || s.includes('fog'))
+    return <Cloud size={size} color={color} />;
+  if (s.includes('rain') || s.includes('drizzle') || s.includes('showers'))
+    return <CloudRain size={size} color={color} />;
+  if (s.includes('snow') || s.includes('sleet') || s.includes('ice') || s.includes('blizzard'))
+    return <CloudSnow size={size} color={color} />;
+  if (s.includes('thunder') || s.includes('storm'))
+    return <CloudLightning size={size} color={color} />;
   return <Sun size={size} color={color} />;
 };
 
@@ -52,8 +87,8 @@ function openApp(app) {
   //    Checked before any dot-based heuristic so .exe and AppID dots never
   //    trip URL detection.
   const isLaunchTarget =
-    /[\\\/]/.test(trimmedApp) ||   // path separator → exe path or UNC
-    /\.exe$/i.test(trimmedApp) ||   // bare name ending in .exe
+    /[\\\/]/.test(trimmedApp) || // path separator → exe path or UNC
+    /\.exe$/i.test(trimmedApp) || // bare name ending in .exe
     trimmedApp.startsWith('shell:'); // UWP shell URI
 
   if (isLaunchTarget) {
@@ -63,8 +98,10 @@ function openApp(app) {
 
   // 3. IPv4 address or localhost → open in browser via http://
   //    (dev servers rarely run https)
-  if (/^(\d{1,3}\.){3}\d{1,3}(:\d+)?(\/.*)?$/.test(trimmedApp) ||
-    /^localhost(:\d+)?(\/.*)?$/i.test(trimmedApp)) {
+  if (
+    /^(\d{1,3}\.){3}\d{1,3}(:\d+)?(\/.*)?$/.test(trimmedApp) ||
+    /^localhost(:\d+)?(\/.*)?$/i.test(trimmedApp)
+  ) {
     window.electronAPI?.openExternal(`http://${trimmedApp}`);
     return;
   }
@@ -84,12 +121,12 @@ function openApp(app) {
 function openMusicPlayer(source) {
   if (!source) return;
 
-  if (source === "Spotify") {
-    openApp("Spotify");
-  } else if (source === "Music") {
-    openApp("Music");
-  } else if (source === "music.apple.com" || source.includes("Apple")) {
-    openApp("Music");
+  if (source === 'Spotify') {
+    openApp('Spotify');
+  } else if (source === 'Music') {
+    openApp('Music');
+  } else if (source === 'music.apple.com' || source.includes('Apple')) {
+    openApp('Music');
   } else {
     // Fallback: try to open by source name
     openApp(source);
@@ -97,25 +134,30 @@ function openMusicPlayer(source) {
 }
 
 const TABS = [
-  { id: 0, name: "Browser Search", icon: (color) => <Search size={16} color={color} /> },
-  { id: 1, name: "Workflows & QA", icon: (color) => <Zap size={16} color={color} /> },
-  { id: 2, name: "Overview", icon: (color) => <Sun size={16} color={color} /> },
-  { id: 3, name: "Now Playing", icon: (color) => <Music size={16} color={color} /> },
-  { id: 4, name: "AI Assistant", icon: (color) => <Mic size={16} color={color} /> },
-  { id: 5, name: "Clipboard", icon: (color) => <List size={16} color={color} /> },
-  { id: 6, name: "Tasks", icon: (color) => <Check size={16} color={color} /> },
-  { id: 7, name: "Settings", icon: (color) => <Settings size={16} color={color} /> },
+  { id: 0, name: 'Browser Search', icon: (color) => <Search size={16} color={color} /> },
+  { id: 1, name: 'Workflows & QA', icon: (color) => <Zap size={16} color={color} /> },
+  { id: 2, name: 'Overview', icon: (color) => <Sun size={16} color={color} /> },
+  { id: 3, name: 'Now Playing', icon: (color) => <Music size={16} color={color} /> },
+  { id: 4, name: 'AI Assistant', icon: (color) => <Mic size={16} color={color} /> },
+  { id: 5, name: 'Clipboard', icon: (color) => <List size={16} color={color} /> },
+  { id: 6, name: 'Tasks', icon: (color) => <Check size={16} color={color} /> },
+  { id: 7, name: 'Settings', icon: (color) => <Settings size={16} color={color} /> },
 ];
 
 export default function Island() {
   const islandElementRef = useRef(null);
   const lastWindowShapeRef = useRef(null);
   const [time, setTime] = useState(null);
-  const [mode, setMode] = useState("still");
-  const [tabOrder, setTabOrder] = useState(() => JSON.parse(localStorage.getItem("tab-order") || "[0,1,2,3,4,5,6,7]"));
-  const [hiddenTabs, setHiddenTabs] = useState(() => JSON.parse(localStorage.getItem("hidden-tabs") || "[]"));
-  const [defaultTabId, setDefaultTabId] = useState(() => Number(localStorage.getItem("default-tab") || 0));
-
+  const [mode, setMode] = useState('still');
+  const [tabOrder, setTabOrder] = useState(() =>
+    JSON.parse(localStorage.getItem('tab-order') || '[0,1,2,3,4,5,6,7]'),
+  );
+  const [hiddenTabs, setHiddenTabs] = useState(() =>
+    JSON.parse(localStorage.getItem('hidden-tabs') || '[]'),
+  );
+  const [defaultTabId, setDefaultTabId] = useState(() =>
+    Number(localStorage.getItem('default-tab') || 0),
+  );
 
   const moveTabOrder = (fromIdx, toIdx) => {
     if (toIdx < 0 || toIdx >= tabOrder.length) return;
@@ -123,21 +165,19 @@ export default function Island() {
       const newOrder = [...prev];
       const [moved] = newOrder.splice(fromIdx, 1);
       newOrder.splice(toIdx, 0, moved);
-      localStorage.setItem("tab-order", JSON.stringify(newOrder));
+      localStorage.setItem('tab-order', JSON.stringify(newOrder));
       return newOrder;
     });
   };
 
   const toggleTabVisibility = (id) => {
-    setHiddenTabs(prev => {
-      const newHidden = prev.includes(id)
-        ? prev.filter(t => t !== id)
-        : [...prev, id];
+    setHiddenTabs((prev) => {
+      const newHidden = prev.includes(id) ? prev.filter((t) => t !== id) : [...prev, id];
 
       // Don't allow hiding all tabs
       if (newHidden.length >= TABS.length) return prev;
 
-      localStorage.setItem("hidden-tabs", JSON.stringify(newHidden));
+      localStorage.setItem('hidden-tabs', JSON.stringify(newHidden));
       return newHidden;
     });
   };
@@ -146,23 +186,35 @@ export default function Island() {
   const [aiAnswer, setAIAnswer] = useState(null);
   const [percent, setPercent] = useState(null);
   const [alert, setAlert] = useState(null);
-  const [userText, setUserText] = useState("");
-  const [batteryAlertsEnabled, setBatteryAlertsEnabled] = useState(localStorage.getItem("battery-alerts") !== "false");
-  const [islandBorderEnabled, setIslandBorderEnabled] = useState(localStorage.getItem("island-border") === "true");
-  const [standbyBorderEnabled, setStandbyEnabled] = useState(localStorage.getItem("standby-mode") === "true");
-  const [largeStandbyEnabled, setLargeStandbyEnabled] = useState(localStorage.getItem("large-standby-mode") === "true");
-  const [hideNotActiveIslandEnabled, sethideNotActiveIslandEnabled] = useState(localStorage.getItem("hide-island-notactive") === "true");
-  const [showInfoWhenIdleEnabled, setShowInfoWhenIdleEnabled] = useState(
-    localStorage.getItem("show-info-when-idle") === "true"
+  const [userText, setUserText] = useState('');
+  const [batteryAlertsEnabled, setBatteryAlertsEnabled] = useState(
+    localStorage.getItem('battery-alerts') !== 'false',
   );
-  const [hourFormat, setHourFormat] = useState((localStorage.getItem("hour-format") || "12-hr") === "12-hr");
-  const [weather, setWeather] = useState({ temp: "", status: "" });
-  const [weatherUnit, setweatherUnit] = useState(localStorage.getItem("weather-unit") || "f");
-  const [theme, setTheme] = useState("default");
-  const [bgColor, setBgColor] = useState(localStorage.getItem("bg-color") || "#000000");
-  const [textColor, setTextColor] = useState(localStorage.getItem("text-color") || "#FFFFFF");
-  const [bgImage, setBgImage] = useState(localStorage.getItem("bg-image") || "none");
-  const [browserSearch, setBrowserSearch] = useState("");
+  const [islandBorderEnabled, setIslandBorderEnabled] = useState(
+    localStorage.getItem('island-border') === 'true',
+  );
+  const [standbyBorderEnabled, setStandbyEnabled] = useState(
+    localStorage.getItem('standby-mode') === 'true',
+  );
+  const [largeStandbyEnabled, setLargeStandbyEnabled] = useState(
+    localStorage.getItem('large-standby-mode') === 'true',
+  );
+  const [hideNotActiveIslandEnabled, sethideNotActiveIslandEnabled] = useState(
+    localStorage.getItem('hide-island-notactive') === 'true',
+  );
+  const [showInfoWhenIdleEnabled, setShowInfoWhenIdleEnabled] = useState(
+    localStorage.getItem('show-info-when-idle') === 'true',
+  );
+  const [hourFormat, setHourFormat] = useState(
+    (localStorage.getItem('hour-format') || '12-hr') === '12-hr',
+  );
+  const [weather, setWeather] = useState({ temp: '', status: '' });
+  const [weatherUnit, setweatherUnit] = useState(localStorage.getItem('weather-unit') || 'f');
+  const [theme, setTheme] = useState('default');
+  const [bgColor, setBgColor] = useState(localStorage.getItem('bg-color') || '#000000');
+  const [textColor, setTextColor] = useState(localStorage.getItem('text-color') || '#FFFFFF');
+  const [bgImage, setBgImage] = useState(localStorage.getItem('bg-image') || 'none');
+  const [browserSearch, setBrowserSearch] = useState('');
   const [clipboard, setClipboard] = useState([]);
   const [charging, setCharging] = useState(false);
   const [chargingAlert, setChargingAlert] = useState(false);
@@ -176,13 +228,15 @@ export default function Island() {
   const captureAlertQueue = useRef([]);
   const captureAlertTimer = useRef(null);
   const captureAlertDisplayed = useRef({ camera: false, microphone: false });
-  const [tasks, setTasks] = useState(JSON.parse(localStorage.getItem("tasks") || "[]"));
-  const [taskText, setTaskText] = useState("");
-  const [workflows, setWorkflows] = useState(JSON.parse(localStorage.getItem("workflows") || "[]"));
-  const [workflowName, setWorkflowName] = useState("");
-  const [workflowUrls, setWorkflowUrls] = useState("");
-  const [aiProvider, setAiProvider] = useState(localStorage.getItem("ai-provider") || "groq");
-  const [aiModel, setAiModel] = useState(localStorage.getItem("ai-model") || "llama-3.3-70b-versatile");
+  const [tasks, setTasks] = useState(JSON.parse(localStorage.getItem('tasks') || '[]'));
+  const [taskText, setTaskText] = useState('');
+  const [workflows, setWorkflows] = useState(JSON.parse(localStorage.getItem('workflows') || '[]'));
+  const [workflowName, setWorkflowName] = useState('');
+  const [workflowUrls, setWorkflowUrls] = useState('');
+  const [aiProvider, setAiProvider] = useState(localStorage.getItem('ai-provider') || 'groq');
+  const [aiModel, setAiModel] = useState(
+    localStorage.getItem('ai-model') || 'llama-3.3-70b-versatile',
+  );
   const [isHovered, setIsHovered] = useState(false);
   const [isDragging, setIsDragging] = useState(false);
   const [albumHovered, setAlbumHovered] = useState(false);
@@ -190,7 +244,7 @@ export default function Island() {
 
   // Tab calculations
   const isMusicActive = !!spotifyTrack;
-  const visibleTabs = tabOrder.filter(id => {
+  const visibleTabs = tabOrder.filter((id) => {
     if (hiddenTabs.includes(id)) return false;
     if (id === 3 && !isMusicActive) return false;
     return true;
@@ -233,21 +287,27 @@ export default function Island() {
     setIsDragging(val);
   };
   const [displays, setDisplays] = useState([]);
-  const [currentDisplayId, setCurrentDisplayId] = useState(localStorage.getItem("display-id") || "");
-  const [weatherLocation, setWeatherLocation] = useState(localStorage.getItem("location") || "");
-  const [autoLaunchEnabled, setAutoLaunchEnabled] = useState(localStorage.getItem("auto-launch") === "true");
-  const [positionMode, setPositionMode] = useState(localStorage.getItem("position-mode") || localStorage.getItem("side-mode") || "free");
+  const [currentDisplayId, setCurrentDisplayId] = useState(
+    localStorage.getItem('display-id') || '',
+  );
+  const [weatherLocation, setWeatherLocation] = useState(localStorage.getItem('location') || '');
+  const [autoLaunchEnabled, setAutoLaunchEnabled] = useState(
+    localStorage.getItem('auto-launch') === 'true',
+  );
+  const [positionMode, setPositionMode] = useState(
+    localStorage.getItem('position-mode') || localStorage.getItem('side-mode') || 'free',
+  );
 
   const [islandX, setIslandX] = useState(() => {
-    const saved = localStorage.getItem("island-x");
+    const saved = localStorage.getItem('island-x');
     const num = Number(saved);
-    return (saved !== null && !isNaN(num)) ? Math.max(0, Math.min(100, num)) : 50;
+    return saved !== null && !isNaN(num) ? Math.max(0, Math.min(100, num)) : 50;
   });
 
   const [islandY, setIslandY] = useState(() => {
-    const saved = localStorage.getItem("island-y");
+    const saved = localStorage.getItem('island-y');
     const num = Number(saved);
-    return (saved !== null && !isNaN(num)) ? Math.max(0, Math.min(1000, num)) : 20;
+    return saved !== null && !isNaN(num) ? Math.max(0, Math.min(1000, num)) : 20;
   });
 
   const tabVariants = {
@@ -255,20 +315,20 @@ export default function Island() {
       x: direction > 0 ? 300 : direction < 0 ? -300 : 0,
       opacity: 0,
       scale: 0.95,
-      filter: "blur(10px)"
+      filter: 'blur(10px)',
     }),
     center: {
       x: 0,
       opacity: 1,
       scale: 1,
-      filter: "blur(0px)"
+      filter: 'blur(0px)',
     },
     exit: (direction) => ({
       x: direction < 0 ? 300 : direction > 0 ? -300 : 0,
       opacity: 0,
       scale: 0.95,
-      filter: "blur(10px)"
-    })
+      filter: 'blur(10px)',
+    }),
   };
 
   const wheelSwipeThreshold = 60;
@@ -294,7 +354,7 @@ export default function Island() {
   };
 
   const handleWheelSwipe = (e) => {
-    if (wheelLockout.current || mode !== "large" || isDragging) return;
+    if (wheelLockout.current || mode !== 'large' || isDragging) return;
     if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) return;
     let delta = e.deltaX;
     if (e.deltaMode === 1) delta *= 40;
@@ -320,21 +380,27 @@ export default function Island() {
   const isInteractiveTarget = (target) => {
     const targetTag = target?.tagName;
     return (
-      targetTag === "INPUT" ||
-      targetTag === "TEXTAREA" ||
-      targetTag === "SELECT" ||
-      targetTag === "LABEL" ||
-      target?.closest?.("button") ||
-      target?.closest?.(".radio-label") ||
-      target?.closest?.(".task-row") ||
-      target?.closest?.(".clipboard-row")
+      targetTag === 'INPUT' ||
+      targetTag === 'TEXTAREA' ||
+      targetTag === 'SELECT' ||
+      targetTag === 'LABEL' ||
+      target?.closest?.('button') ||
+      target?.closest?.('.radio-label') ||
+      target?.closest?.('.task-row') ||
+      target?.closest?.('.clipboard-row')
     );
   };
 
   const handlePointerDown = (e) => {
-    if (e.pointerType === "mouse" && e.button !== 0) return;
+    if (e.pointerType === 'mouse' && e.button !== 0) return;
     const target = e.target;
-    if (mode !== "large" || isDragging || isInteractiveTarget(target) || target?.closest("#userinput") || target?.id === "userinput") {
+    if (
+      mode !== 'large' ||
+      isDragging ||
+      isInteractiveTarget(target) ||
+      target?.closest('#userinput') ||
+      target?.id === 'userinput'
+    ) {
       swipeStartX.current = null;
       return;
     }
@@ -344,7 +410,7 @@ export default function Island() {
   };
 
   const handlePointerMove = (e) => {
-    if (swipeStartX.current === null || mode !== "large") return;
+    if (swipeStartX.current === null || mode !== 'large') return;
     const dx = Math.abs(e.clientX - swipeStartX.current);
     const dy = Math.abs(e.clientY - swipeStartY.current);
     if (dx > 8 || dy > 8) {
@@ -363,7 +429,7 @@ export default function Island() {
     const startY = swipeStartY.current;
     swipeStartX.current = null;
 
-    if (mode !== "large" || isDragging || wheelLockout.current) return;
+    if (mode !== 'large' || isDragging || wheelLockout.current) return;
     if (!swipeMoved.current) return;
 
     const dx = e.clientX - startX;
@@ -378,32 +444,68 @@ export default function Island() {
   };
 
   let isPlaying = spotifyTrack?.state === 'playing';
-  const nowPlayingText = spotifyTrack?.name ? `${spotifyTrack.name}${spotifyTrack.artist ? ` • ${spotifyTrack.artist}` : ''}` : '';
-  const textWidth = measureTextWidth(nowPlayingText) || (nowPlayingText.length * 7);
+  const nowPlayingText = spotifyTrack?.name
+    ? `${spotifyTrack.name}${spotifyTrack.artist ? ` • ${spotifyTrack.artist}` : ''}`
+    : '';
+  const textWidth = measureTextWidth(nowPlayingText) || nowPlayingText.length * 7;
   const hoverExtraWidth = 36;
-  const nowPlayingWidth = Math.min(
-    300,
-    Math.max(
-      122,
-      Math.ceil(textWidth + 24 + 6 + 20)
-    )
-  );
-  let width = mode === "large"
-    ? (currentTab === 7 ? 495 : currentTab === 1 ? 480 : currentTab === 3 ? 330 : currentTab === 0 ? 405 : 380)
-    : (mode === "quick" && isPlaying && !alert && !chargingAlert && !bluetoothAlert && !cameraAlert && !microphoneAlert)
-      ? nowPlayingWidth
-      : (mode === "quick" || alert || chargingAlert || bluetoothAlert || cameraAlert || microphoneAlert)
-        ? 260
-        : isPlaying
-          ? nowPlayingWidth
-          : 170;
-  let height = mode === "large" ? (currentTab === 7 ? (positionMode === "free" ? 425 : 345) : currentTab === 6 ? 250 : currentTab === 3 ? 150 : currentTab === 0 ? 120 : currentTab === 1 ? 210 : 190) : 40;
+  const nowPlayingWidth = Math.min(300, Math.max(122, Math.ceil(textWidth + 24 + 6 + 20)));
+  let width =
+    mode === 'large'
+      ? currentTab === 7
+        ? 495
+        : currentTab === 1
+          ? 480
+          : currentTab === 3
+            ? 330
+            : currentTab === 0
+              ? 405
+              : 380
+      : mode === 'quick' &&
+          isPlaying &&
+          !alert &&
+          !chargingAlert &&
+          !bluetoothAlert &&
+          !cameraAlert &&
+          !microphoneAlert
+        ? nowPlayingWidth
+        : mode === 'quick' ||
+            alert ||
+            chargingAlert ||
+            bluetoothAlert ||
+            cameraAlert ||
+            microphoneAlert
+          ? 260
+          : isPlaying
+            ? nowPlayingWidth
+            : 170;
+  let height =
+    mode === 'large'
+      ? currentTab === 7
+        ? positionMode === 'free'
+          ? 425
+          : 345
+        : currentTab === 6
+          ? 250
+          : currentTab === 3
+            ? 150
+            : currentTab === 0
+              ? 120
+              : currentTab === 1
+                ? 210
+                : 190
+      : 40;
 
-  const normalizeApps = (arr) => arr.map(a => typeof a === 'string' ? { name: a, launch: a } : a);
+  const normalizeApps = (arr) =>
+    arr.map((a) => (typeof a === 'string' ? { name: a, launch: a } : a));
   const [quickApps, setQuickApps] = useState(() =>
-    normalizeApps(JSON.parse(localStorage.getItem("quick-apps") || '["Notes", "Spotify", "Calculator", "Terminal"]'))
+    normalizeApps(
+      JSON.parse(
+        localStorage.getItem('quick-apps') || '["Notes", "Spotify", "Calculator", "Terminal"]',
+      ),
+    ),
   );
-  const [newQuickApp, setNewQuickApp] = useState("");
+  const [newQuickApp, setNewQuickApp] = useState('');
   const [appSuggestions, setAppSuggestions] = useState([]);
   const [showSuggestions, setShowSuggestions] = useState(false);
   const selectedAppRef = useRef(null);
@@ -416,7 +518,7 @@ export default function Island() {
   }, []);
 
   useEffect(() => {
-    const savedDisplayId = localStorage.getItem("display-id");
+    const savedDisplayId = localStorage.getItem('display-id');
     if (savedDisplayId && window.electronAPI?.setDisplay) {
       window.electronAPI.setDisplay(savedDisplayId);
     }
@@ -435,7 +537,11 @@ export default function Island() {
 
     if (localStorage.getItem('newuser') === 'true') {
       const timer = setTimeout(() => {
-        window.electronAPI?.openExternal ? window.electronAPI.openExternal("https://github.com/TopMyster/Ripple/blob/main/instructions.md") : window.open("https://github.com/TopMyster/Ripple/blob/main/instructions.md", "_blank");
+        window.electronAPI?.openExternal
+          ? window.electronAPI.openExternal(
+              'https://github.com/TopMyster/Ripple/blob/main/instructions.md',
+            )
+          : window.open('https://github.com/TopMyster/Ripple/blob/main/instructions.md', '_blank');
         localStorage.setItem('newuser', 'false');
       }, 3000);
       return () => clearTimeout(timer);
@@ -443,125 +549,125 @@ export default function Island() {
   }, []);
 
   // localStorage defaults
-  if (!localStorage.getItem("battery-alerts")) {
-    localStorage.setItem("battery-alerts", "true");
+  if (!localStorage.getItem('battery-alerts')) {
+    localStorage.setItem('battery-alerts', 'true');
   }
 
-  if (!localStorage.getItem("default-tab")) {
-    localStorage.setItem("default-tab", "2");
+  if (!localStorage.getItem('default-tab')) {
+    localStorage.setItem('default-tab', '2');
   }
 
-  if (!localStorage.getItem("island-border")) {
-    localStorage.setItem("island-border", "false");
+  if (!localStorage.getItem('island-border')) {
+    localStorage.setItem('island-border', 'false');
   }
 
-  if (!localStorage.getItem("hide-island-notactive")) {
-    localStorage.setItem("hide-island-notactive", "false");
+  if (!localStorage.getItem('hide-island-notactive')) {
+    localStorage.setItem('hide-island-notactive', 'false');
   }
 
-  if (!localStorage.getItem("standby-mode")) {
-    localStorage.setItem("standby-mode", "false");
+  if (!localStorage.getItem('standby-mode')) {
+    localStorage.setItem('standby-mode', 'false');
   }
 
-  if (!localStorage.getItem("hour-format")) {
-    localStorage.setItem("hour-format", "12-hr");
+  if (!localStorage.getItem('hour-format')) {
+    localStorage.setItem('hour-format', '12-hr');
   }
 
-  if (!localStorage.getItem("island-x")) {
-    localStorage.setItem("island-x", "50");
+  if (!localStorage.getItem('island-x')) {
+    localStorage.setItem('island-x', '50');
   }
 
-  if (!localStorage.getItem("island-y")) {
-    localStorage.setItem("island-y", "20");
+  if (!localStorage.getItem('island-y')) {
+    localStorage.setItem('island-y', '20');
   }
 
-  if (!localStorage.getItem("bg-color")) {
-    localStorage.setItem("bg-color", "#000000");
+  if (!localStorage.getItem('bg-color')) {
+    localStorage.setItem('bg-color', '#000000');
   }
 
-  if (!localStorage.getItem("text-color")) {
-    localStorage.setItem("text-color", "#FFFFFF");
+  if (!localStorage.getItem('text-color')) {
+    localStorage.setItem('text-color', '#FFFFFF');
   }
 
-  if (!localStorage.getItem("weather-unit")) {
-    localStorage.setItem("weather-unit", "f");
+  if (!localStorage.getItem('weather-unit')) {
+    localStorage.setItem('weather-unit', 'f');
   }
 
-  if (!localStorage.getItem("auto-launch")) {
-    localStorage.setItem("auto-launch", "false");
+  if (!localStorage.getItem('auto-launch')) {
+    localStorage.setItem('auto-launch', 'false');
   }
 
   const handleBatteryAlertsChange = (e) => {
-    const value = e.target.value === "true";
+    const value = e.target.value === 'true';
     setBatteryAlertsEnabled(value);
-    localStorage.setItem("battery-alerts", value ? "true" : "false");
+    localStorage.setItem('battery-alerts', value ? 'true' : 'false');
   };
 
   const handleIslandBorderChange = (e) => {
-    const value = e.target.value === "true";
+    const value = e.target.value === 'true';
     setIslandBorderEnabled(value);
-    localStorage.setItem("island-border", value ? "true" : "false");
+    localStorage.setItem('island-border', value ? 'true' : 'false');
   };
 
   const handleStandbyChange = (e) => {
-    const value = e.target.value === "true";
+    const value = e.target.value === 'true';
     setStandbyEnabled(value);
-    localStorage.setItem("standby-mode", value ? "true" : "false");
+    localStorage.setItem('standby-mode', value ? 'true' : 'false');
   };
 
   const handleLargeStandbyChange = (e) => {
-    const value = e.target.value === "true";
+    const value = e.target.value === 'true';
     setLargeStandbyEnabled(value);
-    localStorage.setItem("large-standby-mode", value ? "true" : "false");
+    localStorage.setItem('large-standby-mode', value ? 'true' : 'false');
   };
 
   const handleHourFormatChange = (e) => {
     const value = e.target.value;
-    setHourFormat(value === "12-hr");
-    localStorage.setItem("hour-format", value);
+    setHourFormat(value === '12-hr');
+    localStorage.setItem('hour-format', value);
   };
 
   const handleAutoLaunchChange = (e) => {
-    const value = e.target.value === "true";
+    const value = e.target.value === 'true';
     setAutoLaunchEnabled(value);
-    localStorage.setItem("auto-launch", value ? "true" : "false");
+    localStorage.setItem('auto-launch', value ? 'true' : 'false');
     window.electronAPI?.setAutoLaunch(value);
   };
 
   const handlehideNotActiveIslandChange = (e) => {
-    const value = e.target.value === "true";
+    const value = e.target.value === 'true';
     sethideNotActiveIslandEnabled(value);
-    localStorage.setItem("hide-island-notactive", value ? "true" : "false");
+    localStorage.setItem('hide-island-notactive', value ? 'true' : 'false');
   };
 
   const handleShowInfoWhenIdleChange = (e) => {
-    const value = e.target.value === "true";
+    const value = e.target.value === 'true';
     setShowInfoWhenIdleEnabled(value);
-    localStorage.setItem("show-info-when-idle", value ? "true" : "false");
+    localStorage.setItem('show-info-when-idle', value ? 'true' : 'false');
   };
 
   const handleWeatherUnitChange = (e) => {
-    const value = e.target.value === "c" ? "c" : "f";
+    const value = e.target.value === 'c' ? 'c' : 'f';
     setweatherUnit(value);
-    localStorage.setItem("weather-unit", value);
+    localStorage.setItem('weather-unit', value);
   };
 
   const handleBgColorChange = (e) => {
     const value = e.target.value;
     setBgColor(value);
-    localStorage.setItem("bg-color", value);
+    localStorage.setItem('bg-color', value);
   };
 
   const handleTextColorChange = (e) => {
     const value = e.target.value;
     setTextColor(value);
-    localStorage.setItem("text-color", value);
+    localStorage.setItem('text-color', value);
   };
 
   const handleDisplayChange = (e) => {
     const displayId = e.target.value;
     setCurrentDisplayId(displayId);
-    localStorage.setItem("display-id", displayId);
+    localStorage.setItem('display-id', displayId);
     if (window.electronAPI?.setDisplay) {
       window.electronAPI.setDisplay(displayId);
     }
@@ -580,8 +686,8 @@ export default function Island() {
   };
 
   const savePosition = () => {
-    localStorage.setItem("island-x", islandX);
-    localStorage.setItem("island-y", islandY);
+    localStorage.setItem('island-x', islandX);
+    localStorage.setItem('island-y', islandY);
   };
 
   useEffect(() => {
@@ -593,23 +699,26 @@ export default function Island() {
   const handleBgImageChange = (e) => {
     const value = e.target.value;
     setBgImage(value);
-    localStorage.setItem("bg-image", value);
+    localStorage.setItem('bg-image', value);
   };
 
   const handleQaChange = (index, value) => {
     const updatedApps = [...quickApps];
     updatedApps[index] = { name: value, launch: value };
     setQuickApps(updatedApps);
-    localStorage.setItem("quick-apps", JSON.stringify(updatedApps));
+    localStorage.setItem('quick-apps', JSON.stringify(updatedApps));
   };
 
   const addQuickApp = () => {
     if (newQuickApp.trim()) {
-      const entry = selectedAppRef.current || { name: newQuickApp.trim(), launch: newQuickApp.trim() };
+      const entry = selectedAppRef.current || {
+        name: newQuickApp.trim(),
+        launch: newQuickApp.trim(),
+      };
       const updatedApps = [...quickApps, entry];
       setQuickApps(updatedApps);
-      localStorage.setItem("quick-apps", JSON.stringify(updatedApps));
-      setNewQuickApp("");
+      localStorage.setItem('quick-apps', JSON.stringify(updatedApps));
+      setNewQuickApp('');
       selectedAppRef.current = null;
       setShowSuggestions(false);
     }
@@ -618,50 +727,54 @@ export default function Island() {
   const removeQuickApp = (index) => {
     const updatedApps = quickApps.filter((_, i) => i !== index);
     setQuickApps(updatedApps);
-    localStorage.setItem("quick-apps", JSON.stringify(updatedApps));
+    localStorage.setItem('quick-apps', JSON.stringify(updatedApps));
   };
 
-  // AI feature 
+  // AI feature
   async function askAI() {
     try {
-      const apiKey = (localStorage.getItem("api-key") || "").trim();
-      const provider = localStorage.getItem("ai-provider") || "groq";
-      const model = localStorage.getItem("ai-model") || (provider === "groq" ? "llama-3.3-70b-versatile" : "meta-llama/llama-3.3-70b-instruct");
+      const apiKey = (localStorage.getItem('api-key') || '').trim();
+      const provider = localStorage.getItem('ai-provider') || 'groq';
+      const model =
+        localStorage.getItem('ai-model') ||
+        (provider === 'groq' ? 'llama-3.3-70b-versatile' : 'meta-llama/llama-3.3-70b-instruct');
 
       if (!apiKey) {
-        setAIAnswer("Enter your API key in settings");
+        setAIAnswer('Enter your API key in settings');
         return;
       }
 
-      setAIAnswer("");
+      setAIAnswer('');
 
-      const baseUrl = provider === "groq" ? "https://api.groq.com/openai/v1" : "https://openrouter.ai/api/v1";
+      const baseUrl =
+        provider === 'groq' ? 'https://api.groq.com/openai/v1' : 'https://openrouter.ai/api/v1';
 
       const response = await fetch(`${baseUrl}/chat/completions`, {
-        method: "POST",
+        method: 'POST',
         headers: {
-          "Content-Type": "application/json",
-          "Authorization": `Bearer ${apiKey}`,
-          ...(provider === "openrouter" && {
-            "HTTP-Referer": "https://github.com/TopMyster/Ripple",
-            "X-Title": "Ripple"
-          })
+          'Content-Type': 'application/json',
+          Authorization: `Bearer ${apiKey}`,
+          ...(provider === 'openrouter' && {
+            'HTTP-Referer': 'https://github.com/TopMyster/Ripple',
+            'X-Title': 'Ripple',
+          }),
         },
         body: JSON.stringify({
           model: model,
           messages: [
             {
-              role: "system",
-              content: "You are Ripple, a sleek and helpful desktop AI assistant. Your goal is to provide accurate, concise, and beautifully formatted answers that fit well in a compact desktop widget. \n- For general inquiries: Keep it to 2-4 sentences.\n- For complex or code-related questions: Provide detailed answers with Markdown code blocks, but stay as efficient as possible.\n- Use Markdown for bolding, lists, and headers to make information easy to scan."
+              role: 'system',
+              content:
+                'You are Ripple, a sleek and helpful desktop AI assistant. Your goal is to provide accurate, concise, and beautifully formatted answers that fit well in a compact desktop widget. \n- For general inquiries: Keep it to 2-4 sentences.\n- For complex or code-related questions: Provide detailed answers with Markdown code blocks, but stay as efficient as possible.\n- Use Markdown for bolding, lists, and headers to make information easy to scan.',
             },
             {
-              role: "user",
-              content: userText
-            }
+              role: 'user',
+              content: userText,
+            },
           ],
           temperature: 1,
-          stream: true
-        })
+          stream: true,
+        }),
       });
 
       if (!response.ok) {
@@ -670,38 +783,38 @@ export default function Island() {
 
       const reader = response.body.getReader();
       const decoder = new TextDecoder();
-      let fullText = "";
+      let fullText = '';
 
       while (true) {
         const { done, value } = await reader.read();
         if (done) break;
 
         const chunk = decoder.decode(value);
-        const lines = chunk.split("\n");
+        const lines = chunk.split('\n');
 
         for (const line of lines) {
-          if (line.startsWith("data: ")) {
-            if (line.includes("[DONE]")) break;
+          if (line.startsWith('data: ')) {
+            if (line.includes('[DONE]')) break;
             try {
               const data = JSON.parse(line.slice(6));
-              const delta = data.choices[0]?.delta?.content || "";
+              const delta = data.choices[0]?.delta?.content || '';
               if (delta) {
                 fullText += delta;
                 setAIAnswer((prev) => (prev ? prev + delta : delta));
               }
             } catch (e) {
-              console.error("Error parsing AI response:", e);
+              console.error('Error parsing AI response:', e);
             }
           }
         }
       }
 
       if (!fullText) {
-        setAIAnswer("No response received. Check your settings.");
+        setAIAnswer('No response received. Check your settings.');
       }
     } catch (err) {
       setAIAnswer(`Error: ${err.message}`);
-      console.error("askAI error:", err);
+      console.error('askAI error:', err);
     }
   }
 
@@ -709,7 +822,7 @@ export default function Island() {
   useEffect(() => {
     let battery, handler;
     (async () => {
-      if (!("getBattery" in navigator)) return setPercent("Battery not supported");
+      if (!('getBattery' in navigator)) return setPercent('Battery not supported');
       try {
         battery = await navigator.getBattery();
         const update = () => {
@@ -718,17 +831,17 @@ export default function Island() {
         };
         handler = update;
         update();
-        battery.addEventListener("chargingchange", handler);
-        battery.addEventListener("levelchange", handler);
+        battery.addEventListener('chargingchange', handler);
+        battery.addEventListener('levelchange', handler);
       } catch {
-        setPercent("Battery unavailable");
+        setPercent('Battery unavailable');
       }
     })();
 
     return () => {
       if (battery && handler) {
-        battery.removeEventListener("levelchange", handler);
-        battery.removeEventListener("chargingchange", handler);
+        battery.removeEventListener('levelchange', handler);
+        battery.removeEventListener('chargingchange', handler);
       }
     };
   }, []);
@@ -737,12 +850,12 @@ export default function Island() {
   useEffect(() => {
     if (
       (percent === 20 || percent === 15 || percent === 10 || percent === 5 || percent === 3) &&
-      localStorage.getItem("battery-alerts") === "true"
+      localStorage.getItem('battery-alerts') === 'true'
     ) {
-      setMode("quick");
+      setMode('quick');
       setAlert(true);
       const timerId = setTimeout(() => {
-        setMode("still");
+        setMode('still');
         setAlert(null);
       }, 3000);
       return () => {
@@ -752,14 +865,11 @@ export default function Island() {
   }, [percent]);
 
   useEffect(() => {
-    if (
-      (charging === true) &&
-      localStorage.getItem("battery-alerts") === "true"
-    ) {
-      setMode("quick");
+    if (charging === true && localStorage.getItem('battery-alerts') === 'true') {
+      setMode('quick');
       setChargingAlert(true);
       const timerId = setTimeout(() => {
-        setMode("still");
+        setMode('still');
         setChargingAlert(false);
       }, 1500);
       return () => {
@@ -768,11 +878,10 @@ export default function Island() {
     }
   }, [charging]);
 
-
   // Get time
   useEffect((date = new Date()) => {
     let hours = date.getHours();
-    const minutes = String(date.getMinutes()).padStart(2, "0");
+    const minutes = String(date.getMinutes()).padStart(2, '0');
     if (hourFormat) {
       hours = hours % 12;
       hours = hours ? hours : 12;
@@ -782,14 +891,14 @@ export default function Island() {
     }
   });
 
-  //Standby Mode 
+  //Standby Mode
   useEffect(() => {
     if (standbyBorderEnabled && mode === 'still') {
-      setMode('quick')
+      setMode('quick');
     } else if (largeStandbyEnabled && mode === 'still') {
-      setMode('large')
+      setMode('large');
     }
-  }, [mode, standbyBorderEnabled, largeStandbyEnabled])
+  }, [mode, standbyBorderEnabled, largeStandbyEnabled]);
 
   // Get Weather
   useEffect(() => {
@@ -797,18 +906,18 @@ export default function Island() {
       try {
         const response = await fetch(
           `https://api.weatherapi.com/v1/current.json?key=0b18c67c443543e0a6045401250911&q=${localStorage.getItem(
-            "location"
-          )}&aqi=no`
+            'location',
+          )}&aqi=no`,
         );
         const data = await response.json();
-        const unit = localStorage.getItem("weather-unit");
-        const key = unit === "f" ? "temp_f" : "temp_c";
+        const unit = localStorage.getItem('weather-unit');
+        const key = unit === 'f' ? 'temp_f' : 'temp_c';
         setWeather({
           temp: Math.round(data?.current?.[key]),
-          status: data?.current?.condition?.text || ""
+          status: data?.current?.condition?.text || '',
         });
       } catch (e) {
-        console.error("Weather fetch failed", e);
+        console.error('Weather fetch failed', e);
       }
     };
     getWeather();
@@ -818,28 +927,28 @@ export default function Island() {
 
   // Set theme
   useEffect(() => {
-    if (theme === "sleek-black") {
-      localStorage.setItem("bg-color", "rgba(0, 0, 0, 0.64)");
-      localStorage.setItem("text-color", "rgba(255, 255, 255)");
-      setBgColor("rgba(0, 0, 0, 0.64)");
-      setTextColor("rgba(255, 255, 255)");
-    } else if (theme === "win95") {
-      localStorage.setItem("bg-color", "rgba(195, 195, 195)");
-      localStorage.setItem("text-color", "rgba(0, 0, 0)");
-      setBgColor("rgba(195, 195, 195)");
-      setTextColor("rgba(0, 0, 0)");
-    } else if (theme === "invisible") {
-      localStorage.setItem("bg-image", "none");
-      setBgImage("none");
-      localStorage.setItem("bg-color", "rgba(255, 255, 255, 0)");
-      localStorage.setItem("text-color", "rgba(0, 0, 0, 0)");
-      setBgColor("rgba(255, 255, 255, 0)");
-      setTextColor("rgba(0, 0, 0, 0)");
-    } else if (theme === "none") {
-      const defaultBg = "#000000";
-      const defaultText = "#FFFFFF";
-      localStorage.setItem("bg-color", defaultBg);
-      localStorage.setItem("text-color", defaultText);
+    if (theme === 'sleek-black') {
+      localStorage.setItem('bg-color', 'rgba(0, 0, 0, 0.64)');
+      localStorage.setItem('text-color', 'rgba(255, 255, 255)');
+      setBgColor('rgba(0, 0, 0, 0.64)');
+      setTextColor('rgba(255, 255, 255)');
+    } else if (theme === 'win95') {
+      localStorage.setItem('bg-color', 'rgba(195, 195, 195)');
+      localStorage.setItem('text-color', 'rgba(0, 0, 0)');
+      setBgColor('rgba(195, 195, 195)');
+      setTextColor('rgba(0, 0, 0)');
+    } else if (theme === 'invisible') {
+      localStorage.setItem('bg-image', 'none');
+      setBgImage('none');
+      localStorage.setItem('bg-color', 'rgba(255, 255, 255, 0)');
+      localStorage.setItem('text-color', 'rgba(0, 0, 0, 0)');
+      setBgColor('rgba(255, 255, 255, 0)');
+      setTextColor('rgba(0, 0, 0, 0)');
+    } else if (theme === 'none') {
+      const defaultBg = '#000000';
+      const defaultText = '#FFFFFF';
+      localStorage.setItem('bg-color', defaultBg);
+      localStorage.setItem('text-color', defaultText);
       setBgColor(defaultBg);
       setTextColor(defaultText);
     }
@@ -849,17 +958,21 @@ export default function Island() {
   function searchBrowser() {
     const trimmedSearch = browserSearch.trim();
     if (!trimmedSearch) return;
-    if (trimmedSearch.includes(".")) {
+    if (trimmedSearch.includes('.')) {
       const hasProtocol = /^https?:\/\//i.test(trimmedSearch);
       const urlToOpen = hasProtocol ? trimmedSearch : `https://${trimmedSearch}`;
-      window.electronAPI?.openExternal ? window.electronAPI.openExternal(urlToOpen) : window.open(urlToOpen, "_blank");
+      window.electronAPI?.openExternal
+        ? window.electronAPI.openExternal(urlToOpen)
+        : window.open(urlToOpen, '_blank');
     } else {
       const encodedQuery = encodeURIComponent(trimmedSearch);
-      window.electronAPI?.openExternal ? window.electronAPI.openExternal(`https://www.google.com/search?q=${encodedQuery}`) : window.open(`https://www.google.com/search?q=${encodedQuery}`, "_blank");
+      window.electronAPI?.openExternal
+        ? window.electronAPI.openExternal(`https://www.google.com/search?q=${encodedQuery}`)
+        : window.open(`https://www.google.com/search?q=${encodedQuery}`, '_blank');
     }
   }
 
-  // Clipboard 
+  // Clipboard
   async function getClipboard() {
     try {
       const text = await navigator.clipboard.readText();
@@ -870,15 +983,13 @@ export default function Island() {
         return [text, ...prevClipboard];
       });
     } catch (error) {
-      console.log(
-        `Error reading clipboard: ${error.toString()}`,
-      );
+      console.log(`Error reading clipboard: ${error.toString()}`);
     }
   }
 
   useEffect(() => {
     getClipboard();
-  })
+  });
 
   // Get Bluetooth
   useEffect(() => {
@@ -900,10 +1011,10 @@ export default function Island() {
 
   useEffect(() => {
     if (bluetooth === true) {
-      setMode("quick");
+      setMode('quick');
       setBluetoothAlert(true);
       const timerId = setTimeout(() => {
-        setMode("still");
+        setMode('still');
         setBluetoothAlert(false);
       }, 3000);
       return () => {
@@ -954,15 +1065,15 @@ export default function Island() {
       const nextAlert = captureAlertQueue.current.shift();
       if (!nextAlert) return;
 
-      setMode("quick");
-      if (nextAlert === "camera") {
+      setMode('quick');
+      if (nextAlert === 'camera') {
         setCameraAlert(true);
       } else {
         setMicrophoneAlert(true);
       }
 
       captureAlertTimer.current = setTimeout(() => {
-        if (nextAlert === "camera") {
+        if (nextAlert === 'camera') {
           setCameraAlert(false);
         } else {
           setMicrophoneAlert(false);
@@ -971,13 +1082,13 @@ export default function Island() {
         if (captureAlertQueue.current.length > 0) {
           processCaptureQueue();
         } else {
-          setMode("still");
+          setMode('still');
         }
       }, 3000);
     };
 
     if (cameraInUse && !captureAlertDisplayed.current.camera) {
-      captureAlertQueue.current.push("camera");
+      captureAlertQueue.current.push('camera');
       captureAlertDisplayed.current.camera = true;
     }
     if (!cameraInUse) {
@@ -985,7 +1096,7 @@ export default function Island() {
     }
 
     if (microphoneInUse && !captureAlertDisplayed.current.microphone) {
-      captureAlertQueue.current.push("microphone");
+      captureAlertQueue.current.push('microphone');
       captureAlertDisplayed.current.microphone = true;
     }
     if (!microphoneInUse) {
@@ -993,8 +1104,8 @@ export default function Island() {
     }
 
     captureAlertQueue.current = captureAlertQueue.current.filter((item) => {
-      if (item === "camera" && !cameraInUse) return false;
-      if (item === "microphone" && !microphoneInUse) return false;
+      if (item === 'camera' && !cameraInUse) return false;
+      if (item === 'microphone' && !microphoneInUse) return false;
       return true;
     });
 
@@ -1029,7 +1140,7 @@ export default function Island() {
     return () => clearInterval(interval);
   }, []);
 
-  useEffect(() => localStorage.setItem("tasks", JSON.stringify(tasks)), [tasks]);
+  useEffect(() => localStorage.setItem('tasks', JSON.stringify(tasks)), [tasks]);
 
   function copyToClipboard(text) {
     if (navigator.clipboard && typeof navigator.clipboard.writeText === 'function') {
@@ -1040,7 +1151,7 @@ export default function Island() {
   function addTask() {
     if (taskText.trim()) {
       setTasks((prev) => [...prev, taskText.trim()]);
-      setTaskText("");
+      setTaskText('');
     }
   }
 
@@ -1052,47 +1163,50 @@ export default function Island() {
     if (!workflow || !workflow.urls) return;
     for (let i = 0; i < workflow.urls.length; i++) {
       openApp(workflow.urls[i]);
-      await new Promise(r => setTimeout(r, 400));
+      await new Promise((r) => setTimeout(r, 400));
     }
   }
 
   function addWorkflow() {
     if (workflowName.trim() && workflowUrls.trim()) {
-      const urls = workflowUrls.split(",").map(url => url.trim()).filter(url => url);
+      const urls = workflowUrls
+        .split(',')
+        .map((url) => url.trim())
+        .filter((url) => url);
       const newWorkflow = { name: workflowName.trim(), urls: urls };
       const updatedWorkflows = [...workflows, newWorkflow];
       setWorkflows(updatedWorkflows);
-      localStorage.setItem("workflows", JSON.stringify(updatedWorkflows));
-      setWorkflowName("");
-      setWorkflowUrls("");
+      localStorage.setItem('workflows', JSON.stringify(updatedWorkflows));
+      setWorkflowName('');
+      setWorkflowUrls('');
     }
   }
 
   function removeWorkflow(index) {
     const updatedWorkflows = workflows.filter((_, i) => i !== index);
     setWorkflows(updatedWorkflows);
-    localStorage.setItem("workflows", JSON.stringify(updatedWorkflows));
+    localStorage.setItem('workflows', JSON.stringify(updatedWorkflows));
   }
 
   // Keyboard Shortcuts and Navigation
   useEffect(() => {
     const handleKeyDown = (e) => {
-      if (e.key === "ArrowRight") {
+      if (e.key === 'ArrowRight') {
         moveTab(1);
-      } else if (e.key === "ArrowLeft") {
+      } else if (e.key === 'ArrowLeft') {
         moveTab(-1);
-      } else if (e.ctrlKey && e.key >= "1" && e.key <= "8") {
+      } else if (e.ctrlKey && e.key >= '1' && e.key <= '8') {
         const idx = parseInt(e.key) - 1;
         if (visibleTabs[idx] !== undefined) {
           const targetId = visibleTabs[idx];
-          setMode("large");
+          setMode('large');
           setTabState([targetId, targetId > currentTabId ? 1 : -1]);
         }
       }
     };
-    document.addEventListener("keydown", handleKeyDown);
+    document.addEventListener('keydown', handleKeyDown);
     return () => {
-      document.removeEventListener("keydown", handleKeyDown);
+      document.removeEventListener('keydown', handleKeyDown);
     };
   }, []);
 
@@ -1105,33 +1219,33 @@ export default function Island() {
       setTimeout(() => {
         if (!isHovered) {
           const activeTag = document.activeElement?.tagName;
-          if (activeTag !== "INPUT" && activeTag !== "TEXTAREA" && activeTag !== "SELECT") {
+          if (activeTag !== 'INPUT' && activeTag !== 'TEXTAREA' && activeTag !== 'SELECT') {
             if (standbyBorderEnabled) {
-              setMode("quick");
+              setMode('quick');
             } else if (largeStandbyEnabled) {
-              setMode("large");
+              setMode('large');
             } else {
-              setMode("still");
+              setMode('still');
             }
           }
         }
       }, 100);
     };
 
-    window.addEventListener("focusout", handleFocusOut);
-    return () => window.removeEventListener("focusout", handleFocusOut);
+    window.addEventListener('focusout', handleFocusOut);
+    return () => window.removeEventListener('focusout', handleFocusOut);
   }, [isHovered, standbyBorderEnabled, largeStandbyEnabled]);
 
   useEffect(() => {
     if (!isDragging && !isHovered) {
       const activeTag = document.activeElement?.tagName;
-      if (activeTag !== "INPUT" && activeTag !== "TEXTAREA") {
+      if (activeTag !== 'INPUT' && activeTag !== 'TEXTAREA') {
         if (standbyBorderEnabled) {
-          setMode("quick");
+          setMode('quick');
         } else if (largeStandbyEnabled) {
-          setMode("large");
+          setMode('large');
         } else {
-          setMode("still");
+          setMode('still');
         }
       }
     }
@@ -1142,22 +1256,29 @@ export default function Island() {
     suppressClick.current = false;
   };
 
-  const isFree = positionMode === "free";
+  const isFree = positionMode === 'free';
   const getSideStyles = () => {
     switch (positionMode) {
-      case 'top-left': return { left: '15px', top: '15px', x: '0%' };
-      case 'top-right': return { left: 'calc(100% - 15px)', top: '15px', x: '-100%' };
-      case 'bottom-left': return { left: '15px', top: 'auto', bottom: '45px', x: '0%' };
-      case 'bottom-right': return { left: 'calc(100% - 15px)', top: 'auto', bottom: '45px', x: '-100%' };
-      case 'top-center': return { left: '49.8%', top: '20px', x: '-50%' };
-      case 'bottom-center': return { left: '49.8%', top: 'auto', bottom: '45px', x: '-50%' };
-      default: return { left: `${islandX}%`, top: `${islandY}px`, x: '-50%' };
+      case 'top-left':
+        return { left: '15px', top: '15px', x: '0%' };
+      case 'top-right':
+        return { left: 'calc(100% - 15px)', top: '15px', x: '-100%' };
+      case 'bottom-left':
+        return { left: '15px', top: 'auto', bottom: '45px', x: '0%' };
+      case 'bottom-right':
+        return { left: 'calc(100% - 15px)', top: 'auto', bottom: '45px', x: '-100%' };
+      case 'top-center':
+        return { left: '49.8%', top: '20px', x: '-50%' };
+      case 'bottom-center':
+        return { left: '49.8%', top: 'auto', bottom: '45px', x: '-50%' };
+      default:
+        return { left: `${islandX}%`, top: `${islandY}px`, x: '-50%' };
     }
   };
   const sideStyles = getSideStyles();
 
   const syncLinuxWindowShape = () => {
-    if (window.electronAPI?.platform !== "linux") return;
+    if (window.electronAPI?.platform !== 'linux') return;
 
     const element = islandElementRef.current;
     if (!element) return;
@@ -1178,8 +1299,14 @@ export default function Island() {
 
     if (rect.width <= 0 || rect.height <= 0) return;
     const previous = lastWindowShapeRef.current;
-    if (previous && previous.x === rect.x && previous.y === rect.y &&
-        previous.width === rect.width && previous.height === rect.height) return;
+    if (
+      previous &&
+      previous.x === rect.x &&
+      previous.y === rect.y &&
+      previous.width === rect.width &&
+      previous.height === rect.height
+    )
+      return;
 
     lastWindowShapeRef.current = rect;
     window.electronAPI.setWindowInputShape(rect);
@@ -1187,8 +1314,8 @@ export default function Island() {
 
   useEffect(() => {
     syncLinuxWindowShape();
-    window.addEventListener("resize", syncLinuxWindowShape);
-    return () => window.removeEventListener("resize", syncLinuxWindowShape);
+    window.addEventListener('resize', syncLinuxWindowShape);
+    return () => window.removeEventListener('resize', syncLinuxWindowShape);
   }, []);
 
   return (
@@ -1197,10 +1324,10 @@ export default function Island() {
       ref={islandElementRef}
       onMouseEnter={() => {
         setIsHovered(true);
-        if (mode === "still" && showInfoWhenIdleEnabled && !isPlaying) {
-          setMode("large");
-        } else if (mode !== "large") {
-          setMode("quick");
+        if (mode === 'still' && showInfoWhenIdleEnabled && !isPlaying) {
+          setMode('large');
+        } else if (mode !== 'large') {
+          setMode('quick');
         }
         if (window.electronAPI) {
           window.electronAPI.setIgnoreMouseEvents(false, false);
@@ -1215,14 +1342,14 @@ export default function Island() {
         }
 
         const activeTag = document.activeElement?.tagName;
-        if (activeTag === "INPUT" || activeTag === "TEXTAREA") return;
+        if (activeTag === 'INPUT' || activeTag === 'TEXTAREA') return;
 
         if (standbyBorderEnabled) {
-          setMode("quick");
+          setMode('quick');
         } else if (largeStandbyEnabled) {
-          setMode("large");
+          setMode('large');
         } else {
-          setMode("still");
+          setMode('still');
         }
       }}
       onClick={(e) => {
@@ -1233,11 +1360,11 @@ export default function Island() {
         if (isInteractiveTarget(e.target)) return;
 
         const activeTag = document.activeElement?.tagName;
-        if (activeTag === "INPUT" || activeTag === "TEXTAREA" || activeTag === "SELECT") {
+        if (activeTag === 'INPUT' || activeTag === 'TEXTAREA' || activeTag === 'SELECT') {
           document.activeElement.blur();
         }
 
-        setMode(prev => prev === "large" ? "quick" : "large");
+        setMode((prev) => (prev === 'large' ? 'quick' : 'large'));
         if (window.electronAPI) {
           window.electronAPI.setIgnoreMouseEvents(false, false);
         }
@@ -1258,59 +1385,97 @@ export default function Island() {
         left: sideStyles.left,
         top: sideStyles.top || 'auto',
         bottom: sideStyles.bottom || 'auto',
-        backgroundColor: hideNotActiveIslandEnabled && mode === 'still' ? "rgba(0,0,0,0)" : bgColor,
-        color: hideNotActiveIslandEnabled && mode === 'still' ? "rgba(0,0,0,0)" : textColor,
+        backgroundColor: hideNotActiveIslandEnabled && mode === 'still' ? 'rgba(0,0,0,0)' : bgColor,
+        color: hideNotActiveIslandEnabled && mode === 'still' ? 'rgba(0,0,0,0)' : textColor,
         scale: isHovered ? 1.05 : 1,
         x: sideStyles.x,
         borderRadius:
-          mode === "large" && theme === "win95"
+          mode === 'large' && theme === 'win95'
             ? 0
-            : mode === "large"
-              ? (currentTab === 0 ? 28 : 30)
-              : theme === "win95"
+            : mode === 'large'
+              ? currentTab === 0
+                ? 28
+                : 30
+              : theme === 'win95'
                 ? 0
                 : 14,
       }}
       onUpdate={syncLinuxWindowShape}
       onAnimationComplete={syncLinuxWindowShape}
       transition={{
-        type: "spring",
+        type: 'spring',
         stiffness: 400,
         damping: 40,
         mass: 2.5,
-        x: { duration: .15 }
+        x: { duration: 0.15 },
       }}
       style={{
-        display: "flex",
-        alignItems: "center",
+        display: 'flex',
+        alignItems: 'center',
         backgroundImage: `url('${bgImage}')`,
-        backgroundRepeat: "no-repeat",
-        backgroundPosition: "center",
-        backgroundSize: "cover",
-        justifyContent: (mode === "large" && currentTab === 3) ? "flex-start" : "center",
-        overflow: "hidden",
-        fontFamily: theme === "win95" ? "w95" : "OpenRunde",
-        border: theme === "win95" ? "2px solid rgb(254, 254, 254)" : islandBorderEnabled ? cameraInUse ? `1px solid rgba(255, 215, 0, 0.8)` : microphoneInUse ? `1px solid rgba(255, 154, 0, 0.8)` : (charging || chargingAlert) ? `1px solid rgba(111, 255, 123, 0.5)` : (percent <= 20 || alert) ? `1px solid rgba(255, 63, 63, 0.5)` : bluetoothAlert ? `1px solid rgba(0, 150, 255, 0.34)` : hideNotActiveIslandEnabled ? "none" : `1px solid color-mix(in srgb, ${textColor}, transparent 70%)` : "none",
-        borderColor:
-          theme === "win95"
-            ? "#FFFFFF #808080 #808080 #FFFFFF"
-            : "none",
+        backgroundRepeat: 'no-repeat',
+        backgroundPosition: 'center',
+        backgroundSize: 'cover',
+        justifyContent: mode === 'large' && currentTab === 3 ? 'flex-start' : 'center',
+        overflow: 'hidden',
+        fontFamily: theme === 'win95' ? 'w95' : 'OpenRunde',
+        border:
+          theme === 'win95'
+            ? '2px solid rgb(254, 254, 254)'
+            : islandBorderEnabled
+              ? cameraInUse
+                ? `1px solid rgba(255, 215, 0, 0.8)`
+                : microphoneInUse
+                  ? `1px solid rgba(255, 154, 0, 0.8)`
+                  : charging || chargingAlert
+                    ? `1px solid rgba(111, 255, 123, 0.5)`
+                    : percent <= 20 || alert
+                      ? `1px solid rgba(255, 63, 63, 0.5)`
+                      : bluetoothAlert
+                        ? `1px solid rgba(0, 150, 255, 0.34)`
+                        : hideNotActiveIslandEnabled
+                          ? 'none'
+                          : `1px solid color-mix(in srgb, ${textColor}, transparent 70%)`
+              : 'none',
+        borderColor: theme === 'win95' ? '#FFFFFF #808080 #808080 #FFFFFF' : 'none',
 
-        boxShadow: hideNotActiveIslandEnabled && mode === 'still' ? "none" : isHovered ? '0 0 32px rgba(0, 0, 0, 0.25)' : '0 0 24px rgba(0, 0, 0, 0.12)',
+        boxShadow:
+          hideNotActiveIslandEnabled && mode === 'still'
+            ? 'none'
+            : isHovered
+              ? '0 0 32px rgba(0, 0, 0, 0.25)'
+              : '0 0 24px rgba(0, 0, 0, 0.12)',
         '--island-text-color': textColor,
         '--island-bg-color': bgColor,
         position: 'fixed',
         margin: 0,
         transition: 'box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
-        pointerEvents: 'auto'
+        pointerEvents: 'auto',
       }}
     >
       {/*Quickview*/}
-      {mode !== "large" && (mode === "quick" || (mode === "still" && showInfoWhenIdleEnabled) || (mode === "still" && (isPlaying || showPausedQuickView)) || alert || chargingAlert || bluetoothAlert || cameraAlert || microphoneAlert) ? (
+      {mode !== 'large' &&
+      (mode === 'quick' ||
+        (mode === 'still' && showInfoWhenIdleEnabled) ||
+        (mode === 'still' && (isPlaying || showPausedQuickView)) ||
+        alert ||
+        chargingAlert ||
+        bluetoothAlert ||
+        cameraAlert ||
+        microphoneAlert) ? (
         <AnimatePresence mode="wait">
-          {(isPlaying || showPausedQuickView) && !alert && !chargingAlert && !bluetoothAlert && !cameraAlert && !microphoneAlert ? (
+          {(isPlaying || showPausedQuickView) &&
+          !alert &&
+          !chargingAlert &&
+          !bluetoothAlert &&
+          !cameraAlert &&
+          !microphoneAlert ? (
             <motion.div
-              key={spotifyTrack?.name ? `playing-${spotifyTrack.name}-${spotifyTrack.artist}` : "playing"}
+              key={
+                spotifyTrack?.name
+                  ? `playing-${spotifyTrack.name}-${spotifyTrack.artist}`
+                  : 'playing'
+              }
               initial={{ opacity: 0, filter: 'blur(4px)', scale: 0.98 }}
               animate={{ opacity: 1, filter: 'blur(0px)', scale: 1 }}
               exit={{ opacity: 0, filter: 'blur(4px)', scale: 0.98 }}
@@ -1322,14 +1487,32 @@ export default function Island() {
                 width: '100%',
                 minWidth: 0,
                 boxSizing: 'border-box',
-                opacity: showPausedQuickView ? 0.5 : (hideNotActiveIslandEnabled ? .6 : 1),
+                opacity: showPausedQuickView ? 0.5 : hideNotActiveIslandEnabled ? 0.6 : 1,
                 filter: showPausedQuickView ? 'grayscale(1)' : 'none',
-                padding: '0 9px'
+                padding: '0 9px',
               }}
             >
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, overflow: 'visible', flex: 1, minWidth: 0, userSelect: 'none', perspective: '1200px' }}>
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  gap: 6,
+                  overflow: 'visible',
+                  flex: 1,
+                  minWidth: 0,
+                  userSelect: 'none',
+                  perspective: '1200px',
+                }}
+              >
                 {spotifyTrack?.artwork_url ? (
-                  <div style={{ perspective: '1200px', display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
+                  <div
+                    style={{
+                      perspective: '1200px',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                    }}
+                  >
                     <img
                       src={spotifyTrack.artwork_url}
                       onClick={() => openMusicPlayer(spotifyTrack.source)}
@@ -1344,44 +1527,73 @@ export default function Island() {
                         const centerY = rect.top + rect.height / 2;
                         const deltaX = e.clientX - centerX;
                         const deltaY = e.clientY - centerY;
-                        const maxDistance = Math.sqrt(rect.width * rect.width + rect.height * rect.height) / 2;
+                        const maxDistance =
+                          Math.sqrt(rect.width * rect.width + rect.height * rect.height) / 2;
                         const angleX = (deltaY / maxDistance) * 35;
                         const angleY = (deltaX / maxDistance) * -35;
                         setAlbumRotation({ x: angleX, y: angleY });
                       }}
                       style={{
-                        width: 24, height: 24, borderRadius: 4, flexShrink: 0, cursor: 'pointer',
-                        transition: 'transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.3s ease-out',
+                        width: 24,
+                        height: 24,
+                        borderRadius: 4,
+                        flexShrink: 0,
+                        cursor: 'pointer',
+                        transition:
+                          'transform 0.4s cubic-bezier(0.34, 1.56, 0.64, 1), filter 0.3s ease-out',
                         transform: `rotateX(${albumRotation.x}deg) rotateY(${albumRotation.y}deg) scale(${albumHovered ? 1.25 : 1}) translateZ(0)`,
                         transformStyle: 'preserve-3d',
-                        filter: albumHovered ? 'drop-shadow(0 10px 20px rgba(0,0,0,0.4))' : 'drop-shadow(0 2px 4px rgba(0,0,0,0.1))',
-                        willChange: 'transform'
+                        filter: albumHovered
+                          ? 'drop-shadow(0 10px 20px rgba(0,0,0,0.4))'
+                          : 'drop-shadow(0 2px 4px rgba(0,0,0,0.1))',
+                        willChange: 'transform',
                       }}
                     />
                   </div>
                 ) : (
-                  <div style={{ width: 24, height: 24, borderRadius: 4, backgroundColor: 'rgba(255,255,255,0.1)', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 12, flexShrink: 0 }}>
+                  <div
+                    style={{
+                      width: 24,
+                      height: 24,
+                      borderRadius: 4,
+                      backgroundColor: 'rgba(255,255,255,0.1)',
+                      display: 'flex',
+                      alignItems: 'center',
+                      justifyContent: 'center',
+                      fontSize: 12,
+                      flexShrink: 0,
+                    }}
+                  >
                     <Music size={14} color={textColor} />
                   </div>
                 )}
-                <div style={{
-                  flex: 1,
-                  minWidth: 0,
-                  overflow: 'hidden',
-                  position: 'relative',
-                  transform: 'translateZ(0)',
-                  WebkitMaskImage: textWidth > (nowPlayingWidth - (isHovered ? 80 : 45))
-                    ? 'linear-gradient(to right, transparent, black 15px, black calc(100% - 15px), transparent)'
-                    : 'none',
-                  maskImage: textWidth > (nowPlayingWidth - (isHovered ? 80 : 45))
-                    ? 'linear-gradient(to right, transparent, black 15px, black calc(100% - 15px), transparent)'
-                    : 'none'
-                }}>
+                <div
+                  style={{
+                    flex: 1,
+                    minWidth: 0,
+                    overflow: 'hidden',
+                    position: 'relative',
+                    transform: 'translateZ(0)',
+                    WebkitMaskImage:
+                      textWidth > nowPlayingWidth - (isHovered ? 80 : 45)
+                        ? 'linear-gradient(to right, transparent, black 15px, black calc(100% - 15px), transparent)'
+                        : 'none',
+                    maskImage:
+                      textWidth > nowPlayingWidth - (isHovered ? 80 : 45)
+                        ? 'linear-gradient(to right, transparent, black 15px, black calc(100% - 15px), transparent)'
+                        : 'none',
+                  }}
+                >
                   <motion.div
-                    animate={textWidth > (nowPlayingWidth - (isHovered ? 80 : 45)) ? { x: [0, -(textWidth + 30)] } : { x: 0 }}
-                    transition={textWidth > (nowPlayingWidth - (isHovered ? 80 : 45))
-                      ? { duration: 12, repeat: Infinity, ease: "linear" }
-                      : { duration: 0.3, ease: "easeInOut" }
+                    animate={
+                      textWidth > nowPlayingWidth - (isHovered ? 80 : 45)
+                        ? { x: [0, -(textWidth + 30)] }
+                        : { x: 0 }
+                    }
+                    transition={
+                      textWidth > nowPlayingWidth - (isHovered ? 80 : 45)
+                        ? { duration: 12, repeat: Infinity, ease: 'linear' }
+                        : { duration: 0.3, ease: 'easeInOut' }
                     }
                     style={{
                       display: 'inline-block',
@@ -1389,14 +1601,27 @@ export default function Island() {
                       fontSize: 13,
                       fontWeight: 600,
                       color: textColor,
-                      willChange: 'transform'
-                    }}>
-                    <span style={{ paddingRight: textWidth > (nowPlayingWidth - (isHovered ? 80 : 45)) ? 30 : 0 }}>
-                      {spotifyTrack?.name} <span style={{ opacity: 0.7, fontWeight: 400 }}> • {spotifyTrack?.artist}</span>
+                      willChange: 'transform',
+                    }}
+                  >
+                    <span
+                      style={{
+                        paddingRight: textWidth > nowPlayingWidth - (isHovered ? 80 : 45) ? 30 : 0,
+                      }}
+                    >
+                      {spotifyTrack?.name}{' '}
+                      <span style={{ opacity: 0.7, fontWeight: 400 }}>
+                        {' '}
+                        • {spotifyTrack?.artist}
+                      </span>
                     </span>
-                    {textWidth > (nowPlayingWidth - (isHovered ? 80 : 45)) && (
+                    {textWidth > nowPlayingWidth - (isHovered ? 80 : 45) && (
                       <span style={{ paddingRight: 30 }}>
-                        {spotifyTrack?.name} <span style={{ opacity: 0.7, fontWeight: 400 }}> • {spotifyTrack?.artist}</span>
+                        {spotifyTrack?.name}{' '}
+                        <span style={{ opacity: 0.7, fontWeight: 400 }}>
+                          {' '}
+                          • {spotifyTrack?.artist}
+                        </span>
                       </span>
                     )}
                   </motion.div>
@@ -1408,13 +1633,14 @@ export default function Island() {
                       initial={{ opacity: 0, width: 0 }}
                       animate={{ opacity: 1, width: 30 }}
                       exit={{ opacity: 0, width: 0 }}
-                      transition={{ duration: 0.25, ease: "easeInOut" }}
+                      transition={{ duration: 0.25, ease: 'easeInOut' }}
                       onClick={(e) => {
                         e.stopPropagation();
                         window.electronAPI.controlSystemMedia('playpause');
                       }}
                       onMouseEnter={() => {
-                        if (window.electronAPI) window.electronAPI.setIgnoreMouseEvents(false, false);
+                        if (window.electronAPI)
+                          window.electronAPI.setIgnoreMouseEvents(false, false);
                       }}
                       style={{
                         background: 'none',
@@ -1432,10 +1658,14 @@ export default function Island() {
                         willChange: 'opacity, width',
                         WebkitBackfaceVisibility: 'hidden',
                         backfaceVisibility: 'hidden',
-                        transform: 'translateZ(0)'
+                        transform: 'translateZ(0)',
                       }}
                     >
-                      {spotifyTrack?.state === 'playing' ? <Pause size={15} color="#FFFFFF" fill="#FFFFFF" /> : <Play size={15} color="#FFFFFF" fill="#FFFFFF" />}
+                      {spotifyTrack?.state === 'playing' ? (
+                        <Pause size={15} color="#FFFFFF" fill="#FFFFFF" />
+                      ) : (
+                        <Play size={15} color="#FFFFFF" fill="#FFFFFF" />
+                      )}
                     </motion.button>
                   )}
                 </AnimatePresence>
@@ -1443,7 +1673,19 @@ export default function Island() {
             </motion.div>
           ) : (
             <motion.div
-              key={chargingAlert ? "charging" : alert ? "battery" : bluetoothAlert ? "bluetooth" : cameraAlert ? "camera" : microphoneAlert ? "microphone" : "time"}
+              key={
+                chargingAlert
+                  ? 'charging'
+                  : alert
+                    ? 'battery'
+                    : bluetoothAlert
+                      ? 'bluetooth'
+                      : cameraAlert
+                        ? 'camera'
+                        : microphoneAlert
+                          ? 'microphone'
+                          : 'time'
+              }
               initial={{ opacity: 0, filter: 'blur(4px)', scale: 0.98 }}
               animate={{ opacity: 1, filter: 'blur(0px)', scale: 1 }}
               exit={{ opacity: 0, filter: 'blur(4px)', scale: 0.98 }}
@@ -1453,19 +1695,27 @@ export default function Island() {
               <h1
                 className="text"
                 style={{
-                  position: "absolute",
-                  top: "50%",
-                  left: "15px",
-                  transform: "translateY(-50%)",
+                  position: 'absolute',
+                  top: '50%',
+                  left: '15px',
+                  transform: 'translateY(-50%)',
                   fontSize: 16,
                   fontWeight: 600,
                   margin: 0,
-                  color: chargingAlert ? "#6fff7bff" : alert ? "#ff3f3fff" : cameraAlert ? "#ffff00ff" : microphoneAlert ? "#ff9a00ff" : textColor,
+                  color: chargingAlert
+                    ? '#6fff7bff'
+                    : alert
+                      ? '#ff3f3fff'
+                      : cameraAlert
+                        ? '#ffff00ff'
+                        : microphoneAlert
+                          ? '#ff9a00ff'
+                          : textColor,
                   display: 'flex',
                   alignItems: 'center',
                   justifyContent: 'center',
                   gap: 6,
-                  lineHeight: 1
+                  lineHeight: 1,
                 }}
               >
                 {chargingAlert ? (
@@ -1476,46 +1726,63 @@ export default function Island() {
                   <Camera size={20} color="#ffff00" />
                 ) : microphoneAlert ? (
                   <Mic size={20} color="#ff9a00" />
-                ) : bluetoothAlert ? <Headphones size={20} /> : time}
+                ) : bluetoothAlert ? (
+                  <Headphones size={20} />
+                ) : (
+                  time
+                )}
               </h1>
               <h1
                 className="text"
                 style={{
-                  position: "absolute",
-                  top: "50%",
-                  right: "15px",
-                  transform: "translateY(-50%)",
+                  position: 'absolute',
+                  top: '50%',
+                  right: '15px',
+                  transform: 'translateY(-50%)',
                   fontSize: 16,
                   fontWeight: 600,
                   margin: 0,
                   color: chargingAlert
-                    ? "#6fff7bff"
+                    ? '#6fff7bff'
                     : alert
-                      ? "#ff3f3fff"
+                      ? '#ff3f3fff'
                       : cameraAlert
-                        ? "#ffff00ff"
+                        ? '#ffff00ff'
                         : microphoneAlert
-                          ? "#ff9a00ff"
+                          ? '#ff9a00ff'
                           : `${textColor}`,
                   display: 'flex',
-                  alignItems: 'center'
+                  alignItems: 'center',
                 }}
               >
-                {alert === true ? `${percent}%` : chargingAlert === true ? `${percent}%` : standbyBorderEnabled ? `${percent}%` : cameraAlert ? "Camera" : microphoneAlert ? "Microphone" : bluetoothAlert ? "Connected" : weather.temp ? (
+                {alert === true ? (
+                  `${percent}%`
+                ) : chargingAlert === true ? (
+                  `${percent}%`
+                ) : standbyBorderEnabled ? (
+                  `${percent}%`
+                ) : cameraAlert ? (
+                  'Camera'
+                ) : microphoneAlert ? (
+                  'Microphone'
+                ) : bluetoothAlert ? (
+                  'Connected'
+                ) : weather.temp ? (
                   <div style={{ display: 'flex', alignItems: 'center', gap: 2 }}>
                     <WeatherIcon status={weather.status} size={14} color={textColor} />
                     <span>{weather.temp}º</span>
                   </div>
-                ) : `${percent}%`}
+                ) : (
+                  `${percent}%`
+                )}
               </h1>
             </motion.div>
-          )
-          }
-        </AnimatePresence >
+          )}
+        </AnimatePresence>
       ) : null}
 
       <AnimatePresence custom={direction} mode="popLayout">
-        {mode === "large" && (
+        {mode === 'large' && (
           <motion.div
             key={currentTabId}
             custom={direction}
@@ -1524,17 +1791,17 @@ export default function Island() {
             animate="center"
             exit="exit"
             transition={{
-              x: { type: "spring", stiffness: 400, damping: 40 },
-              opacity: { duration: 0.15 }
+              x: { type: 'spring', stiffness: 400, damping: 40 },
+              opacity: { duration: 0.15 },
             }}
             style={{
-              width: "100%",
-              height: "100%",
-              display: "flex",
-              flexDirection: "column",
-              alignItems: "center",
-              justifyContent: "center",
-              position: "absolute"
+              width: '100%',
+              height: '100%',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              position: 'absolute',
             }}
           >
             {/*Browser Search*/}
@@ -1546,7 +1813,7 @@ export default function Island() {
                   value={browserSearch}
                   onChange={(e) => setBrowserSearch(e.target.value)}
                   onKeyDown={(e) => {
-                    if (e.key === "Enter") {
+                    if (e.key === 'Enter') {
                       e.preventDefault();
                       searchBrowser();
                     }
@@ -1557,24 +1824,29 @@ export default function Island() {
             )}
             {/* Workflows & Quick Apps */}
             {currentTab === 1 && (
-              <div style={{
-                display: 'flex',
-                flexDirection: 'column',
-                width: '100%',
-                height: '100%',
-                overflow: 'hidden'
-              }}>
-                <div id="workflows" style={{
-                  animation: 'none',
+              <div
+                style={{
                   display: 'flex',
                   flexDirection: 'column',
-                  gap: '10px',
-                  width: '95%',
-                  flex: 1,
-                  overflowY: 'auto',
-                  padding: '15px 0',
-                  margin: '0 auto'
-                }}>
+                  width: '100%',
+                  height: '100%',
+                  overflow: 'hidden',
+                }}
+              >
+                <div
+                  id="workflows"
+                  style={{
+                    animation: 'none',
+                    display: 'flex',
+                    flexDirection: 'column',
+                    gap: '10px',
+                    width: '95%',
+                    flex: 1,
+                    overflowY: 'auto',
+                    padding: '15px 0',
+                    margin: '0 auto',
+                  }}
+                >
                   <AnimatePresence>
                     {workflows.length === 0 ? (
                       <motion.p
@@ -1600,40 +1872,48 @@ export default function Island() {
                             width: '96%',
                             color: bgColor,
                             backgroundColor: textColor,
-                            fontFamily: theme === "win95" ? "w95" : "OpenRunde",
+                            fontFamily: theme === 'win95' ? 'w95' : 'OpenRunde',
                             borderRadius: '12px',
                             fontSize: 14,
                             fontWeight: 600,
                             textAlign: 'left',
                             boxShadow: '0 4px 15px rgba(0,0,0,0.1)',
                             alignSelf: 'center',
-                            marginBottom: 2
+                            marginBottom: 2,
                           }}
                         >
-                          {workflow.name} <span style={{ opacity: 0.6, fontWeight: 400, marginLeft: 5 }}>({workflow.urls.length} sites)</span>
+                          {workflow.name}{' '}
+                          <span style={{ opacity: 0.6, fontWeight: 400, marginLeft: 5 }}>
+                            ({workflow.urls.length} sites)
+                          </span>
                         </motion.button>
                       ))
                     )}
                   </AnimatePresence>
                 </div>
 
-                <div style={{
-                  paddingTop: '12px',
-                  paddingBottom: '12px',
-                  borderTop: `1px solid color-mix(in srgb, ${textColor}, transparent 90%)`,
-                  width: '100%',
-                  marginTop: 'auto',
-                  background: `color-mix(in srgb, ${textColor}, transparent 98%)`,
-                  overflowX: 'auto'
-                }}>
-                  <div id="quick-apps" style={{
-                    animation: 'none',
-                    margin: 0,
-                    display: 'flex',
-                    gap: '12px',
-                    padding: '0 15px',
-                    width: 'max-content'
-                  }}>
+                <div
+                  style={{
+                    paddingTop: '12px',
+                    paddingBottom: '12px',
+                    borderTop: `1px solid color-mix(in srgb, ${textColor}, transparent 90%)`,
+                    width: '100%',
+                    marginTop: 'auto',
+                    background: `color-mix(in srgb, ${textColor}, transparent 98%)`,
+                    overflowX: 'auto',
+                  }}
+                >
+                  <div
+                    id="quick-apps"
+                    style={{
+                      animation: 'none',
+                      margin: 0,
+                      display: 'flex',
+                      gap: '12px',
+                      padding: '0 15px',
+                      width: 'max-content',
+                    }}
+                  >
                     <AnimatePresence>
                       {quickApps.map((app, i) => (
                         <motion.button
@@ -1648,8 +1928,8 @@ export default function Island() {
                           style={{
                             color: bgColor,
                             backgroundColor: textColor,
-                            fontFamily: theme === "win95" ? "w95" : "OpenRunde",
-                            flexShrink: 0
+                            fontFamily: theme === 'win95' ? 'w95' : 'OpenRunde',
+                            flexShrink: 0,
                           }}
                         >
                           {app.name}
@@ -1669,10 +1949,13 @@ export default function Island() {
                     id="battery-bar"
                     style={{
                       backgroundColor: localStorage.getItem('text-color'),
-                      color: bgColor
+                      color: bgColor,
                     }}
                   >
-                    <h1 className="text" style={{ animation: 'none', display: 'flex', alignItems: 'center', gap: 2 }}>
+                    <h1
+                      className="text"
+                      style={{ animation: 'none', display: 'flex', alignItems: 'center', gap: 2 }}
+                    >
                       {charging && <Zap size={16} />}
                       <span>{percent}%</span>
                     </h1>
@@ -1684,13 +1967,13 @@ export default function Island() {
                     fontSize: 15,
                     left: 25,
                     top: 14,
-                    position: "absolute",
-                    animation: 'none'
+                    position: 'absolute',
+                    animation: 'none',
                   }}
                 >
                   <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
                     <WeatherIcon status={weather.status} size={16} color={textColor} />
-                    <span>{weather.temp ? weather.temp : "??"}º</span>
+                    <span>{weather.temp ? weather.temp : '??'}º</span>
                   </div>
                 </h1>
                 <div id="date">
@@ -1706,13 +1989,15 @@ export default function Island() {
 
             {/* Now Playing*/}
             {currentTab === 3 && (
-              <div style={{
-                display: 'flex',
-                alignItems: 'center',
-                width: '100%',
-                height: '100%',
-                userSelect: 'none'
-              }}>
+              <div
+                style={{
+                  display: 'flex',
+                  alignItems: 'center',
+                  width: '100%',
+                  height: '100%',
+                  userSelect: 'none',
+                }}
+              >
                 <AnimatePresence mode="wait">
                   {spotifyTrack ? (
                     <motion.div
@@ -1731,7 +2016,7 @@ export default function Island() {
                         paddingLeft: '17px',
                         opacity: spotifyTrack.state === 'playing' ? 1 : 0.5,
                         filter: spotifyTrack.state === 'playing' ? 'none' : 'grayscale(1)',
-                        transition: 'opacity 0.3s ease, filter 0.3s ease'
+                        transition: 'opacity 0.3s ease, filter 0.3s ease',
                       }}
                     >
                       {spotifyTrack.artwork_url ? (
@@ -1751,57 +2036,80 @@ export default function Island() {
                               const centerY = rect.top + rect.height / 2;
                               const deltaX = e.clientX - centerX;
                               const deltaY = e.clientY - centerY;
-                              const maxDistance = Math.sqrt(rect.width * rect.width + rect.height * rect.height) / 2;
+                              const maxDistance =
+                                Math.sqrt(rect.width * rect.width + rect.height * rect.height) / 2;
                               const angleX = (deltaY / maxDistance) * 15;
                               const angleY = (deltaX / maxDistance) * -15;
                               setAlbumRotation({ x: angleX, y: angleY });
                             }
                           }}
                           style={{
-                            width: 110, height: 110, minWidth: 110,
+                            width: 110,
+                            height: 110,
+                            minWidth: 110,
                             flexShrink: 0,
-                            borderRadius: 13, objectFit: 'cover',
-                            boxShadow: albumHovered ? '0 8px 24px rgba(0,0,0,0.35)' : '0 4px 12px rgba(0,0,0,0.2)',
+                            borderRadius: 13,
+                            objectFit: 'cover',
+                            boxShadow: albumHovered
+                              ? '0 8px 24px rgba(0,0,0,0.35)'
+                              : '0 4px 12px rgba(0,0,0,0.2)',
                             cursor: 'pointer',
                             transition: 'transform 0.3s ease-out, box-shadow 0.3s ease-out',
                             transform: `perspective(600px) rotateX(${albumRotation.x}deg) rotateY(${albumRotation.y}deg) scale(${albumHovered ? 1.08 : 1})`,
-                            transformStyle: 'preserve-3d'
+                            transformStyle: 'preserve-3d',
                           }}
                         />
                       ) : (
-                        <div style={{
-                          width: 110, height: 110, minWidth: 110,
-                          flexShrink: 0,
-                          borderRadius: 12, background: 'rgba(255,255,255,0.1)',
-                          display: 'flex', alignItems: 'center', justifyContent: 'center',
-                          fontSize: 24
-                        }}>
+                        <div
+                          style={{
+                            width: 110,
+                            height: 110,
+                            minWidth: 110,
+                            flexShrink: 0,
+                            borderRadius: 12,
+                            background: 'rgba(255,255,255,0.1)',
+                            display: 'flex',
+                            alignItems: 'center',
+                            justifyContent: 'center',
+                            fontSize: 24,
+                          }}
+                        >
                           <Music size={40} color={textColor} />
                         </div>
                       )}
 
-                      <div style={{
-                        display: 'flex',
-                        flexDirection: 'column',
-                        overflow: 'hidden',
-                        flex: 1,
-                        justifyContent: 'center',
-                        textAlign: 'left',
-                        minWidth: 0,
-                      }}>
-                        <div style={{ 
-                          width: '175px', 
+                      <div
+                        style={{
+                          display: 'flex',
+                          flexDirection: 'column',
                           overflow: 'hidden',
-                          WebkitMaskImage: measureTextWidth(spotifyTrack.name, 18) > 175 
-                            ? 'linear-gradient(to right, transparent, black 15px, black 160px, transparent)' 
-                            : 'none',
-                          maskImage: measureTextWidth(spotifyTrack.name, 18) > 175 
-                            ? 'linear-gradient(to right, transparent, black 15px, black 160px, transparent)' 
-                            : 'none'
-                        }}>
+                          flex: 1,
+                          justifyContent: 'center',
+                          textAlign: 'left',
+                          minWidth: 0,
+                        }}
+                      >
+                        <div
+                          style={{
+                            width: '175px',
+                            overflow: 'hidden',
+                            WebkitMaskImage:
+                              measureTextWidth(spotifyTrack.name, 18) > 175
+                                ? 'linear-gradient(to right, transparent, black 15px, black 160px, transparent)'
+                                : 'none',
+                            maskImage:
+                              measureTextWidth(spotifyTrack.name, 18) > 175
+                                ? 'linear-gradient(to right, transparent, black 15px, black 160px, transparent)'
+                                : 'none',
+                          }}
+                        >
                           <motion.h2
-                            animate={measureTextWidth(spotifyTrack.name, 18) > 175 ? { x: [0, -(measureTextWidth(spotifyTrack.name, 18) + 30)] } : {}}
-                            transition={{ duration: 10, repeat: Infinity, ease: "linear" }}
+                            animate={
+                              measureTextWidth(spotifyTrack.name, 18) > 175
+                                ? { x: [0, -(measureTextWidth(spotifyTrack.name, 18) + 30)] }
+                                : {}
+                            }
+                            transition={{ duration: 10, repeat: Infinity, ease: 'linear' }}
                             style={{
                               margin: '0 0 0 5px',
                               fontSize: 18,
@@ -1809,27 +2117,45 @@ export default function Island() {
                               whiteSpace: 'nowrap',
                               display: 'inline-block',
                               color: textColor,
-                              fontFamily: theme === "win95" ? "w95" : "OpenRunde"
-                            }}>
-                            <span style={{ paddingRight: measureTextWidth(spotifyTrack.name, 18) > 175 ? 30 : 0 }}>{spotifyTrack.name || "Unknown Title"}</span>
+                              fontFamily: theme === 'win95' ? 'w95' : 'OpenRunde',
+                            }}
+                          >
+                            <span
+                              style={{
+                                paddingRight:
+                                  measureTextWidth(spotifyTrack.name, 18) > 175 ? 30 : 0,
+                              }}
+                            >
+                              {spotifyTrack.name || 'Unknown Title'}
+                            </span>
                             {measureTextWidth(spotifyTrack.name, 18) > 175 && (
-                              <span style={{ paddingRight: 30 }}>{spotifyTrack.name || "Unknown Title"}</span>
+                              <span style={{ paddingRight: 30 }}>
+                                {spotifyTrack.name || 'Unknown Title'}
+                              </span>
                             )}
                           </motion.h2>
                         </div>
-                        <div style={{ 
-                          width: '175px', 
-                          overflow: 'hidden',
-                          WebkitMaskImage: measureTextWidth(spotifyTrack.artist, 13) > 175 
-                            ? 'linear-gradient(to right, transparent, black 15px, black 160px, transparent)' 
-                            : 'none',
-                          maskImage: measureTextWidth(spotifyTrack.artist, 13) > 175 
-                            ? 'linear-gradient(to right, transparent, black 15px, black 160px, transparent)' 
-                            : 'none'
-                        }}>
+                        <div
+                          style={{
+                            width: '175px',
+                            overflow: 'hidden',
+                            WebkitMaskImage:
+                              measureTextWidth(spotifyTrack.artist, 13) > 175
+                                ? 'linear-gradient(to right, transparent, black 15px, black 160px, transparent)'
+                                : 'none',
+                            maskImage:
+                              measureTextWidth(spotifyTrack.artist, 13) > 175
+                                ? 'linear-gradient(to right, transparent, black 15px, black 160px, transparent)'
+                                : 'none',
+                          }}
+                        >
                           <motion.p
-                            animate={measureTextWidth(spotifyTrack.artist, 13) > 175 ? { x: [0, -(measureTextWidth(spotifyTrack.artist, 13) + 30)] } : {}}
-                            transition={{ duration: 10, repeat: Infinity, ease: "linear" }}
+                            animate={
+                              measureTextWidth(spotifyTrack.artist, 13) > 175
+                                ? { x: [0, -(measureTextWidth(spotifyTrack.artist, 13) + 30)] }
+                                : {}
+                            }
+                            transition={{ duration: 10, repeat: Infinity, ease: 'linear' }}
                             style={{
                               margin: '4px 0 0 5px',
                               fontSize: 13,
@@ -1837,22 +2163,52 @@ export default function Island() {
                               whiteSpace: 'nowrap',
                               display: 'inline-block',
                               color: textColor,
-                              fontFamily: theme === "win95" ? "w95" : "OpenRunde"
-                            }}>
-                            <span style={{ paddingRight: measureTextWidth(spotifyTrack.artist, 13) > 175 ? 30 : 0 }}>{spotifyTrack.artist || "Unknown Artist"}</span>
+                              fontFamily: theme === 'win95' ? 'w95' : 'OpenRunde',
+                            }}
+                          >
+                            <span
+                              style={{
+                                paddingRight:
+                                  measureTextWidth(spotifyTrack.artist, 13) > 175 ? 30 : 0,
+                              }}
+                            >
+                              {spotifyTrack.artist || 'Unknown Artist'}
+                            </span>
                             {measureTextWidth(spotifyTrack.artist, 13) > 175 && (
-                              <span style={{ paddingRight: 30 }}>{spotifyTrack.artist || "Unknown Artist"}</span>
+                              <span style={{ paddingRight: 30 }}>
+                                {spotifyTrack.artist || 'Unknown Artist'}
+                              </span>
                             )}
                           </motion.p>
                         </div>
-                        <div style={{ display: 'flex', gap: 15, marginTop: 15, alignItems: 'center', marginLeft: 5 }}>
+                        <div
+                          style={{
+                            display: 'flex',
+                            gap: 15,
+                            marginTop: 15,
+                            alignItems: 'center',
+                            marginLeft: 5,
+                          }}
+                        >
                           <button
                             className="media-btn"
                             onClick={() => {
                               window.electronAPI.controlSystemMedia('previous');
                             }}
-                            style={{ background: 'none', border: 'none', color: textColor, cursor: 'pointer', padding: 4, opacity: 0.8, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                          ><SkipBackIcon size={20} color={textColor} fill={textColor} /></button>
+                            style={{
+                              background: 'none',
+                              border: 'none',
+                              color: textColor,
+                              cursor: 'pointer',
+                              padding: 4,
+                              opacity: 0.8,
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                            }}
+                          >
+                            <SkipBackIcon size={20} color={textColor} fill={textColor} />
+                          </button>
                           <button
                             className="media-btn"
                             onClick={() => {
@@ -1866,18 +2222,34 @@ export default function Island() {
                               padding: 4,
                               display: 'flex',
                               alignItems: 'center',
-                              justifyContent: 'center'
+                              justifyContent: 'center',
                             }}
                           >
-                            {spotifyTrack.state === 'playing' ? <Pause size={24} color={textColor} fill={textColor} /> : <Play size={24} color={textColor} fill={textColor} />}
+                            {spotifyTrack.state === 'playing' ? (
+                              <Pause size={24} color={textColor} fill={textColor} />
+                            ) : (
+                              <Play size={24} color={textColor} fill={textColor} />
+                            )}
                           </button>
                           <button
                             className="media-btn"
                             onClick={() => {
                               window.electronAPI.controlSystemMedia('next');
                             }}
-                            style={{ background: 'none', border: 'none', color: textColor, cursor: 'pointer', padding: 4, opacity: 0.8, display: 'flex', alignItems: 'center', justifyContent: 'center' }}
-                          ><SkipForwardIcon size={20} color={textColor} fill={textColor} /></button>
+                            style={{
+                              background: 'none',
+                              border: 'none',
+                              color: textColor,
+                              cursor: 'pointer',
+                              padding: 4,
+                              opacity: 0.8,
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                            }}
+                          >
+                            <SkipForwardIcon size={20} color={textColor} fill={textColor} />
+                          </button>
                         </div>
                       </div>
                     </motion.div>
@@ -1891,11 +2263,13 @@ export default function Island() {
                         width: '100%',
                         textAlign: 'center',
                         color: textColor,
-                        fontFamily: theme === "win95" ? "w95" : "OpenRunde"
+                        fontFamily: theme === 'win95' ? 'w95' : 'OpenRunde',
                       }}
                     >
                       <h3 style={{ margin: 0, fontSize: 16 }}>Nothing Playing</h3>
-                      <p style={{ margin: '5px 0 0 0', opacity: 0.7, fontSize: 13 }}>Play music on Spotify or Apple Music</p>
+                      <p style={{ margin: '5px 0 0 0', opacity: 0.7, fontSize: 13 }}>
+                        Play music on Spotify or Apple Music
+                      </p>
                     </motion.div>
                   )}
                 </AnimatePresence>
@@ -1909,19 +2283,19 @@ export default function Island() {
                   {!asked ? (
                     <motion.div
                       key="ask"
-                      initial={{ opacity: 0, filter: "blur(10px)" }}
-                      animate={{ opacity: 1, filter: "blur(0px)" }}
-                      exit={{ opacity: 0, filter: "blur(10px)" }}
+                      initial={{ opacity: 0, filter: 'blur(10px)' }}
+                      animate={{ opacity: 1, filter: 'blur(0px)' }}
+                      exit={{ opacity: 0, filter: 'blur(10px)' }}
                       transition={{ duration: 0.2 }}
                       style={{
-                        position: "absolute",
+                        position: 'absolute',
                         inset: 0,
-                        display: "flex",
-                        flexDirection: "column",
-                        alignItems: "stretch",
-                        justifyContent: "flex-start",
-                        padding: "10px",
-                        boxSizing: "border-box"
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'stretch',
+                        justifyContent: 'flex-start',
+                        padding: '10px',
+                        boxSizing: 'border-box',
                       }}
                     >
                       <textarea
@@ -1930,7 +2304,7 @@ export default function Island() {
                         value={userText}
                         onChange={(e) => setUserText(e.target.value)}
                         onKeyDown={(e) => {
-                          if (e.key === "Enter" && !e.shiftKey) {
+                          if (e.key === 'Enter' && !e.shiftKey) {
                             e.preventDefault();
                             setAsked(true);
                             askAI();
@@ -1938,9 +2312,9 @@ export default function Island() {
                         }}
                         style={{
                           color: `${textColor}`,
-                          fontFamily: theme === "win95" ? "w95" : "OpenRunde",
-                          pointerEvents: "auto",
-                          animation: 'none'
+                          fontFamily: theme === 'win95' ? 'w95' : 'OpenRunde',
+                          pointerEvents: 'auto',
+                          animation: 'none',
                         }}
                       />
                       <button
@@ -1952,9 +2326,9 @@ export default function Island() {
                         style={{
                           backgroundColor: textColor,
                           color: bgColor,
-                          fontFamily: theme === "win95" ? "w95" : "OpenRunde",
-                          pointerEvents: "auto",
-                          animation: 'none'
+                          fontFamily: theme === 'win95' ? 'w95' : 'OpenRunde',
+                          pointerEvents: 'auto',
+                          animation: 'none',
                         }}
                       >
                         Ask
@@ -1963,56 +2337,58 @@ export default function Island() {
                   ) : (
                     <motion.div
                       key="result"
-                      initial={{ opacity: 0, filter: "blur(10px)" }}
-                      animate={{ opacity: 1, filter: "blur(0px)" }}
-                      exit={{ opacity: 0, filter: "blur(10px)" }}
+                      initial={{ opacity: 0, filter: 'blur(10px)' }}
+                      animate={{ opacity: 1, filter: 'blur(0px)' }}
+                      exit={{ opacity: 0, filter: 'blur(10px)' }}
                       transition={{ duration: 0.2 }}
                       style={{
-                        position: "absolute",
+                        position: 'absolute',
                         inset: 0,
-                        display: "flex",
-                        flexDirection: "column",
-                        alignItems: "stretch",
-                        justifyContent: "flex-start",
-                        padding: "0 10px",
-                        boxSizing: "border-box",
-                        overflow: "hidden"
+                        display: 'flex',
+                        flexDirection: 'column',
+                        alignItems: 'stretch',
+                        justifyContent: 'flex-start',
+                        padding: '0 10px',
+                        boxSizing: 'border-box',
+                        overflow: 'hidden',
                       }}
                     >
                       <div
                         id="result"
                         style={{
                           fontWeight: 400,
-                          fontFamily: theme === "win95" ? "w95" : "OpenRunde",
-                          pointerEvents: "auto",
+                          fontFamily: theme === 'win95' ? 'w95' : 'OpenRunde',
+                          pointerEvents: 'auto',
                           animation: 'none',
                           margin: 0,
-                          paddingTop: "40px",
-                          paddingBottom: "50px",
-                          maxHeight: "100%",
-                          overflowY: "auto"
+                          paddingTop: '40px',
+                          paddingBottom: '50px',
+                          maxHeight: '100%',
+                          overflowY: 'auto',
                         }}
                       >
                         {aiAnswer ? (
                           <ReactMarkdown
                             components={{
                               pre: ({ node, children, ...props }) => {
-                                const codeContent = node.children[0]?.children[0]?.value || "";
+                                const codeContent = node.children[0]?.children[0]?.value || '';
                                 return (
-                                  <div style={{
-                                    position: 'relative',
-                                    margin: '10px 0',
-                                    backgroundColor: `color-mix(in srgb, ${textColor}, transparent 92%)`,
-                                    borderRadius: '8px',
-                                    border: `1px solid color-mix(in srgb, ${textColor}, transparent 90%)`
-                                  }}>
+                                  <div
+                                    style={{
+                                      position: 'relative',
+                                      margin: '10px 0',
+                                      backgroundColor: `color-mix(in srgb, ${textColor}, transparent 92%)`,
+                                      borderRadius: '8px',
+                                      border: `1px solid color-mix(in srgb, ${textColor}, transparent 90%)`,
+                                    }}
+                                  >
                                     <button
                                       onClick={(e) => {
                                         e.stopPropagation();
                                         navigator.clipboard.writeText(codeContent);
                                         const btn = e.currentTarget;
                                         const originalText = btn.innerText;
-                                        btn.innerText = "Copied!";
+                                        btn.innerText = 'Copied!';
                                         btn.style.backgroundColor = 'rgba(52, 199, 89, 0.4)';
                                         setTimeout(() => {
                                           btn.innerText = originalText;
@@ -2033,12 +2409,17 @@ export default function Island() {
                                         cursor: 'pointer',
                                         backdropFilter: 'blur(4px)',
                                         fontWeight: 600,
-                                        transition: 'all 0.2s ease'
+                                        transition: 'all 0.2s ease',
                                       }}
                                     >
                                       Copy
                                     </button>
-                                    <pre {...props} style={{ margin: 0, padding: '12px', background: 'none' }}>{children}</pre>
+                                    <pre
+                                      {...props}
+                                      style={{ margin: 0, padding: '12px', background: 'none' }}
+                                    >
+                                      {children}
+                                    </pre>
                                   </div>
                                 );
                               },
@@ -2046,22 +2427,22 @@ export default function Island() {
                                 <code
                                   {...props}
                                   style={{
-                                    backgroundColor: inline ? 'rgba(255, 255, 255, 0.1)' : 'transparent',
+                                    backgroundColor: inline
+                                      ? 'rgba(255, 255, 255, 0.1)'
+                                      : 'transparent',
                                     padding: inline ? '2px 5px' : '0',
                                     borderRadius: inline ? '4px' : '0',
                                     fontFamily: 'monospace',
-                                    fontSize: inline ? '0.9em' : '1em'
+                                    fontSize: inline ? '0.9em' : '1em',
                                   }}
                                 />
-                              )
+                              ),
                             }}
                           >
                             {aiAnswer}
                           </ReactMarkdown>
                         ) : (
-                          <span style={{ opacity: 0.5, fontStyle: "italic" }}>
-                            Thinking...
-                          </span>
+                          <span style={{ opacity: 0.5, fontStyle: 'italic' }}>Thinking...</span>
                         )}
                       </div>
                       <button
@@ -2069,20 +2450,20 @@ export default function Island() {
                         onClick={() => {
                           setAsked(false);
                           setAIAnswer(null);
-                          setUserText("");
+                          setUserText('');
                         }}
                         id="Askanotherbtn"
                         style={{
-                          position: "absolute",
+                          position: 'absolute',
                           bottom: 15,
                           right: 15,
                           backgroundColor: textColor,
                           color: bgColor,
-                          fontFamily: theme === "win95" ? "w95" : "OpenRunde",
-                          pointerEvents: "auto",
+                          fontFamily: theme === 'win95' ? 'w95' : 'OpenRunde',
+                          pointerEvents: 'auto',
                           animation: 'none',
                           zIndex: 999,
-                          cursor: "pointer"
+                          cursor: 'pointer',
                         }}
                       >
                         Ask another
@@ -2097,17 +2478,21 @@ export default function Island() {
             {currentTab === 5 && (
               <div id="clipboard" style={{ animation: 'none' }}>
                 {clipboard.length === 0 ? (
-                  <p style={{ opacity: 0.5, textAlign: 'center', marginTop: 30 }}>Clipboard is empty</p>
+                  <p style={{ opacity: 0.5, textAlign: 'center', marginTop: 30 }}>
+                    Clipboard is empty
+                  </p>
                 ) : (
                   clipboard.map((item, index) => (
                     <div className="clipboard-row" key={index}>
-                      <p className="clipboard-content" style={{ paddingRight: '45px' }}>{item}</p>
+                      <p className="clipboard-content" style={{ paddingRight: '45px' }}>
+                        {item}
+                      </p>
                       <button
                         onClick={(e) => {
                           copyToClipboard(item);
                           const btn = e.currentTarget;
                           const originalText = btn.innerText;
-                          btn.innerText = "Copied!";
+                          btn.innerText = 'Copied!';
                           btn.style.backgroundColor = 'rgba(52, 199, 89, 0.4)';
                           setTimeout(() => {
                             btn.innerText = originalText;
@@ -2128,7 +2513,7 @@ export default function Island() {
                           cursor: 'pointer',
                           backdropFilter: 'blur(4px)',
                           fontWeight: 600,
-                          transition: 'all 0.2s ease'
+                          transition: 'all 0.2s ease',
                         }}
                       >
                         Copy
@@ -2170,7 +2555,9 @@ export default function Island() {
                             }}
                             className="task-checkbox"
                           />
-                          <h3 className="task-item" style={{ flex: 1, margin: 0 }}>{task}</h3>
+                          <h3 className="task-item" style={{ flex: 1, margin: 0 }}>
+                            {task}
+                          </h3>
                         </motion.div>
                       ))
                     )}
@@ -2183,7 +2570,7 @@ export default function Island() {
                     value={taskText}
                     onChange={(e) => setTaskText(e.target.value)}
                     onKeyDown={(e) => {
-                      if (e.key === "Enter") addTask();
+                      if (e.key === 'Enter') addTask();
                     }}
                     className="task-input"
                     style={{
@@ -2193,7 +2580,7 @@ export default function Island() {
                       borderRadius: '12px',
                       padding: '8px 12px',
                       outline: 'none',
-                      flex: 1
+                      flex: 1,
                     }}
                   />
                   <button
@@ -2208,7 +2595,7 @@ export default function Island() {
                       borderRadius: '12px',
                       padding: '8px 16px',
                       fontWeight: 600,
-                      cursor: 'pointer'
+                      cursor: 'pointer',
                     }}
                   >
                     Add
@@ -2221,10 +2608,22 @@ export default function Island() {
             {currentTab === 7 && (
               <div id="settings-container">
                 <div className="settings-section">
-                  <h3 style={{ fontSize: 13, textTransform: 'uppercase', opacity: 0.5, letterSpacing: '0.05em' }}>General</h3>
+                  <h3
+                    style={{
+                      fontSize: 13,
+                      textTransform: 'uppercase',
+                      opacity: 0.5,
+                      letterSpacing: '0.05em',
+                    }}
+                  >
+                    General
+                  </h3>
                   <div className="settings-row">
                     <span className="settings-label">12/24 Hour Format</span>
-                    <select value={hourFormat ? "12-hr" : "24-hr"} onChange={handleHourFormatChange}>
+                    <select
+                      value={hourFormat ? '12-hr' : '24-hr'}
+                      onChange={handleHourFormatChange}
+                    >
                       <option value="12-hr">12-hour</option>
                       <option value="24-hr">24-hour</option>
                     </select>
@@ -2232,7 +2631,10 @@ export default function Island() {
                   {window.electronAPI?.platform !== 'darwin' && (
                     <div className="settings-row">
                       <span className="settings-label">Auto Launch on Boot</span>
-                      <select value={autoLaunchEnabled ? "true" : "false"} onChange={handleAutoLaunchChange}>
+                      <select
+                        value={autoLaunchEnabled ? 'true' : 'false'}
+                        onChange={handleAutoLaunchChange}
+                      >
                         <option value="true">Enabled</option>
                         <option value="false">Disabled</option>
                       </select>
@@ -2242,19 +2644,33 @@ export default function Island() {
                     <div className="settings-row">
                       <span className="settings-label">Target Display</span>
                       <select value={currentDisplayId} onChange={handleDisplayChange}>
-                        {displays.map(d => (
-                          <option key={d.id} value={d.id}>{d.label}</option>
+                        {displays.map((d) => (
+                          <option key={d.id} value={d.id}>
+                            {d.label}
+                          </option>
                         ))}
                       </select>
                     </div>
                   )}
                 </div>
                 <div className="settings-section">
-                  <h3 style={{ fontSize: 13, textTransform: 'uppercase', opacity: 0.5, letterSpacing: '0.05em', marginBottom: '4px' }}>Tab Management</h3>
-                  <p style={{ fontSize: 11, opacity: 0.4, marginTop: -8, marginBottom: 8 }}>Drag to reorder, click eye to hide.</p>
+                  <h3
+                    style={{
+                      fontSize: 13,
+                      textTransform: 'uppercase',
+                      opacity: 0.5,
+                      letterSpacing: '0.05em',
+                      marginBottom: '4px',
+                    }}
+                  >
+                    Tab Management
+                  </h3>
+                  <p style={{ fontSize: 11, opacity: 0.4, marginTop: -8, marginBottom: 8 }}>
+                    Drag to reorder, click eye to hide.
+                  </p>
                   <div style={{ display: 'flex', flexDirection: 'column', gap: 2 }}>
                     {tabOrder.map((id, i) => {
-                      const tabDef = TABS.find(t => t.id === id);
+                      const tabDef = TABS.find((t) => t.id === id);
                       const isHidden = hiddenTabs.includes(id);
                       return (
                         <div
@@ -2263,7 +2679,7 @@ export default function Island() {
                           style={{ cursor: 'grab' }}
                           draggable
                           onDragStart={(e) => {
-                            e.dataTransfer.setData("text/plain", i);
+                            e.dataTransfer.setData('text/plain', i);
                             e.currentTarget.style.opacity = '0.4';
                             e.currentTarget.style.borderStyle = 'dashed';
                           }}
@@ -2284,7 +2700,7 @@ export default function Island() {
                             e.preventDefault();
                             e.currentTarget.style.background = '';
                             e.currentTarget.style.transform = '';
-                            const fromIdx = parseInt(e.dataTransfer.getData("text/plain"));
+                            const fromIdx = parseInt(e.dataTransfer.getData('text/plain'));
                             moveTabOrder(fromIdx, i);
                           }}
                         >
@@ -2298,23 +2714,42 @@ export default function Island() {
                               className="tab-order-btn"
                               onClick={() => {
                                 setDefaultTabId(id);
-                                localStorage.setItem("default-tab", id);
+                                localStorage.setItem('default-tab', id);
                               }}
                               title="Set as default"
-                              style={{ opacity: defaultTabId === id ? 1 : 0.3, color: defaultTabId === id ? '#FFD700' : textColor }}
+                              style={{
+                                opacity: defaultTabId === id ? 1 : 0.3,
+                                color: defaultTabId === id ? '#FFD700' : textColor,
+                              }}
                             >
                               <Star size={16} fill={defaultTabId === id ? '#FFD700' : 'none'} />
                             </button>
-                            <div style={{ width: 1, height: 16, background: textColor, opacity: 0.1, margin: '0 4px' }} />
+                            <div
+                              style={{
+                                width: 1,
+                                height: 16,
+                                background: textColor,
+                                opacity: 0.1,
+                                margin: '0 4px',
+                              }}
+                            />
                             <button
                               className="tab-order-btn"
                               onClick={() => toggleTabVisibility(id)}
-                              title={isHidden ? "Show" : "Hide"}
+                              title={isHidden ? 'Show' : 'Hide'}
                               style={{ opacity: isHidden ? 1 : 0.6 }}
                             >
                               {isHidden ? <EyeOff size={16} /> : <Eye size={16} />}
                             </button>
-                            <div style={{ width: 1, height: 16, background: textColor, opacity: 0.1, margin: '0 4px' }} />
+                            <div
+                              style={{
+                                width: 1,
+                                height: 16,
+                                background: textColor,
+                                opacity: 0.1,
+                                margin: '0 4px',
+                              }}
+                            />
                             <button
                               className="tab-order-btn"
                               disabled={i === 0}
@@ -2337,7 +2772,16 @@ export default function Island() {
                 </div>
 
                 <div className="settings-section">
-                  <h3 style={{ fontSize: 13, textTransform: 'uppercase', opacity: 0.5, letterSpacing: '0.05em' }}>Island Style</h3>
+                  <h3
+                    style={{
+                      fontSize: 13,
+                      textTransform: 'uppercase',
+                      opacity: 0.5,
+                      letterSpacing: '0.05em',
+                    }}
+                  >
+                    Island Style
+                  </h3>
                   <div className="settings-row">
                     <span className="settings-label">Theme</span>
                     <select value={theme} onChange={(e) => setTheme(e.target.value)}>
@@ -2346,18 +2790,49 @@ export default function Island() {
                       <option value="win95">Windows 95</option>
                     </select>
                   </div>
-                  <div className="settings-section" style={{ alignItems: 'center', background: 'rgba(255,255,255,0.03)', padding: '15px', borderRadius: '18px', border: '1px solid rgba(255,255,255,0.05)' }}>
-                    <span className="settings-label" style={{ textAlign: 'center', marginBottom: '8px', opacity: 1, color: textColor }}>Position Mode</span>
-                    <div className="radio-group" style={{ display: 'grid', gridTemplateColumns: 'repeat(3, 1fr)', width: '100%', gap: '15px 10px' }}>
+                  <div
+                    className="settings-section"
+                    style={{
+                      alignItems: 'center',
+                      background: 'rgba(255,255,255,0.03)',
+                      padding: '15px',
+                      borderRadius: '18px',
+                      border: '1px solid rgba(255,255,255,0.05)',
+                    }}
+                  >
+                    <span
+                      className="settings-label"
+                      style={{
+                        textAlign: 'center',
+                        marginBottom: '8px',
+                        opacity: 1,
+                        color: textColor,
+                      }}
+                    >
+                      Position Mode
+                    </span>
+                    <div
+                      className="radio-group"
+                      style={{
+                        display: 'grid',
+                        gridTemplateColumns: 'repeat(3, 1fr)',
+                        width: '100%',
+                        gap: '15px 10px',
+                      }}
+                    >
                       {[
-                        { val: "top-left", label: "Top L" },
-                        { val: "top-center", label: "Top C" },
-                        { val: "top-right", label: "Top R" },
-                        { val: "bottom-left", label: "Bot L" },
-                        { val: "bottom-center", label: "Bot C" },
-                        { val: "bottom-right", label: "Bot R" }
+                        { val: 'top-left', label: 'Top L' },
+                        { val: 'top-center', label: 'Top C' },
+                        { val: 'top-right', label: 'Top R' },
+                        { val: 'bottom-left', label: 'Bot L' },
+                        { val: 'bottom-center', label: 'Bot C' },
+                        { val: 'bottom-right', label: 'Bot R' },
                       ].map((mode) => (
-                        <label key={mode.val} className="radio-label" style={{ justifyContent: 'center' }}>
+                        <label
+                          key={mode.val}
+                          className="radio-label"
+                          style={{ justifyContent: 'center' }}
+                        >
                           <input
                             type="radio"
                             name="positionMode"
@@ -2365,7 +2840,7 @@ export default function Island() {
                             checked={positionMode === mode.val}
                             onChange={(e) => {
                               setPositionMode(e.target.value);
-                              localStorage.setItem("position-mode", e.target.value);
+                              localStorage.setItem('position-mode', e.target.value);
                             }}
                           />
                           <span className="radio-custom"></span>
@@ -2373,16 +2848,23 @@ export default function Island() {
                         </label>
                       ))}
                     </div>
-                    <div style={{ width: '100%', height: '1px', background: 'rgba(255,255,255,0.1)', margin: '10px 0' }}></div>
+                    <div
+                      style={{
+                        width: '100%',
+                        height: '1px',
+                        background: 'rgba(255,255,255,0.1)',
+                        margin: '10px 0',
+                      }}
+                    ></div>
                     <label className="radio-label" style={{ justifyContent: 'center' }}>
                       <input
                         type="radio"
                         name="positionMode"
                         value="free"
-                        checked={positionMode === "free"}
+                        checked={positionMode === 'free'}
                         onChange={(e) => {
                           setPositionMode(e.target.value);
-                          localStorage.setItem("position-mode", e.target.value);
+                          localStorage.setItem('position-mode', e.target.value);
                         }}
                       />
                       <span className="radio-custom"></span>
@@ -2396,7 +2878,12 @@ export default function Island() {
                         animate={{ opacity: 1, height: 'auto' }}
                         exit={{ opacity: 0, height: 0 }}
                         transition={{ duration: 0.15 }}
-                        style={{ overflow: 'hidden', display: 'flex', flexDirection: 'column', gap: '12px' }}
+                        style={{
+                          overflow: 'hidden',
+                          display: 'flex',
+                          flexDirection: 'column',
+                          gap: '12px',
+                        }}
                       >
                         <div className="settings-row">
                           <span className="settings-label">Position X ({islandX.toFixed(1)}%)</span>
@@ -2450,14 +2937,20 @@ export default function Island() {
                   </AnimatePresence>
                   <div className="settings-row">
                     <span className="settings-label">Island Border</span>
-                    <select value={islandBorderEnabled ? "true" : "false"} onChange={handleIslandBorderChange}>
+                    <select
+                      value={islandBorderEnabled ? 'true' : 'false'}
+                      onChange={handleIslandBorderChange}
+                    >
                       <option value="true">Show</option>
                       <option value="false">Hide</option>
                     </select>
                   </div>
                   <div className="settings-row">
                     <span className="settings-label">Hide When Inactive</span>
-                    <select value={hideNotActiveIslandEnabled ? "true" : "false"} onChange={handlehideNotActiveIslandChange}>
+                    <select
+                      value={hideNotActiveIslandEnabled ? 'true' : 'false'}
+                      onChange={handlehideNotActiveIslandChange}
+                    >
                       <option value="true">Yes</option>
                       <option value="false">No</option>
                     </select>
@@ -2465,7 +2958,16 @@ export default function Island() {
                 </div>
 
                 <div className="settings-section">
-                  <h3 style={{ fontSize: 13, textTransform: 'uppercase', opacity: 0.5, letterSpacing: '0.05em' }}>Colors & Assets</h3>
+                  <h3
+                    style={{
+                      fontSize: 13,
+                      textTransform: 'uppercase',
+                      opacity: 0.5,
+                      letterSpacing: '0.05em',
+                    }}
+                  >
+                    Colors & Assets
+                  </h3>
                   <div className="settings-row">
                     <span className="settings-label">Island Color</span>
                     <input
@@ -2486,7 +2988,10 @@ export default function Island() {
                       onChange={handleTextColorChange}
                     />
                   </div>
-                  <div className="settings-row" style={{ flexDirection: 'column', alignItems: 'flex-start' }}>
+                  <div
+                    className="settings-row"
+                    style={{ flexDirection: 'column', alignItems: 'flex-start' }}
+                  >
                     <span className="settings-label">Background Image URL</span>
                     <input
                       className="select-input"
@@ -2498,31 +3003,52 @@ export default function Island() {
                 </div>
 
                 <div className="settings-section">
-                  <h3 style={{ fontSize: 13, textTransform: 'uppercase', opacity: 0.5, letterSpacing: '0.05em' }}>Features</h3>
+                  <h3
+                    style={{
+                      fontSize: 13,
+                      textTransform: 'uppercase',
+                      opacity: 0.5,
+                      letterSpacing: '0.05em',
+                    }}
+                  >
+                    Features
+                  </h3>
                   <div className="settings-row">
                     <span className="settings-label">Low Battery Alerts</span>
-                    <select value={batteryAlertsEnabled ? "true" : "false"} onChange={handleBatteryAlertsChange}>
+                    <select
+                      value={batteryAlertsEnabled ? 'true' : 'false'}
+                      onChange={handleBatteryAlertsChange}
+                    >
                       <option value="true">Enabled</option>
                       <option value="false">Disabled</option>
                     </select>
                   </div>
                   <div className="settings-row">
                     <span className="settings-label">Standby Mode</span>
-                    <select value={standbyBorderEnabled ? "true" : "false"} onChange={handleStandbyChange}>
+                    <select
+                      value={standbyBorderEnabled ? 'true' : 'false'}
+                      onChange={handleStandbyChange}
+                    >
                       <option value="true">Enabled</option>
                       <option value="false">Disabled</option>
                     </select>
                   </div>
                   <div className="settings-row">
                     <span className="settings-label">Large Standby Mode</span>
-                    <select value={largeStandbyEnabled ? "true" : "false"} onChange={handleLargeStandbyChange}>
+                    <select
+                      value={largeStandbyEnabled ? 'true' : 'false'}
+                      onChange={handleLargeStandbyChange}
+                    >
                       <option value="true">Enabled</option>
                       <option value="false">Disabled</option>
                     </select>
                   </div>
                   <div className="settings-row">
                     <span className="settings-label">Show Info when idle</span>
-                    <select value={showInfoWhenIdleEnabled ? "true" : "false"} onChange={handleShowInfoWhenIdleChange}>
+                    <select
+                      value={showInfoWhenIdleEnabled ? 'true' : 'false'}
+                      onChange={handleShowInfoWhenIdleChange}
+                    >
                       <option value="true">Enabled</option>
                       <option value="false">Disabled</option>
                     </select>
@@ -2530,7 +3056,16 @@ export default function Island() {
                 </div>
 
                 <div className="settings-section">
-                  <h3 style={{ fontSize: 13, textTransform: 'uppercase', opacity: 0.5, letterSpacing: '0.05em' }}>Weather</h3>
+                  <h3
+                    style={{
+                      fontSize: 13,
+                      textTransform: 'uppercase',
+                      opacity: 0.5,
+                      letterSpacing: '0.05em',
+                    }}
+                  >
+                    Weather
+                  </h3>
                   <div className="settings-row">
                     <span className="settings-label">Location</span>
                     <input
@@ -2539,7 +3074,7 @@ export default function Island() {
                       value={weatherLocation}
                       onChange={(e) => {
                         setWeatherLocation(e.target.value);
-                        localStorage.setItem("location", e.target.value);
+                        localStorage.setItem('location', e.target.value);
                       }}
                     />
                   </div>
@@ -2553,8 +3088,25 @@ export default function Island() {
                 </div>
 
                 <div className="settings-section">
-                  <h3 style={{ fontSize: 13, textTransform: 'uppercase', opacity: 0.5, letterSpacing: '0.05em' }}>Quick Apps</h3>
-                  <div style={{ display: 'flex', gap: '8px', marginBottom: '12px', position: 'relative', flexDirection: 'column' }}>
+                  <h3
+                    style={{
+                      fontSize: 13,
+                      textTransform: 'uppercase',
+                      opacity: 0.5,
+                      letterSpacing: '0.05em',
+                    }}
+                  >
+                    Quick Apps
+                  </h3>
+                  <div
+                    style={{
+                      display: 'flex',
+                      gap: '8px',
+                      marginBottom: '12px',
+                      position: 'relative',
+                      flexDirection: 'column',
+                    }}
+                  >
                     <div style={{ display: 'flex', gap: '8px' }}>
                       <input
                         className="select-input"
@@ -2595,26 +3147,28 @@ export default function Island() {
                           cursor: 'pointer',
                           display: 'flex',
                           alignItems: 'center',
-                          justifyContent: 'center'
+                          justifyContent: 'center',
                         }}
                       >
                         <Plus size={18} />
                       </button>
                     </div>
                     {showSuggestions && appSuggestions.length > 0 && (
-                      <div style={{
-                        position: 'absolute',
-                        top: '100%',
-                        left: 0,
-                        right: 0,
-                        zIndex: 999,
-                        borderRadius: '12px',
-                        overflow: 'hidden',
-                        boxShadow: '0 4px 20px rgba(0,0,0,0.3)',
-                        backgroundColor: bgColor,
-                        border: `1px solid ${textColor}22`,
-                        marginTop: '4px'
-                      }}>
+                      <div
+                        style={{
+                          position: 'absolute',
+                          top: '100%',
+                          left: 0,
+                          right: 0,
+                          zIndex: 999,
+                          borderRadius: '12px',
+                          overflow: 'hidden',
+                          boxShadow: '0 4px 20px rgba(0,0,0,0.3)',
+                          backgroundColor: bgColor,
+                          border: `1px solid ${textColor}22`,
+                          marginTop: '4px',
+                        }}
+                      >
                         {appSuggestions.map((s, i) => (
                           <div
                             key={i}
@@ -2628,13 +3182,28 @@ export default function Island() {
                               cursor: 'pointer',
                               color: textColor,
                               fontSize: 13,
-                              borderBottom: i < appSuggestions.length - 1 ? `1px solid ${textColor}11` : 'none',
+                              borderBottom:
+                                i < appSuggestions.length - 1 ? `1px solid ${textColor}11` : 'none',
                             }}
-                            onMouseEnter={e => e.currentTarget.style.backgroundColor = `${textColor}11`}
-                            onMouseLeave={e => e.currentTarget.style.backgroundColor = 'transparent'}
+                            onMouseEnter={(e) =>
+                              (e.currentTarget.style.backgroundColor = `${textColor}11`)
+                            }
+                            onMouseLeave={(e) =>
+                              (e.currentTarget.style.backgroundColor = 'transparent')
+                            }
                           >
                             <div style={{ fontWeight: 600 }}>{s.name}</div>
-                            <div style={{ opacity: 0.4, fontSize: 11, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{s.launch}</div>
+                            <div
+                              style={{
+                                opacity: 0.4,
+                                fontSize: 11,
+                                overflow: 'hidden',
+                                textOverflow: 'ellipsis',
+                                whiteSpace: 'nowrap',
+                              }}
+                            >
+                              {s.launch}
+                            </div>
                           </div>
                         ))}
                       </div>
@@ -2654,13 +3223,26 @@ export default function Island() {
                         >
                           <input
                             className="select-input"
-                            style={{ flex: 1, border: 'none', background: 'transparent', padding: 0 }}
+                            style={{
+                              flex: 1,
+                              border: 'none',
+                              background: 'transparent',
+                              padding: 0,
+                            }}
                             value={app.name}
                             onChange={(e) => handleQaChange(idx, e.target.value)}
                           />
                           <button
                             onClick={() => removeQuickApp(idx)}
-                            style={{ color: '#ff4d4d', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}
+                            style={{
+                              color: '#ff4d4d',
+                              background: 'none',
+                              border: 'none',
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                            }}
                           >
                             <Trash2 size={16} />
                           </button>
@@ -2671,54 +3253,93 @@ export default function Island() {
                 </div>
 
                 <div className="settings-section" style={{ marginBottom: 30 }}>
-                  <h3 style={{ fontSize: 13, textTransform: 'uppercase', opacity: 0.5, letterSpacing: '0.05em' }}>Integrations</h3>
+                  <h3
+                    style={{
+                      fontSize: 13,
+                      textTransform: 'uppercase',
+                      opacity: 0.5,
+                      letterSpacing: '0.05em',
+                    }}
+                  >
+                    Integrations
+                  </h3>
                   <div className="settings-row">
                     <span className="settings-label">AI Provider</span>
                     <select
                       value={aiProvider}
                       onChange={(e) => {
                         setAiProvider(e.target.value);
-                        localStorage.setItem("ai-provider", e.target.value);
-                        const model = e.target.value === "groq" ? "llama-3.3-70b-versatile" : "meta-llama/llama-3.3-70b-instruct";
+                        localStorage.setItem('ai-provider', e.target.value);
+                        const model =
+                          e.target.value === 'groq'
+                            ? 'llama-3.3-70b-versatile'
+                            : 'meta-llama/llama-3.3-70b-instruct';
                         setAiModel(model);
-                        localStorage.setItem("ai-model", model);
+                        localStorage.setItem('ai-model', model);
                       }}
                     >
                       <option value="groq">Groq</option>
                       <option value="openrouter">OpenRouter</option>
                     </select>
                   </div>
-                  <div className="settings-row" style={{ flexDirection: 'column', alignItems: 'flex-start' }}>
+                  <div
+                    className="settings-row"
+                    style={{ flexDirection: 'column', alignItems: 'flex-start' }}
+                  >
                     <span className="settings-label">AI Model</span>
                     <input
                       className="select-input"
                       value={aiModel}
-                      placeholder={aiProvider === "groq" ? "llama-3.3-70b-versatile" : "meta-llama/llama-3.3-70b-instruct"}
+                      placeholder={
+                        aiProvider === 'groq'
+                          ? 'llama-3.3-70b-versatile'
+                          : 'meta-llama/llama-3.3-70b-instruct'
+                      }
                       onChange={(e) => {
                         setAiModel(e.target.value);
-                        localStorage.setItem("ai-model", e.target.value);
+                        localStorage.setItem('ai-model', e.target.value);
                       }}
                     />
                   </div>
-                  <div className="settings-row" style={{ flexDirection: 'column', alignItems: 'flex-start' }}>
+                  <div
+                    className="settings-row"
+                    style={{ flexDirection: 'column', alignItems: 'flex-start' }}
+                  >
                     <span className="settings-label">API Key</span>
                     <input
                       className="select-input"
                       type="password"
-                      placeholder={aiProvider === "groq" ? "gsk_..." : "sk-or-..."}
-                      onChange={(e) => localStorage.setItem("api-key", e.target.value)}
+                      placeholder={aiProvider === 'groq' ? 'gsk_...' : 'sk-or-...'}
+                      onChange={(e) => localStorage.setItem('api-key', e.target.value)}
                     />
                   </div>
                 </div>
 
                 <div className="settings-section" style={{ marginBottom: 30 }}>
-                  <h3 style={{ fontSize: 13, textTransform: 'uppercase', opacity: 0.5, letterSpacing: '0.05em' }}>Manage Workflows</h3>
+                  <h3
+                    style={{
+                      fontSize: 13,
+                      textTransform: 'uppercase',
+                      opacity: 0.5,
+                      letterSpacing: '0.05em',
+                    }}
+                  >
+                    Manage Workflows
+                  </h3>
 
-                  <div id="add-workflow-form" style={{
-                    display: 'flex', flexDirection: 'column', gap: '6px', width: '100%',
-                    boxSizing: 'border-box'
-                  }}>
-                    <span className="settings-label" style={{ opacity: 0.8 }}>Workflow Name</span>
+                  <div
+                    id="add-workflow-form"
+                    style={{
+                      display: 'flex',
+                      flexDirection: 'column',
+                      gap: '6px',
+                      width: '100%',
+                      boxSizing: 'border-box',
+                    }}
+                  >
+                    <span className="settings-label" style={{ opacity: 0.8 }}>
+                      Workflow Name
+                    </span>
                     <input
                       className="select-input"
                       style={{ width: '100%', boxSizing: 'border-box' }}
@@ -2726,10 +3347,17 @@ export default function Island() {
                       value={workflowName}
                       onChange={(e) => setWorkflowName(e.target.value)}
                     />
-                    <span className="settings-label" style={{ marginTop: 15, opacity: 0.8 }}>Apps or URLs (Comma Separated)</span>
+                    <span className="settings-label" style={{ marginTop: 15, opacity: 0.8 }}>
+                      Apps or URLs (Comma Separated)
+                    </span>
                     <textarea
                       className="select-input"
-                      style={{ width: '100%', minHeight: '50px', padding: '8px', boxSizing: 'border-box' }}
+                      style={{
+                        width: '100%',
+                        minHeight: '50px',
+                        padding: '8px',
+                        boxSizing: 'border-box',
+                      }}
                       placeholder="e.g. Spotify, docs.google.com"
                       value={workflowUrls}
                       onChange={(e) => setWorkflowUrls(e.target.value)}
@@ -2746,7 +3374,7 @@ export default function Island() {
                         padding: '8px',
                         fontWeight: 600,
                         cursor: 'pointer',
-                        marginTop: 2
+                        marginTop: 2,
                       }}
                     >
                       Save Workflow
@@ -2759,13 +3387,24 @@ export default function Island() {
                         <motion.div
                           key={`wf-${wf.name}-${idx}`}
                           className="settings-row"
-                          style={{ justifyContent: 'space-between', padding: '10px 0', borderBottom: `1px solid color-mix(in srgb, ${textColor}, transparent 95%)` }}
+                          style={{
+                            justifyContent: 'space-between',
+                            padding: '10px 0',
+                            borderBottom: `1px solid color-mix(in srgb, ${textColor}, transparent 95%)`,
+                          }}
                           initial={{ opacity: 0, height: 0 }}
                           animate={{ opacity: 1, height: 'auto' }}
                           exit={{ opacity: 0, x: -20, height: 0, padding: 0 }}
                           transition={{ duration: 0.2 }}
                         >
-                          <div style={{ display: 'flex', flexDirection: 'column', overflow: 'hidden', paddingRight: '10px' }}>
+                          <div
+                            style={{
+                              display: 'flex',
+                              flexDirection: 'column',
+                              overflow: 'hidden',
+                              paddingRight: '10px',
+                            }}
+                          >
                             <span style={{ fontWeight: 600 }}>{wf.name}</span>
                             <span style={{ fontSize: 11, opacity: 0.6 }}>
                               {wf.urls.length} items
@@ -2773,7 +3412,16 @@ export default function Island() {
                           </div>
                           <button
                             onClick={() => removeWorkflow(idx)}
-                            style={{ color: '#ff4d4d', background: 'none', border: 'none', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center', gap: 4 }}
+                            style={{
+                              color: '#ff4d4d',
+                              background: 'none',
+                              border: 'none',
+                              cursor: 'pointer',
+                              display: 'flex',
+                              alignItems: 'center',
+                              justifyContent: 'center',
+                              gap: 4,
+                            }}
                           >
                             <Trash2 size={14} />
                             <span style={{ fontSize: 12 }}>Remove</span>
@@ -2788,7 +3436,6 @@ export default function Island() {
           </motion.div>
         )}
       </AnimatePresence>
-
-    </motion.div >
+    </motion.div>
   );
 }
