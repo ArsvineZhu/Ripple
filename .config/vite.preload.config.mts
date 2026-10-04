@@ -1,0 +1,4 @@
+import { defineConfig } from 'vite';
+export default defineConfig({
+  build: { rolldownOptions: { output: { entryFileNames: 'preload.cjs' } } },
+});

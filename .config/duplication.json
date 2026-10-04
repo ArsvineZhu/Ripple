@@ -1,0 +1,11 @@
+{
+  "path": ["src"],
+  "format": ["typescript", "tsx"],
+  "minTokens": 100,
+  "minLines": 10,
+  "threshold": 3,
+  "mode": "mild",
+  "ignore": ["**/assets/**", "**/*.d.ts"],
+  "reporters": ["console"],
+  "gitignore": true
+}

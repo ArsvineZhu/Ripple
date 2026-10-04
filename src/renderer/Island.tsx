@@ -1,0 +1,244 @@
+import { motion } from 'motion/react';
+import { AnimatePresence } from 'motion/react';
+import { useIslandController } from './hooks/useIslandController';
+import { QuickView } from './components/QuickView';
+import { BrowserSearchTab } from './features/BrowserSearchTab';
+import { WorkflowsTab } from './features/WorkflowsTab';
+import { OverviewTab } from './features/OverviewTab';
+import { NowPlayingTab } from './features/NowPlayingTab';
+import { AssistantTab } from './features/AssistantTab';
+import { ClipboardTab } from './features/ClipboardTab';
+import { TasksTab } from './features/TasksTab';
+import { SettingsTab } from './features/SettingsTab';
+export default function Island() {
+  const controller = useIslandController();
+  const {
+    islandElementRef,
+    setIsHovered,
+    mode,
+    showInfoWhenIdleEnabled,
+    isPlaying,
+    setMode,
+    clearClickSuppression,
+    consumeClickSuppression,
+    isDraggingRef,
+    standbyBorderEnabled,
+    largeStandbyEnabled,
+    isInteractiveTarget,
+    handleWheelSwipe,
+    handlePointerDown,
+    handlePointerMove,
+    handlePointerUp,
+    sideStyles,
+    width,
+    height,
+    hideNotActiveIslandEnabled,
+    bgColor,
+    textColor,
+    isHovered,
+    theme,
+    currentTab,
+    syncLinuxWindowShape,
+    bgImage,
+    islandBorderEnabled,
+    cameraInUse,
+    microphoneInUse,
+    charging,
+    chargingAlert,
+    percent,
+    alert,
+    bluetoothAlert,
+    direction,
+    currentTabId,
+    tabVariants,
+  } = controller;
+  return (
+    <motion.div
+      id="Island"
+      ref={islandElementRef}
+      onMouseEnter={() => {
+        setIsHovered(true);
+        if (mode === 'still' && showInfoWhenIdleEnabled && !isPlaying) {
+          setMode('large');
+        } else if (mode !== 'large') {
+          setMode('quick');
+        }
+        if (window.electronAPI) {
+          window.electronAPI.setIgnoreMouseEvents(false, false);
+        }
+      }}
+      onMouseLeave={() => {
+        clearClickSuppression();
+        if (isDraggingRef.current) return;
+        setIsHovered(false);
+        if (window.electronAPI) {
+          window.electronAPI.setIgnoreMouseEvents(true, true);
+        }
+
+        const activeTag = document.activeElement?.tagName;
+        if (activeTag === 'INPUT' || activeTag === 'TEXTAREA') return;
+
+        if (standbyBorderEnabled) {
+          setMode('quick');
+        } else if (largeStandbyEnabled) {
+          setMode('large');
+        } else {
+          setMode('still');
+        }
+      }}
+      onClick={(e) => {
+        if (consumeClickSuppression()) {
+          return;
+        }
+        if (isInteractiveTarget(e.target)) return;
+
+        const activeTag = document.activeElement?.tagName;
+        if (activeTag === 'INPUT' || activeTag === 'TEXTAREA' || activeTag === 'SELECT') {
+          (document.activeElement as HTMLElement).blur();
+        }
+
+        setMode((prev) => (prev === 'large' ? 'quick' : 'large'));
+        if (window.electronAPI) {
+          window.electronAPI.setIgnoreMouseEvents(false, false);
+        }
+      }}
+      onWheel={handleWheelSwipe}
+      onPointerDown={handlePointerDown}
+      onPointerMove={handlePointerMove}
+      onPointerUp={handlePointerUp}
+      initial={{
+        x: sideStyles.x,
+        left: sideStyles.left,
+        top: sideStyles.top || 'auto',
+        bottom: sideStyles.bottom || 'auto',
+      }}
+      animate={{
+        width: `${width}px`,
+        height: `${height}px`,
+        left: sideStyles.left,
+        top: sideStyles.top || 'auto',
+        bottom: sideStyles.bottom || 'auto',
+        backgroundColor: hideNotActiveIslandEnabled && mode === 'still' ? 'rgba(0,0,0,0)' : bgColor,
+        color: hideNotActiveIslandEnabled && mode === 'still' ? 'rgba(0,0,0,0)' : textColor,
+        scale: isHovered ? 1.05 : 1,
+        x: sideStyles.x,
+        borderRadius:
+          mode === 'large' && theme === 'win95'
+            ? 0
+            : mode === 'large'
+              ? currentTab === 0
+                ? 28
+                : 30
+              : theme === 'win95'
+                ? 0
+                : 14,
+      }}
+      onUpdate={syncLinuxWindowShape}
+      onAnimationComplete={syncLinuxWindowShape}
+      transition={{
+        type: 'spring',
+        stiffness: 400,
+        damping: 40,
+        mass: 2.5,
+        x: { duration: 0.15 },
+      }}
+      style={{
+        display: 'flex',
+        alignItems: 'center',
+        backgroundImage: `url('${bgImage}')`,
+        backgroundRepeat: 'no-repeat',
+        backgroundPosition: 'center',
+        backgroundSize: 'cover',
+        justifyContent: mode === 'large' && currentTab === 3 ? 'flex-start' : 'center',
+        overflow: 'hidden',
+        fontFamily: theme === 'win95' ? 'w95' : 'OpenRunde',
+        border:
+          theme === 'win95'
+            ? '2px solid rgb(254, 254, 254)'
+            : islandBorderEnabled
+              ? cameraInUse
+                ? `1px solid rgba(255, 215, 0, 0.8)`
+                : microphoneInUse
+                  ? `1px solid rgba(255, 154, 0, 0.8)`
+                  : charging || chargingAlert
+                    ? `1px solid rgba(111, 255, 123, 0.5)`
+                    : (typeof percent === 'number' && percent <= 20) || alert
+                      ? `1px solid rgba(255, 63, 63, 0.5)`
+                      : bluetoothAlert
+                        ? `1px solid rgba(0, 150, 255, 0.34)`
+                        : hideNotActiveIslandEnabled
+                          ? 'none'
+                          : `1px solid color-mix(in srgb, ${textColor}, transparent 70%)`
+              : 'none',
+        borderColor: theme === 'win95' ? '#FFFFFF #808080 #808080 #FFFFFF' : 'none',
+
+        boxShadow:
+          hideNotActiveIslandEnabled && mode === 'still'
+            ? 'none'
+            : isHovered
+              ? '0 0 32px rgba(0, 0, 0, 0.25)'
+              : '0 0 24px rgba(0, 0, 0, 0.12)',
+        ...({
+          '--island-text-color': textColor,
+          '--island-bg-color': bgColor,
+        } as import('motion/react').MotionStyle),
+        position: 'fixed',
+        margin: 0,
+        transition: 'box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1)',
+        pointerEvents: 'auto',
+      }}
+    >
+      {/*Quickview*/}
+      <QuickView {...controller} />
+
+      <AnimatePresence custom={direction} mode="popLayout">
+        {mode === 'large' && (
+          <motion.div
+            key={currentTabId}
+            custom={direction}
+            variants={tabVariants}
+            initial="enter"
+            animate="center"
+            exit="exit"
+            transition={{
+              x: { type: 'spring', stiffness: 400, damping: 40 },
+              opacity: { duration: 0.15 },
+            }}
+            style={{
+              width: '100%',
+              height: '100%',
+              display: 'flex',
+              flexDirection: 'column',
+              alignItems: 'center',
+              justifyContent: 'center',
+              position: 'absolute',
+            }}
+          >
+            {/*Browser Search*/}
+            {currentTab === 0 && <BrowserSearchTab {...controller} />}
+            {/* Workflows & Quick Apps */}
+            {currentTab === 1 && <WorkflowsTab {...controller} />}
+
+            {/*Overview tab*/}
+            {currentTab === 2 && <OverviewTab {...controller} />}
+
+            {/* Now Playing*/}
+            {currentTab === 3 && <NowPlayingTab {...controller} />}
+
+            {/* AI tab container */}
+            {currentTab === 4 && <AssistantTab {...controller} />}
+
+            {/*Clipboard*/}
+            {currentTab === 5 && <ClipboardTab {...controller} />}
+
+            {/*Tasks*/}
+            {currentTab === 6 && <TasksTab {...controller} />}
+
+            {/*Settings Overhaul*/}
+            {currentTab === 7 && <SettingsTab {...controller} />}
+          </motion.div>
+        )}
+      </AnimatePresence>
+    </motion.div>
+  );
+}

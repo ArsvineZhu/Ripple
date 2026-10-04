@@ -1,97 +1,60 @@
-name: Multi-Platform Build
-
+name: Check and package
 on:
   push:
-    branches: [ main, master ]
+    branches: [main, master]
   pull_request:
-    branches: [ main, master ]
+    branches: [main, master]
   workflow_dispatch:
-
+permissions:
+  contents: read
 jobs:
+  check:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
+        with:
+          node-version-file: .node-version
+          cache: npm
+      - run: npm ci
+      - run: npm run check
+      - run: npm test
   build:
-    name: Build for ${{ matrix.name }}
+    needs: check
+    name: Package ${{ matrix.name }}
     runs-on: ${{ matrix.os }}
-
     strategy:
+      fail-fast: false
       matrix:
         include:
-          - name: macOS (x64)
-            os: macos-latest
-            platform: macos
-            arch: x64
-            os-label: macOS-x64
-          - name: macOS (arm64)
-            os: macos-latest
-            platform: macos
-            arch: arm64
-            os-label: macOS-arm64
-          - name: Windows
-            os: windows-latest
-            platform: windows
-            os-label: Windows
-          - name: Linux
-            os: ubuntu-latest
-            platform: linux
-            os-label: Linux
-
+          - { name: macOS-x64, os: macos-latest, arch: x64 }
+          - { name: macOS-arm64, os: macos-latest, arch: arm64 }
+          - { name: Windows, os: windows-latest, arch: x64 }
+          - { name: Linux, os: ubuntu-latest, arch: x64 }
     steps:
-      - name: Checkout Code
-        uses: actions/checkout@v4
-
-      - name: Setup Node.js
-        uses: actions/setup-node@v4
+      - uses: actions/checkout@v7
+      - uses: actions/setup-node@v7
         with:
-          node-version: '20'
-          cache: 'npm'
-
-      - name: Get version from package.json
-        id: pkg
-        run: node -p "\"version=\" + require('./package.json').version" >> $GITHUB_OUTPUT
-        shell: bash
-
-      - name: Install system dependencies (Linux)
-        if: matrix.platform == 'linux'
+          node-version-file: .node-version
+          cache: npm
+      - name: Linux installer prerequisites
+        if: runner.os == 'Linux'
+        run: sudo apt-get update && sudo apt-get install -y rpm fakeroot dpkg
+      - name: WiX prerequisites
+        if: runner.os == 'Windows'
+        shell: pwsh
         run: |
-          sudo apt-get update
-          sudo apt-get install -y rpm fakeroot dpkg
-
-      - name: Install Dependencies
-        run: npm install
-
-      - name: Build Application (macOS)
-        if: matrix.platform == 'macos'
-        run: npm run make -- --arch=${{ matrix.arch }}
-
-      - name: Package Application (Windows & Linux)
-        if: matrix.platform != 'macos'
-        run: npm run package
-
-      - name: Make Distributables (Windows & Linux)
-        if: matrix.platform != 'macos'
-        run: npm run make -- --skip-package
-
-      - name: Upload macOS Artifacts
-        if: matrix.platform == 'macos'
-        uses: actions/upload-artifact@v4
+          choco install wixtoolset --no-progress -y
+          "${env:ProgramFiles(x86)}\WiX Toolset v3.14\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
+      - run: npm ci
+      - run: npm run make -- --arch=${{ matrix.arch }}
+      - uses: actions/upload-artifact@v7
         with:
-          name: Ripple-${{ matrix.os-label }}-v${{ steps.pkg.outputs.version }}
-          path: out/make/**/*.dmg
-          if-no-files-found: error
-
-      - name: Upload Windows Artifacts
-        if: matrix.platform == 'windows'
-        uses: actions/upload-artifact@v4
-        with:
-          name: Ripple-${{ matrix.os-label }}-v${{ steps.pkg.outputs.version }}
-          path: out/make/wix/x64/*.msi
-          if-no-files-found: error
-
-      - name: Upload Linux Artifacts
-        if: matrix.platform == 'linux'
-        uses: actions/upload-artifact@v4
-        with:
-          name: Ripple-${{ matrix.os-label }}-v${{ steps.pkg.outputs.version }}
+          name: Ripple-${{ matrix.name }}
           path: |
-            out/make/deb/**/*.deb
-            out/make/rpm/**/*.rpm
+            out/make/**/*.dmg
+            out/make/**/*.msi
+            out/make/**/*.deb
+            out/make/**/*.rpm
+            out/make/**/*.zip
           if-no-files-found: error
