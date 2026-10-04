@@ -14,6 +14,8 @@ npm test
 npm run make
 ```
 
+Linux development also needs a Chromium sandbox helper owned by root with mode `4755`. If Ripple is installed with the same Electron build, its matching helper can be reused: `CHROME_DEVEL_SANDBOX=/usr/lib/ripple/chrome-sandbox npm start`.
+
 ## Tool ownership
 
 Tool configuration is centralized in [.config](../.config/README.md); package scripts select each file explicitly.
@@ -39,3 +41,11 @@ Main services dispatch to platform adapters and own OS effects. Preload exposes 
 Linux uses a full-display transparent XWayland window. Only X11 ShapeInput follows the animated Island rectangle; changing ShapeBounding can introduce black flashes. The X11 client is statically imported and bundled. Window display waits for the first confirmed input region. See [main](../src/main/README.md) and [renderer](../src/renderer/README.md).
 
 Forge cleans `.vite` before starting and packaging so obsolete bundles cannot ship. Generated `.vite`, `out`, reports and `node_modules` are excluded from Git. Text attributes and editor settings use LF; fonts/icons are binary. Keep English/Chinese docs synchronized; [catalog](INDEX.md).
+
+## Internationalization and styles
+
+The `language` storage key contains `system`, `en`, `zh-CN`, `zh-TW` or `ja`; missing or invalid values mean `system`. System matching honors Chinese script before region and falls back to English for unsupported languages. Shared English message keys are canonical; update the other three catalogs with matching keys/interpolation variables. Bundle resources rather than fetching translations at runtime. Keep user content and provider output unchanged; represent application errors separately so existing messages update when the language changes.
+
+Use CSS Modules for shell, controls and feature presentation. Global styles are limited to document/fonts/animation and theme tokens. Select portals belong to the Island overlay, with collision bounds inside the Island and keyboard events confined to the control. Position commits retain the settings view and scroll during movement; animation completion resumes ordinary interaction and synchronizes ShapeInput.
+
+Vitest uses a Node environment for contracts and happy-dom for interaction lifecycle regressions. Use DOM tests for interaction transitions and Electron checks for menu positioning, focus, transparency and click-through.

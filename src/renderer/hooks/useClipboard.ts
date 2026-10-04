@@ -1,16 +1,12 @@
 import { useState, useEffect } from 'react';
+import { updateClipboardHistory } from '../lib/clipboard';
 
 export function useClipboard() {
   const [clipboard, setClipboard] = useState<string[]>([]);
   async function getClipboard() {
     try {
       const text = await navigator.clipboard.readText();
-      setClipboard((prevClipboard) => {
-        if (prevClipboard[0] === text) {
-          return prevClipboard;
-        }
-        return [text, ...prevClipboard];
-      });
+      setClipboard((history) => updateClipboardHistory(history, text));
     } catch (error) {
       console.log(`Error reading clipboard: ${String(error)}`);
     }

@@ -1,3 +1,6 @@
+import { CopyButton } from '../components/CopyButton';
+import styles from './AssistantTab.module.css';
+import { useTranslation } from 'react-i18next';
 import { AnimatePresence } from 'motion/react';
 import { motion } from 'motion/react';
 import ReactMarkdown from 'react-markdown';
@@ -10,8 +13,8 @@ type Props = Pick<
   | 'setAsked'
   | 'askAI'
   | 'textColor'
-  | 'theme'
   | 'bgColor'
+  | 'assistantError'
   | 'aiAnswer'
   | 'setAIAnswer'
 >;
@@ -22,35 +25,28 @@ export function AssistantTab({
   setAsked,
   askAI,
   textColor,
-  theme,
   bgColor,
   aiAnswer,
+  assistantError,
   setAIAnswer,
 }: Props) {
+  const { t } = useTranslation();
   return (
-    <div style={{ width: '100%', height: '100%', position: 'relative' }}>
+    <div className={styles.container}>
       <AnimatePresence propagate mode="wait">
         {!asked ? (
           <motion.div
+            className={styles.questionPanel}
             key="ask"
             initial={{ opacity: 0, filter: 'blur(10px)' }}
             animate={{ opacity: 1, filter: 'blur(0px)' }}
             exit={{ opacity: 0, filter: 'blur(10px)' }}
             transition={{ duration: 0.2 }}
-            style={{
-              position: 'absolute',
-              inset: 0,
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'stretch',
-              justifyContent: 'flex-start',
-              padding: '10px',
-              boxSizing: 'border-box',
-            }}
           >
             <textarea
+              className={styles.questionInput}
               id="userinput"
-              placeholder="Ask Anything"
+              placeholder={t('askAnything')}
               value={userText}
               onChange={(e) => setUserText(e.target.value)}
               onKeyDown={(e) => {
@@ -60,64 +56,37 @@ export function AssistantTab({
                   askAI();
                 }
               }}
-              style={{
-                color: `${textColor}`,
-                fontFamily: theme === 'win95' ? 'w95' : 'OpenRunde',
-                pointerEvents: 'auto',
-                animation: 'none',
-              }}
+              style={{ color: `${textColor}` }}
             />
             <button
+              className={styles.submitButton}
               id="chatsubmit"
               onClick={() => {
                 setAsked(true);
                 askAI();
               }}
-              style={{
-                backgroundColor: textColor,
-                color: bgColor,
-                fontFamily: theme === 'win95' ? 'w95' : 'OpenRunde',
-                pointerEvents: 'auto',
-                animation: 'none',
-              }}
+              style={{ backgroundColor: textColor, color: bgColor }}
             >
-              Ask
+              {t('ask')}
             </button>
           </motion.div>
         ) : (
           <motion.div
+            className={styles.answerPanel}
             key="result"
             initial={{ opacity: 0, filter: 'blur(10px)' }}
             animate={{ opacity: 1, filter: 'blur(0px)' }}
             exit={{ opacity: 0, filter: 'blur(10px)' }}
             transition={{ duration: 0.2 }}
-            style={{
-              position: 'absolute',
-              inset: 0,
-              display: 'flex',
-              flexDirection: 'column',
-              alignItems: 'stretch',
-              justifyContent: 'flex-start',
-              padding: '0 10px',
-              boxSizing: 'border-box',
-              overflow: 'hidden',
-            }}
           >
-            <div
-              id="result"
-              style={{
-                fontWeight: 400,
-                fontFamily: theme === 'win95' ? 'w95' : 'OpenRunde',
-                pointerEvents: 'auto',
-                animation: 'none',
-                margin: 0,
-                paddingTop: '40px',
-                paddingBottom: '50px',
-                maxHeight: '100%',
-                overflowY: 'auto',
-              }}
-            >
-              {aiAnswer ? (
+            <div className={styles.answerContent} id="result">
+              {assistantError ? (
+                <span role="status">
+                  {assistantError.kind === 'aiError'
+                    ? t('aiError', { detail: assistantError.detail || '' })
+                    : t(assistantError.kind)}
+                </span>
+              ) : aiAnswer ? (
                 <ReactMarkdown
                   components={{
                     pre: ({ node, children, ...props }) => {
@@ -127,76 +96,35 @@ export function AssistantTab({
 
                       return (
                         <div
+                          className={styles.codeBlock}
                           style={{
-                            position: 'relative',
-                            margin: '10px 0',
                             backgroundColor: `color-mix(in srgb, ${textColor}, transparent 92%)`,
-                            borderRadius: '8px',
                             border: `1px solid color-mix(in srgb, ${textColor}, transparent 90%)`,
                           }}
                         >
-                          <button
-                            onClick={(e) => {
-                              e.stopPropagation();
-                              navigator.clipboard.writeText(codeContent);
-                              const btn = e.currentTarget;
-                              const originalText = btn.innerText;
-                              btn.innerText = 'Copied!';
-                              btn.style.backgroundColor = 'rgba(52, 199, 89, 0.4)';
-                              setTimeout(() => {
-                                btn.innerText = originalText;
-                                btn.style.backgroundColor = 'rgba(255, 255, 255, 0.15)';
-                              }, 2000);
-                            }}
-                            style={{
-                              position: 'absolute',
-                              top: '6px',
-                              right: '6px',
-                              zIndex: 10,
-                              backgroundColor: 'rgba(255, 255, 255, 0.15)',
-                              border: 'none',
-                              borderRadius: '5px',
-                              color: textColor,
-                              fontSize: '10px',
-                              padding: '3px 7px',
-                              cursor: 'pointer',
-                              backdropFilter: 'blur(4px)',
-                              fontWeight: 600,
-                              transition: 'all 0.2s ease',
-                            }}
-                          >
-                            Copy
-                          </button>
-                          <pre
-                            {...props}
-                            style={{ margin: 0, padding: '12px', background: 'none' }}
-                          >
+                          <CopyButton
+                            className={styles.codeCopyButton}
+                            onCopy={() => navigator.clipboard.writeText(codeContent)}
+                          />
+                          <pre className={styles.codePre} {...props}>
                             {children}
                           </pre>
                         </div>
                       );
                     },
                     code: ({ node: _node, ...props }) => (
-                      <code
-                        {...props}
-                        style={{
-                          backgroundColor: 'transparent',
-                          padding: '0',
-                          borderRadius: '0',
-                          fontFamily: 'monospace',
-                          fontSize: '1em',
-                        }}
-                      />
+                      <code className={styles.inlineCode} {...props} />
                     ),
                   }}
                 >
                   {aiAnswer}
                 </ReactMarkdown>
               ) : (
-                <span style={{ opacity: 0.5, fontStyle: 'italic' }}>Thinking...</span>
+                <span className={styles.thinking}>{t('thinking')}</span>
               )}
             </div>
             <button
+              className={styles.anotherButton}
               onPointerDown={(e) => e.stopPropagation()}
               onClick={() => {
                 setAsked(false);
@@ -204,20 +132,9 @@ export function AssistantTab({
                 setUserText('');
               }}
               id="Askanotherbtn"
-              style={{
-                position: 'absolute',
-                bottom: 15,
-                right: 15,
-                backgroundColor: textColor,
-                color: bgColor,
-                fontFamily: theme === 'win95' ? 'w95' : 'OpenRunde',
-                pointerEvents: 'auto',
-                animation: 'none',
-                zIndex: 999,
-                cursor: 'pointer',
-              }}
+              style={{ backgroundColor: textColor, color: bgColor }}
             >
-              Ask another
+              {t('askAnother')}
             </button>
           </motion.div>
         )}

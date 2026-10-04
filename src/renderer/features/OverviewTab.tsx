@@ -1,4 +1,6 @@
-import { storage } from '../lib/storage';
+import { useTranslation } from 'react-i18next';
+import styles from './OverviewTab.module.css';
+import typography from '../styles/typography.module.css';
 import { Zap } from 'lucide-react';
 import { WeatherIcon } from '../components/WeatherIcon';
 import { formatDateShort } from '../lib/date';
@@ -8,46 +10,35 @@ type Props = Pick<
   'bgColor' | 'charging' | 'percent' | 'weather' | 'textColor' | 'time'
 >;
 export function OverviewTab({ bgColor, charging, percent, weather, textColor, time }: Props) {
+  const { i18n } = useTranslation();
+  const number = (value: number | string | null) =>
+    value === null || value === ''
+      ? '??'
+      : new Intl.NumberFormat(i18n.language).format(Number(value));
   return (
     <>
-      <div id="battery" style={{ animation: 'none' }}>
+      <div className={styles.batteryContainer} id="battery">
         <div
+          className={styles.batteryBar}
           id="battery-bar"
-          style={{
-            backgroundColor: storage.getItem('text-color') ?? undefined,
-            color: bgColor,
-          }}
+          style={{ backgroundColor: textColor, color: bgColor }}
         >
-          <h1
-            className="text"
-            style={{ animation: 'none', display: 'flex', alignItems: 'center', gap: 2 }}
-          >
+          <h1 className={[typography['text'], styles.batteryText].join(' ')}>
             {charging && <Zap size={16} />}
-            <span>{percent}%</span>
+            <span>{number(percent)}%</span>
           </h1>
         </div>
       </div>
-      <h1
-        className="text"
-        style={{
-          fontSize: 15,
-          left: 25,
-          top: 14,
-          position: 'absolute',
-          animation: 'none',
-        }}
-      >
-        <div style={{ display: 'flex', alignItems: 'center', gap: 3 }}>
+      <h1 className={[typography['text'], styles.weatherPosition].join(' ')}>
+        <div className={styles.weather}>
           <WeatherIcon status={weather.status} size={16} color={textColor} />
-          <span>{weather.temp ? weather.temp : '??'}º</span>
+          <span>{number(weather.temp)}º</span>
         </div>
       </h1>
-      <div id="date">
-        <h1 className="text" style={{ fontSize: 50, animation: 'none' }}>
-          {time}
-        </h1>
-        <h2 className="text" style={{ fontSize: 15, animation: 'none' }}>
-          {formatDateShort()}
+      <div className={styles.date} id="date">
+        <h1 className={[typography['text'], styles.time].join(' ')}>{time}</h1>
+        <h2 className={[typography['text'], styles.dateText].join(' ')}>
+          {formatDateShort(i18n.language)}
         </h2>
       </div>
     </>

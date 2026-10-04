@@ -1,0 +1,348 @@
+.container {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  padding: 20px 25px;
+  gap: 24px;
+  overflow-y: auto;
+  overflow-x: hidden;
+}
+.section {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  min-width: 0;
+}
+.sectionHeading {
+  font-size: 13px;
+  text-transform: uppercase;
+  opacity: 0.5;
+  letter-spacing: 0.05em;
+  margin: 0 0 4px;
+}
+.row {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  width: 100%;
+  min-width: 0;
+  gap: 15px;
+}
+.row > input {
+  min-width: 0;
+  flex: 1;
+}
+.stacked {
+  flex-direction: column;
+  align-items: stretch;
+  gap: 8px;
+}
+.label {
+  font-size: 14px;
+  font-weight: 500;
+  opacity: 0.9;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.row > .label {
+  flex: 1;
+}
+.hint {
+  font-size: 11px;
+  opacity: 0.5;
+  margin: -8px 0 4px;
+}
+.input {
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  padding: 10px 14px;
+  color: var(--island-text-color);
+  background: var(--control-bg);
+  border: 1px solid var(--control-border);
+  border-radius: var(--control-radius);
+  outline: none;
+  font-size: 14px;
+}
+.input:focus {
+  background: var(--control-hover);
+  border-color: var(--control-focus);
+}
+.input::placeholder {
+  color: var(--island-text-color);
+  opacity: 0.45;
+}
+.row > .colorInput {
+  width: 100px;
+  flex: 0 0 100px;
+}
+.tabList {
+  display: flex;
+  flex-direction: column;
+  gap: 6px;
+}
+.tabItem {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 10px 12px;
+  border-radius: 14px;
+  background: var(--control-bg);
+  border: 1px solid var(--control-border);
+  cursor: grab;
+}
+.tabItem svg {
+  flex-shrink: 0;
+}
+.tabName {
+  flex: 1;
+  min-width: 0;
+  font-size: 13px;
+}
+.hidden {
+  opacity: 0.45;
+  border-style: dashed;
+}
+.tabItem[data-dragging] {
+  opacity: 0.4;
+  border-style: dashed;
+}
+.tabItem[data-drop-target] {
+  background: var(--control-hover);
+  transform: translateY(-2px);
+}
+.grip {
+  opacity: 0.4;
+}
+.iconButton,
+.dangerButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  gap: 4px;
+  flex-shrink: 0;
+  padding: 6px;
+  color: var(--island-text-color);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  border-radius: 6px;
+}
+.iconButton:hover,
+.dangerButton:hover {
+  background: var(--control-hover);
+}
+.iconButton:focus-visible,
+.dangerButton:focus-visible,
+.primaryButton:focus-visible {
+  outline: 2px solid var(--island-text-color);
+  outline-offset: 2px;
+}
+.dangerButton {
+  color: #ff4d4d;
+  font-size: 12px;
+}
+.positionCard {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 12px;
+  padding: 15px;
+  border-radius: 18px;
+  border: 1px solid var(--control-border);
+  background: var(--control-bg);
+}
+.positionHeading {
+  font-size: 14px;
+  font-weight: 500;
+  text-align: center;
+}
+.positionGrid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  width: 100%;
+  gap: 15px 10px;
+}
+.radioLabel {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  position: relative;
+  gap: 6px;
+  cursor: pointer;
+  font-size: 12px;
+  min-width: 0;
+}
+.radioLabel input {
+  position: absolute;
+  opacity: 0;
+  width: 1px;
+  height: 1px;
+}
+.radioCustom {
+  width: 14px;
+  height: 14px;
+  border: 2px solid var(--control-focus);
+  border-radius: 50%;
+  flex-shrink: 0;
+  display: grid;
+  place-items: center;
+}
+.radioLabel input:checked + .radioCustom::after {
+  content: '';
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background: var(--island-text-color);
+}
+.radioLabel input:focus-visible + .radioCustom {
+  outline: 2px solid var(--island-text-color);
+  outline-offset: 3px;
+}
+.separator {
+  width: 100%;
+  height: 1px;
+  background: var(--control-border);
+}
+.manualPosition {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+  overflow: hidden;
+}
+.manualPosition input {
+  accent-color: var(--island-text-color);
+}
+.primaryButton {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  gap: 6px;
+  min-height: 36px;
+  padding: 8px 12px;
+  color: var(--island-bg-color);
+  background: var(--island-text-color);
+  border: 0;
+  border-radius: var(--control-radius);
+  font-weight: 600;
+  cursor: pointer;
+}
+.appSearch {
+  position: relative;
+}
+.suggestions {
+  position: absolute;
+  top: 100%;
+  left: 0;
+  right: 0;
+  z-index: 2;
+  margin-top: 4px;
+  border: 1px solid var(--control-focus);
+  border-radius: var(--control-radius);
+  background: var(--menu-bg);
+  overflow: hidden;
+  box-shadow: 0 4px 20px rgb(0 0 0 / 30%);
+}
+.suggestion {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  padding: 8px 12px;
+  gap: 2px;
+  background: none;
+  border: 0;
+  border-bottom: 1px solid var(--control-border);
+  color: var(--island-text-color);
+  text-align: left;
+  font-size: 13px;
+  cursor: pointer;
+}
+.suggestion:hover {
+  background: var(--control-hover);
+}
+.launchHint {
+  opacity: 0.45;
+  font-size: 11px;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  max-width: 100%;
+}
+.appList {
+  display: flex;
+  flex-direction: column;
+  gap: 5px;
+}
+.appRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 5px 12px;
+  border: 1px solid var(--control-border);
+  border-radius: var(--control-radius);
+  background: var(--control-bg);
+  min-width: 0;
+}
+.appName {
+  flex: 1;
+  min-width: 0;
+  padding: 6px 0;
+  color: var(--island-text-color);
+  border: 0;
+  background: none;
+  font-size: 14px;
+  outline: none;
+}
+.appName:focus-visible {
+  text-decoration: underline;
+  text-underline-offset: 4px;
+}
+.workflowForm {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  min-width: 0;
+  gap: 6px;
+}
+.workflowLabel {
+  composes: label;
+  margin-top: 15px;
+}
+.workflowInput {
+  display: block;
+  width: 100%;
+  min-width: 0;
+  max-width: 100%;
+  height: 72px;
+  resize: none;
+  overflow: auto;
+}
+.workflowList {
+  margin-top: 3px;
+}
+.workflowRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 10px;
+  padding: 10px 0;
+  border-bottom: 1px solid var(--control-border);
+}
+.workflowSummary {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+.itemCount {
+  font-size: 11px;
+  opacity: 0.6;
+}
+
+.iconButton:disabled {
+  opacity: 0.25;
+  cursor: default;
+}

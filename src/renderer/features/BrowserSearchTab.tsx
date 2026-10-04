@@ -1,3 +1,5 @@
+import styles from './BrowserSearchTab.module.css';
+import { useTranslation } from 'react-i18next';
 import type { IslandController } from '../hooks/useIslandController';
 type Props = Pick<
   IslandController,
@@ -9,11 +11,13 @@ export function BrowserSearchTab({
   searchBrowser,
   textColor,
 }: Props) {
+  const { t } = useTranslation();
   return (
-    <div style={{ width: '100%', display: 'flex', justifyContent: 'center' }}>
+    <div className={styles.container}>
       <input
+        className={styles.searchInput}
         id="browser-searchbar"
-        placeholder="Search google or enter URL"
+        placeholder={t('searchHint')}
         value={browserSearch}
         onChange={(e) => setBrowserSearch(e.target.value)}
         onKeyDown={(e) => {

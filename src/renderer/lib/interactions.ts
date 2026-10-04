@@ -6,9 +6,9 @@ export const isInteractiveTarget = (target: EventTarget | null) => {
     targetTag === 'TEXTAREA' ||
     targetTag === 'SELECT' ||
     targetTag === 'LABEL' ||
+    target?.closest?.('[data-island-interactive]') ||
     target?.closest?.('button') ||
-    target?.closest?.('.radio-label') ||
-    target?.closest?.('.task-row') ||
-    target?.closest?.('.clipboard-row')
+    target?.closest?.('label') ||
+    target?.closest?.('[role="combobox"], [role="listbox"]')
   );
 };

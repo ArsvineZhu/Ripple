@@ -1,7 +1,10 @@
+import { useTranslation } from 'react-i18next';
+import { formatTime } from '../lib/date';
 import { useState, useEffect } from 'react';
 
 import { storage } from '../lib/storage';
 export function useOverview(hourFormat: boolean) {
+  const { i18n } = useTranslation();
   const [time, setTime] = useState<string | null>(null);
   const [weather, setWeather] = useState<{ temp: string | number; status: string }>({
     temp: '',
@@ -9,16 +12,12 @@ export function useOverview(hourFormat: boolean) {
   });
   useEffect(() => {
     const update = () => {
-      const date = new Date();
-      let hours = date.getHours();
-      const minutes = String(date.getMinutes()).padStart(2, '0');
-      if (hourFormat) hours = hours % 12 || 12;
-      setTime(`${hours}:${minutes}`);
+      setTime(formatTime(i18n.language, hourFormat, new Date()));
     };
     update();
     const timer = setInterval(update, 1000);
     return () => clearInterval(timer);
-  }, [hourFormat]);
+  }, [hourFormat, i18n.language]);
   useEffect(() => {
     const getWeather = async () => {
       try {

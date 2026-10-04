@@ -1,0 +1,109 @@
+.appButton:hover {
+  transform: scale(1.2);
+  z-index: 1;
+  box-shadow: 0 0 35px rgba(0, 0, 0, 0.22);
+}
+
+.appButton:active {
+  transform: scale(1.15);
+}
+
+.workflowButton:hover {
+  padding: 20px 17px;
+  filter: brightness(1.1);
+}
+
+.workflowButton:active {
+  transform: scale(0.98);
+}
+
+.container {
+  display: flex;
+  flex-direction: column;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+.workflowList {
+  animation: none;
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
+  width: 95%;
+  flex: 1;
+  overflow-y: auto;
+  padding: 15px 0;
+  margin: 0 auto;
+}
+
+.emptyState {
+  text-align: center;
+  font-size: 13px;
+  margin-top: 20px;
+}
+
+.workflowButton {
+  transition:
+    transform 0.1s cubic-bezier(0.175, 0.885, 0.32, 1.275),
+    filter 0.5s ease,
+    padding 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275),
+    box-shadow 0.5s ease;
+  cursor: pointer;
+  user-select: none;
+  border: none;
+  padding: 10px 15px;
+  will-change: transform;
+  width: 96%;
+  border-radius: 12px;
+  font-size: 14px;
+  font-weight: 600;
+  text-align: left;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.1);
+  align-self: center;
+  margin-bottom: 2px;
+}
+
+.itemCount {
+  opacity: 0.6;
+  font-weight: 400;
+  margin-left: 5px;
+}
+
+.quickAppStrip {
+  padding-top: 12px;
+  padding-bottom: 12px;
+  width: 100%;
+  margin-top: auto;
+  overflow-x: auto;
+}
+
+.quickAppList {
+  animation: none;
+  display: flex;
+  flex-direction: row;
+  justify-content: center;
+  align-items: center;
+  gap: 12px;
+  width: max-content;
+  margin: 0;
+  padding: 0 15px;
+}
+
+.appButton {
+  padding: 10px 15px;
+  border: none;
+  border-radius: 15px;
+  font-size: 17px;
+  font-weight: 500;
+  margin-right: 2px;
+  transition:
+    transform 0.5s cubic-bezier(0.175, 0.885, 0.32, 1.275),
+    box-shadow 0.4s ease;
+  cursor: pointer;
+  box-shadow: 0 0 30px rgba(0, 0, 0, 0.148);
+  z-index: 0;
+  user-select: none;
+  will-change: transform;
+  flex-shrink: 0;
+}

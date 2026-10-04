@@ -8,6 +8,8 @@ Ripple 提供浏览器搜索、工作流与快捷应用、时间/天气/电量�
 
 安装包见 [Fork Releases](https://github.com/ArsvineZhu/Ripple/releases)。Windows 使用 MSI，macOS 使用 DMG，Linux 使用 DEB/RPM；也可从成功的 Actions 构建下载产物。
 
+界面支持简体中文、英语、繁体中文和日语，默认跟随系统语言；在设置中选择语言后立即生效并持久保存。
+
 ## 开发
 
 使用 [.node-version](.node-version) 记录的 Node LTS 和 npm 11 或更新版本。

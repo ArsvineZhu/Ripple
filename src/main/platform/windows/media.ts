@@ -46,7 +46,7 @@ export function getSystemMedia(): Promise<MediaTrack | null> {
                 });
                 resolve({
                   name: song || title,
-                  artist: artist || 'Unknown',
+                  artist: artist || '',
                   state: 'playing',
                   source: 'Spotify',
                 });
@@ -70,8 +70,8 @@ export function getSystemMedia(): Promise<MediaTrack | null> {
             },
           );
           resolve({
-            name: data.Title || 'Unknown Title',
-            artist: data.Artist || 'Unknown Artist',
+            name: data.Title || '',
+            artist: data.Artist || '',
             album: data.Album || '',
             artwork_url: data.Artwork || null,
             state: data.Status === 'playing' ? 'playing' : 'paused',

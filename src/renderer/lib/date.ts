@@ -1,10 +1,20 @@
-export function formatDateShort(input?: string | number | Date) {
-  const date = input ? new Date(input) : new Date();
-  if (isNaN(date.getTime())) {
-    throw new Error('Invalid date provided to formatDateShort');
-  }
-  const weekday = date.toLocaleDateString(undefined, { weekday: 'short' });
-  const month = date.toLocaleDateString(undefined, { month: 'short' });
-  const day = date.getDate();
-  return `${weekday}, ${month} ${day}`;
+export function formatDateShort(locale: string, input?: string | number | Date) {
+  const date = input === undefined ? new Date() : new Date(input);
+  return new Intl.DateTimeFormat(locale, {
+    weekday: 'short',
+    month: 'short',
+    day: 'numeric',
+  }).format(date);
+}
+export function formatTime(locale: string, hour12: boolean, input: Date) {
+  const parts = new Intl.DateTimeFormat(locale, {
+    hour: 'numeric',
+    minute: '2-digit',
+    hourCycle: hour12 ? 'h12' : 'h23',
+  }).formatToParts(input);
+  return parts
+    .filter((part) => part.type !== 'dayPeriod')
+    .map((part) => part.value)
+    .join('')
+    .trim();
 }
