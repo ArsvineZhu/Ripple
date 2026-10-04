@@ -1,6 +1,0 @@
-node_modules/
-.vite/
-out/
-coverage/
-reports/
-package-lock.json
