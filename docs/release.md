@@ -4,7 +4,7 @@
 
 Run `npm run check`, `npm test`, then `npm run make` on the target platform. CI's build matrix covers Windows x64 MSI, macOS x64/arm64 DMG and Linux x64 DEB/RPM/ZIP. Installers are named `Ripple-<OS>-v<version>` (macOS includes architecture). Build results live under `out/make`.
 
-The application identity remains `ripple` / `Ripple`; the existing userData directory and localStorage keys remain compatible with 3.3.0. Version 3.4.0 is the TypeScript/governance migration. Preserve real user data while smoke testing; use a separate temporary profile for automated interaction. Never publish a development-only sandbox override in launchers or desktop entries.
+The application identity remains `ripple` / `Ripple`; the existing userData directory and localStorage keys remain compatible with 3.3.0. Version 3.4.0 established the TypeScript architecture and project governance. Version 3.5.0 adds English, Simplified Chinese, Traditional Chinese and Japanese localization, plus settings, clipboard and layout refinements. Preserve real user data while smoke testing; use a separate temporary profile for automated interaction. Never publish a development-only sandbox override in launchers or desktop entries.
 
 Linux desktop entries and autostart use `--ozone-platform=x11`. DEB/RPM staging retains the root-owned SUID sandbox helper permissions. The RPM template explicitly uses staging paths and a temporary RPM database so both RPM 4 and RPM 6 builds work without modifying the host database.
 

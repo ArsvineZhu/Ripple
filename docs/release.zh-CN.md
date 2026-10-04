@@ -4,7 +4,7 @@
 
 在目标平台运行 `npm run check`、`npm test` 和 `npm run make`。CI 矩阵包含 Windows x64 MSI、macOS x64/arm64 DMG、Linux x64 DEB/RPM/ZIP。安装包名为 `Ripple-<OS>-v<version>`，macOS 带架构标识；产物位于 `out/make`。
 
-应用身份继续为 `ripple` / `Ripple`，既有 userData 目录与 localStorage 键兼容 3.3.0。3.4.0 是 TS 与治理迁移版本。运行检查应保护真实用户数据，自动交互使用独立临时 profile；开发验证用的 sandbox 参数不进入发布启动器或 desktop 文件。
+应用身份继续为 `ripple` / `Ripple`，既有 userData 目录与 localStorage 键兼容 3.3.0。3.4.0 建立了 TypeScript 架构与项目治理；3.5.0 增加英语、简体中文、繁体中文、日语，并改进设置、剪贴板和布局。运行检查应保护真实用户数据，自动交互使用独立临时 profile；开发验证用的 sandbox 参数不进入发布启动器或 desktop 文件。
 
 Linux desktop 和自动启动使用 `--ozone-platform=x11`。DEB/RPM 暂存过程保留 root 所有的 SUID sandbox 权限。RPM 模板显式使用暂存路径和临时 RPM 数据库，兼容 RPM 4/6 且不修改本机数据库。
 
