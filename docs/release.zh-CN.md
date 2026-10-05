@@ -2,7 +2,7 @@
 
 # 打包与运行验收
 
-在匹配的平台运行 `pnpm check`、`pnpm test` 和 `pnpm make`。每次分支推送，以及目标分支为 `main` 或 `master` 的 PR，都会运行 CI 检查。推送与 `package.json` 版本一致的 `v<版本号>` 标签后，GitHub Actions 会构建 macOS x64/arm64、Windows x64 和 Linux x64 安装包，并创建包含 DEB/RPM/ZIP、MSI 和 DMG 的 GitHub Release。安装包和 Actions 产物使用 `RippleNext-<platform>` 标识。发布工作流失败后，也可以在对应版本标签上手动运行，以重新验证并发布。
+在匹配的平台运行 `pnpm check`、`pnpm test` 和 `pnpm make`。目标分支为 `main` 或 `master` 的 PR 会运行 CI 检查，不会打包。推送与 `package.json` 版本一致的 `v<版本号>` 标签后，GitHub Actions 会构建 macOS x64/arm64、Windows x64 和 Linux x64 安装包，并创建包含 DEB/RPM/ZIP、MSI 和 DMG 的 GitHub Release。安装包和 Actions 产物使用 `RippleNext-<platform>` 标识。发布工作流失败后，也可以在对应版本标签上手动运行，以重新验证并发布。
 
 当前 beta 版说明见[简体中文](releases/4.0.0-beta.1.zh-CN.md)和[English](releases/4.0.0-beta.1.en.md)。产品/软件包标识为 `ripple-next` / `Ripple Next`，macOS bundle ID 为 `com.arsvinezhu.ripple-next`。Ripple Next 将状态和已加密的 API key 密文保存在平台专属用户数据目录中的 `ripple-next.sqlite`。编号 schema migration 位于 `src/main/database/migrations/`，运行时 SQL 存放于 `.sql` 资源。旧 Ripple 数据目录不会读取或迁移。启用 Linux 开机启动时，Ripple Next 写入 `ripple-next.desktop` 并移除旧的 `ripple.desktop` 启动入口。
 
