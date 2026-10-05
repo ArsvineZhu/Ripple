@@ -1,4 +1,6 @@
 import { CopyButton } from '../components/CopyButton';
+import { InlineNotices } from '../components/InlineNotices';
+import { ElasticScrollArea } from '../components/ElasticScrollArea';
 import styles from './AssistantTab.module.css';
 import { useTranslation } from 'react-i18next';
 import { AnimatePresence } from 'motion/react';
@@ -16,8 +18,11 @@ type Props = Pick<
   | 'bgColor'
   | 'assistantError'
   | 'aiAnswer'
-  | 'setAIAnswer'
->;
+  | 'resetAssistant'
+> & {
+  onAnswerContentSizeChange: (height: number) => void;
+  resetAnswerContentSize: () => void;
+};
 export function AssistantTab({
   asked,
   userText,
@@ -28,7 +33,9 @@ export function AssistantTab({
   bgColor,
   aiAnswer,
   assistantError,
-  setAIAnswer,
+  resetAssistant,
+  onAnswerContentSizeChange,
+  resetAnswerContentSize,
 }: Props) {
   const { t } = useTranslation();
   return (
@@ -52,6 +59,7 @@ export function AssistantTab({
               onKeyDown={(e) => {
                 if (e.key === 'Enter' && !e.shiftKey) {
                   e.preventDefault();
+                  resetAnswerContentSize();
                   setAsked(true);
                   askAI();
                 }
@@ -62,6 +70,7 @@ export function AssistantTab({
               className={styles.submitButton}
               id="chatsubmit"
               onClick={() => {
+                resetAnswerContentSize();
                 setAsked(true);
                 askAI();
               }}
@@ -79,13 +88,22 @@ export function AssistantTab({
             exit={{ opacity: 0, filter: 'blur(10px)' }}
             transition={{ duration: 0.2 }}
           >
-            <div className={styles.answerContent} id="result">
+            <ElasticScrollArea
+              className={styles.answerContent}
+              id="result"
+              onContentSizeChange={onAnswerContentSizeChange}
+            >
+              <InlineNotices area="assistant" />
               {assistantError ? (
-                <span role="status">
-                  {assistantError.kind === 'aiError'
-                    ? t('aiError', { detail: assistantError.detail || '' })
-                    : t(assistantError.kind)}
-                </span>
+                <motion.span
+                  className={styles.assistantError}
+                  role="alert"
+                  initial={{ opacity: 0, filter: 'blur(10px)' }}
+                  animate={{ opacity: 1, filter: 'blur(0px)' }}
+                  transition={{ duration: 0.2 }}
+                >
+                  {t(assistantError.kind)} {assistantError.detail}
+                </motion.span>
               ) : aiAnswer ? (
                 <ReactMarkdown
                   components={{
@@ -122,14 +140,13 @@ export function AssistantTab({
               ) : (
                 <span className={styles.thinking}>{t('thinking')}</span>
               )}
-            </div>
+            </ElasticScrollArea>
             <button
               className={styles.anotherButton}
               onPointerDown={(e) => e.stopPropagation()}
               onClick={() => {
-                setAsked(false);
-                setAIAnswer(null);
-                setUserText('');
+                resetAnswerContentSize();
+                resetAssistant();
               }}
               id="Askanotherbtn"
               style={{ backgroundColor: textColor, color: bgColor }}

@@ -31,16 +31,37 @@ vi.mock('../src/main/services/mediaControl', () => ({ controlSystemMedia: vi.fn(
 vi.mock('../src/main/tray', () => ({ setTrayLocale: vi.fn() }));
 import { setTrayLocale } from '../src/main/tray';
 import { registerIPC } from '../src/main/ipc';
+import { defaultAppState } from '../src/shared/appState';
+
+const services = {
+  stateStore: {
+    load: async () => defaultAppState,
+    update: async () => defaultAppState,
+  },
+  secretStore: {
+    setApiKey: async () => {},
+    hasApiKey: async () => false,
+  },
+  assistant: {
+    start: async () => {},
+    cancel: () => {},
+  },
+  notices: {
+    report: vi.fn(),
+    rendererReady: vi.fn(),
+  },
+  applyBackgroundMode: vi.fn(),
+};
 
 describe('IPC boundary', () => {
   beforeEach(() => {
     mock.handlers.clear();
     mock.events.clear();
     mock.shape.mockClear();
-    registerIPC();
+    registerIPC(services);
   });
-  it('rejects invoke messages from another webContents', () => {
-    expect(() => mock.handlers.get('focus-window')!({ sender: mock.sender })).toThrow(
+  it('rejects invoke messages from another webContents', async () => {
+    await expect(mock.handlers.get('focus-window')!({ sender: mock.sender })).rejects.toThrow(
       'Unknown IPC sender',
     );
   });
@@ -54,19 +75,26 @@ describe('IPC boundary', () => {
     send({ sender: mock.window.webContents }, rect);
     expect(mock.shape).toHaveBeenCalledWith(rect);
   });
-  it('reads the system locale and accepts only supported resolved tray languages', () => {
+  it('reads the system locale and accepts only supported resolved tray languages', async () => {
     const event = { sender: mock.window.webContents };
-    expect(mock.handlers.get('get-system-locale')!(event)).toBe('zh-HK');
-    expect(() => mock.handlers.get('set-ui-locale')!(event, 'de')).toThrow('Invalid locale');
-    mock.handlers.get('set-ui-locale')!(event, 'ja');
+    await expect(mock.handlers.get('get-system-locale')!(event)).resolves.toBe('zh-HK');
+    await expect(mock.handlers.get('set-ui-locale')!(event, 'de')).rejects.toThrow(
+      'Invalid locale',
+    );
+    await mock.handlers.get('set-ui-locale')!(event, 'ja');
     expect(setTrayLocale).toHaveBeenCalledWith('ja');
   });
-  it('rejects commands outside the media contract before executing platform code', () => {
-    expect(() =>
+  it('applies background presence changes after persisting the setting', async () => {
+    const event = { sender: mock.window.webContents };
+    await mock.handlers.get('update-app-state')!(event, { settings: { backgroundMode: true } });
+    expect(services.applyBackgroundMode).toHaveBeenCalledWith(true);
+  });
+  it('rejects commands outside the media contract before executing platform code', async () => {
+    await expect(
       mock.handlers.get('control-system-media')!(
         { sender: mock.window.webContents },
         'shell-command',
       ),
-    ).toThrow('Invalid media command');
+    ).rejects.toThrow('Invalid media command');
   });
 });

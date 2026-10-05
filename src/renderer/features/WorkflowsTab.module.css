@@ -32,9 +32,15 @@
   gap: 10px;
   width: 95%;
   flex: 1;
-  overflow-y: auto;
+  overflow: hidden;
   padding: 15px 0;
   margin: 0 auto;
+}
+
+.workflowList :global(.scroll-content) {
+  display: flex;
+  flex-direction: column;
+  gap: 10px;
 }
 
 .emptyState {

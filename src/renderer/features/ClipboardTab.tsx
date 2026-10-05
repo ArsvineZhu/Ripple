@@ -1,12 +1,13 @@
 import { CopyButton } from '../components/CopyButton';
 import styles from './ClipboardTab.module.css';
+import { ElasticScrollArea } from '../components/ElasticScrollArea';
 import { useTranslation } from 'react-i18next';
 import type { IslandController } from '../hooks/useIslandController';
 type Props = Pick<IslandController, 'clipboard' | 'copyToClipboard'>;
 export function ClipboardTab({ clipboard, copyToClipboard }: Props) {
   const { t } = useTranslation();
   return (
-    <div className={styles.container} id="clipboard">
+    <ElasticScrollArea className={styles.container} id="clipboard">
       {clipboard.length === 0 ? (
         <p className={styles.emptyState}>{t('clipboardEmpty')}</p>
       ) : (
@@ -17,6 +18,6 @@ export function ClipboardTab({ clipboard, copyToClipboard }: Props) {
           </div>
         ))
       )}
-    </div>
+    </ElasticScrollArea>
   );
 }

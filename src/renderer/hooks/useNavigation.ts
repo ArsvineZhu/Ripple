@@ -1,11 +1,12 @@
 import { isInteractiveTarget } from '../lib/interactions';
 import type { PointerEvent, WheelEvent, Dispatch, SetStateAction } from 'react';
 import type { MediaTrack, IslandMode } from '../../shared/contracts';
+import { normalizeHiddenTabs, SETTINGS_TAB_ID } from '../../shared/appState';
 import { visibleTabIds, nextTabId } from '../lib/navigation';
 import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 
 import { TABS } from '../lib/tabs';
-import { storage } from '../lib/storage';
+import { useAppState } from '../components/AppStateProvider';
 export function useNavigation({
   spotifyTrack,
   mode,
@@ -17,33 +18,23 @@ export function useNavigation({
   isDragging: boolean;
   setMode: Dispatch<SetStateAction<IslandMode>>;
 }) {
-  const [tabOrder, setTabOrder] = useState(() =>
-    storage.read('tab-order', [0, 1, 2, 3, 4, 5, 6, 7]),
-  );
-  const [hiddenTabs, setHiddenTabs] = useState(() => storage.read('hidden-tabs', []));
-  const [defaultTabId, setDefaultTabId] = useState(() =>
-    Number(storage.getItem('default-tab') || 0),
-  );
+  const { state, updateState } = useAppState();
+  const { tabOrder, hiddenTabs, defaultTabId } = state.settings;
+  const setDefaultTabId = (defaultTabId: number) => updateState({ settings: { defaultTabId } });
   const moveTabOrder = (fromIdx: number, toIdx: number) => {
     if (toIdx < 0 || toIdx >= tabOrder.length) return;
-    setTabOrder((prev) => {
-      const newOrder = [...prev];
-      const [moved] = newOrder.splice(fromIdx, 1);
-      newOrder.splice(toIdx, 0, moved);
-      storage.setItem('tab-order', JSON.stringify(newOrder));
-      return newOrder;
-    });
+    const newOrder = [...tabOrder];
+    const [moved] = newOrder.splice(fromIdx, 1);
+    if (moved !== undefined) newOrder.splice(toIdx, 0, moved);
+    updateState({ settings: { tabOrder: newOrder } });
   };
   const toggleTabVisibility = (id: number) => {
-    setHiddenTabs((prev) => {
-      const newHidden = prev.includes(id) ? prev.filter((t) => t !== id) : [...prev, id];
-
-      // Don't allow hiding all tabs
-      if (newHidden.length >= TABS.length) return prev;
-
-      storage.setItem('hidden-tabs', JSON.stringify(newHidden));
-      return newHidden;
-    });
+    if (id === SETTINGS_TAB_ID) return;
+    const currentHiddenTabs = normalizeHiddenTabs(hiddenTabs);
+    const newHidden = currentHiddenTabs.includes(id)
+      ? currentHiddenTabs.filter((tab) => tab !== id)
+      : [...currentHiddenTabs, id];
+    if (newHidden.length < TABS.length) updateState({ settings: { hiddenTabs: newHidden } });
   };
   const isMusicActive = !!spotifyTrack;
   const visibleTabs = useMemo(

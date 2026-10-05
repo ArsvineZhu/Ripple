@@ -6,6 +6,9 @@ import type { Root } from 'react-dom/client';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { OverlayProvider, useOverlay } from '../src/renderer/components/OverlayProvider';
 import { useIslandInteraction } from '../src/renderer/hooks/useIslandInteraction';
+import { AppStateProvider } from '../src/renderer/components/AppStateProvider';
+import { NotificationProvider } from '../src/renderer/components/NotificationProvider';
+import { defaultAppState } from '../src/shared/appState';
 let root: Root;
 let host: HTMLDivElement;
 let interaction: ReturnType<typeof useIslandInteraction>;
@@ -13,7 +16,12 @@ let overlay: ReturnType<typeof useOverlay>;
 const setMode = vi.fn();
 const ignoreMouse = vi.fn(async () => {});
 function Harness() {
-  const currentInteraction = useIslandInteraction({ setMode, standby: false, largeStandby: false });
+  const currentInteraction = useIslandInteraction({
+    setMode,
+    standby: false,
+    largeStandby: false,
+    leaveDelayMs: 400,
+  });
   const currentOverlay = useOverlay();
   useEffect(() => {
     interaction = currentInteraction;
@@ -23,6 +31,7 @@ function Harness() {
 }
 beforeEach(async () => {
   vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
+  vi.useFakeTimers();
   host = document.createElement('div');
   document.body.append(host);
   root = createRoot(host);
@@ -38,6 +47,7 @@ afterEach(async () => {
   await act(async () => root.unmount());
   host.remove();
   Reflect.deleteProperty(window, 'electronAPI');
+  vi.useRealTimers();
   vi.unstubAllGlobals();
 });
 describe('Island position and overlay lifecycle', () => {
@@ -52,7 +62,9 @@ describe('Island position and overlay lifecycle', () => {
   });
   it('retains expansion through movement-generated leave/focus events and resumes normal leave after animation', async () => {
     await act(async () => {
+      interaction.setIsHovered(true);
       interaction.beginPositionChange();
+      interaction.geometryExited();
       interaction.leave();
       window.dispatchEvent(new FocusEvent('focusout'));
     });
@@ -61,6 +73,12 @@ describe('Island position and overlay lifecycle', () => {
     await act(async () => interaction.finishPositionChange());
     expect(setMode.mock.calls).toEqual([['large']]);
     await act(async () => interaction.leave());
+    expect(setMode.mock.calls).toEqual([['large']]);
+    await act(async () => {
+      interaction.setIsHovered(true);
+      interaction.leave();
+      await vi.advanceTimersByTimeAsync(400);
+    });
     expect(setMode).toHaveBeenLastCalledWith('still');
     setMode.mockClear();
     await act(async () => {
@@ -71,19 +89,29 @@ describe('Island position and overlay lifecycle', () => {
     await act(async () => {
       interaction.setIsHovered(false);
       window.dispatchEvent(new FocusEvent('focusout'));
+      await vi.advanceTimersByTimeAsync(400);
     });
     expect(setMode).toHaveBeenLastCalledWith('still');
   });
   it('keeps an open menu expanded and allows subsequent collapse after closing it', async () => {
-    await act(async () => overlay.setOpenId('menu'));
-    await act(async () => interaction.leave());
+    await act(async () => {
+      interaction.setIsHovered(true);
+      overlay.setOpenId('menu');
+    });
+    await act(async () => {
+      interaction.leave();
+      await vi.advanceTimersByTimeAsync(400);
+    });
     expect(setMode).not.toHaveBeenCalled();
     expect(ignoreMouse).toHaveBeenCalledWith(true, true);
     await act(async () => overlay.setOpenId(null));
     const trigger = document.createElement('button');
     host.append(trigger);
-    trigger.focus();
-    await act(async () => interaction.leave());
+    await act(async () => {
+      trigger.focus();
+      interaction.leave();
+      await vi.advanceTimersByTimeAsync(400);
+    });
     expect(setMode).toHaveBeenLastCalledWith('still');
   });
   it('leaves keyboard events with form controls and open menus, then resumes tab shortcuts outside them', async () => {
@@ -100,8 +128,16 @@ describe('Island position and overlay lifecycle', () => {
       });
       return createElement('input', { id: 'editor' });
     }
-    localStorage.setItem('default-tab', '2');
-    await act(async () => root.render(createElement(NavigationHarness)));
+    const app = createElement(
+      NotificationProvider,
+      null,
+      createElement(
+        AppStateProvider,
+        { initialState: defaultAppState },
+        createElement(NavigationHarness),
+      ),
+    );
+    await act(async () => root.render(app));
     const editor = document.getElementById('editor')!;
     await act(async () =>
       editor.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true })),
@@ -131,6 +167,5 @@ describe('Island position and overlay lifecycle', () => {
     );
     expect(navigation!.currentTabId).toBe(7);
     expect(setMode).toHaveBeenLastCalledWith('large');
-    localStorage.removeItem('default-tab');
   });
 });

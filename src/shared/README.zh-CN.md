@@ -1,9 +1,9 @@
-[English](README.md) · 英文为规范来源。
+[English](README.md)
 
-# Shared contracts
+# Shared 契约
 
-共享层拥有可序列化的 IPC/领域类型和纯输入区域几何计算，由 main、preload 和 renderer 共用，不依赖运行时服务；契约测试位于 tests/contracts.test.ts。
+Shared 定义可序列化的 IPC 与领域契约、用于持久化状态和快捷应用目标的 Zod schema，以及纯输入区域计算。Main、preload 和 renderer 共用这些定义，运行时服务放在各自所属层。
 
-`i18n` 拥有支持的语言类型、系统语言解析和四种语言的纯词条资源。英文定义键结构，翻译必须保留键名和插值变量。i18next 运行时初始化归属 renderer，main 只使用纯词条更新托盘文案。
+`contracts.ts` 定义请求、响应、通知和 AI 流事件；`appState.ts` 定义新状态结构及初始值；`i18n/` 管理语言类型、系统语言解析和随应用打包的词条。Renderer 初始化 i18next，main 使用词条生成托盘文案。
 
-参见 [开发指南](../../docs/development.zh-CN.md) 和 [仓库地图](../../INDEX.zh-CN.md)。
+参见[开发指南](../../docs/development.zh-CN.md)和[仓库地图](../../INDEX.zh-CN.md)。

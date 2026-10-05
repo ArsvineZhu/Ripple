@@ -13,28 +13,6 @@
   filter: blur(2px);
 }
 
-.answerContent::-webkit-scrollbar {
-  display: block !important;
-  width: 6px;
-}
-
-.answerContent::-webkit-scrollbar-track {
-  background: transparent;
-}
-
-.answerContent::-webkit-scrollbar-thumb {
-  background: color-mix(in srgb, currentColor, transparent 70%);
-  border-radius: 10px;
-}
-
-.answerContent::-webkit-scrollbar-thumb:hover {
-  background: color-mix(in srgb, currentColor, transparent 50%);
-}
-
-.answerContent::-webkit-scrollbar-button {
-  display: none;
-}
-
 .answerContent p {
   margin: 0 0 12px 0;
   line-height: 1.5;
@@ -194,15 +172,12 @@
   width: 100%;
   max-width: 100%;
   z-index: 100;
-  overflow-y: auto;
-  overflow-x: hidden;
+  overflow: hidden;
   box-sizing: border-box;
   padding: 30px 20px;
   min-height: 0;
   pointer-events: auto;
   word-wrap: break-word;
-  scrollbar-color: color-mix(in srgb, currentColor, transparent 70%) transparent;
-  scrollbar-width: thin;
   font-weight: 400;
   margin: 0;
   padding-top: 40px;
@@ -240,6 +215,17 @@
 .thinking {
   opacity: 0.5;
   font-style: italic;
+}
+
+.assistantError {
+  display: block;
+  width: 100%;
+  padding: 10px 12px;
+  border: 1px solid color-mix(in srgb, #ff6969, transparent 45%);
+  border-radius: 12px;
+  background: color-mix(in srgb, #ff6969, transparent 94%);
+  overflow-wrap: anywhere;
+  box-sizing: border-box;
 }
 
 .anotherButton {

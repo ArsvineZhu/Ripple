@@ -18,14 +18,19 @@ const projectRoot = path.resolve(__dirname, '..');
 const config: ForgeConfig = {
   packagerConfig: {
     asar: true,
-    executableName: 'ripple',
+    ignore: (file: string) => {
+      if (!file) return false;
+      return !file.startsWith('/.vite') && !file.startsWith('/node_modules');
+    },
+    executableName: 'ripple-next',
+    appBundleId: 'com.arsvinezhu.ripple-next',
     icon: 'src/assets/icons/icon',
     extraResource: [path.join(projectRoot, 'src/assets/icons/icon.png')],
     ...(process.platform === 'darwin'
       ? {
           extendInfo: {
             NSAppleEventsUsageDescription:
-              'Ripple needs to control media players like Spotify and AppleMusic.',
+              'Ripple Next needs to control media players like Spotify and Apple Music.',
           },
         }
       : {}),
@@ -87,7 +92,7 @@ const config: ForgeConfig = {
 
           const archSuffix = result.platform === 'darwin' ? `-${result.arch}` : '';
           const portableSuffix = ext === '.zip' ? '-Portable' : '';
-          const newName = `Ripple-${os}${archSuffix}-v${version}${portableSuffix}${ext}`;
+          const newName = `RippleNext-${os}${archSuffix}-v${version}${portableSuffix}${ext}`;
           const newPath = path.join(path.dirname(artifactPath), newName);
 
           fs.renameSync(artifactPath, newPath);
@@ -105,37 +110,37 @@ const config: ForgeConfig = {
   makers: [
     new MakerWix({
       language: 1033,
-      manufacturer: 'TopMyster',
+      manufacturer: 'Arsvine Zhu',
       description: 'A Dynamic Island for All',
-      name: 'Ripple',
+      name: 'Ripple Next',
       icon: path.join(projectRoot, 'src/assets/icons/icon.ico'),
-      shortcutFolderName: 'Ripple',
-      programFilesFolderName: 'Ripple',
+      shortcutFolderName: 'Ripple Next',
+      programFilesFolderName: 'Ripple Next',
       ui: {
         chooseDirectory: true,
       },
     }),
 
     new MakerDMG({
-      name: 'RippleInstaller',
+      name: 'RippleNextInstaller',
       format: 'UDZO',
       overwrite: true,
     }),
     new MakerDeb({
       options: {
         icon: path.join(projectRoot, 'src/assets/icons/icon.png'),
-        name: 'ripple',
-        desktopTemplate: path.join(projectRoot, '.config/templates/ripple.desktop.ejs'),
+        name: 'ripple-next',
+        desktopTemplate: path.join(projectRoot, '.config/templates/ripple-next.desktop.ejs'),
       },
     }),
     new MakerRpm({
       options: {
         ...{
-          specTemplate: path.join(projectRoot, '.config/templates/ripple.spec.ejs'),
+          specTemplate: path.join(projectRoot, '.config/templates/ripple-next.spec.ejs'),
           appFileList: (source: string) => fs.readdirSync(source),
         },
         icon: path.join(projectRoot, 'src/assets/icons/icon.png'),
-        name: 'ripple',
+        name: 'ripple-next',
         execArguments: ['--ozone-platform=x11'],
       },
     }),

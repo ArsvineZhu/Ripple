@@ -10,12 +10,19 @@ import {
   Star,
   Trash2,
 } from 'lucide-react';
-import type { ReactNode } from 'react';
-import { storage } from '../lib/storage';
+import type { CSSProperties, ReactNode } from 'react';
+import { useEffect, useState } from 'react';
 import { TABS } from '../lib/tabs';
 import { Select } from '../components/Select';
+import { SearchableSelect } from '../components/SearchableSelect';
 import { useSettingsContext } from '../components/SettingsProvider';
 import { languagePreference } from '../../shared/i18n';
+import { InlineNotices } from '../components/InlineNotices';
+import { ElasticScrollArea } from '../components/ElasticScrollArea';
+import { supportedTimeZones } from '../lib/date';
+import { SETTINGS_TAB_ID } from '../../shared/appState';
+import { isValidSearchUrlTemplate } from '../lib/search';
+import { measureTextWidth } from '../lib/text';
 import type { IslandController } from '../hooks/useIslandController';
 import styles from './SettingsTab.module.css';
 interface SectionProps {
@@ -50,8 +57,8 @@ type Props = Pick<
   IslandController,
   | 'addQuickApp'
   | 'addWorkflow'
+  | 'aiBaseUrl'
   | 'aiModel'
-  | 'aiProvider'
   | 'appSuggestions'
   | 'autoLaunchEnabled'
   | 'batteryAlertsEnabled'
@@ -61,12 +68,14 @@ type Props = Pick<
   | 'defaultTabId'
   | 'displays'
   | 'handleAutoLaunchChange'
+  | 'handleApiBaseUrlChange'
   | 'handleBatteryAlertsChange'
   | 'handleBgColorChange'
   | 'handleBgImageChange'
   | 'handleDisplayChange'
   | 'handleDragEndChecks'
   | 'handleHourFormatChange'
+  | 'handleAiModelChange'
   | 'handleIslandBorderChange'
   | 'handleIslandXChange'
   | 'handleIslandYChange'
@@ -78,6 +87,7 @@ type Props = Pick<
   | 'handleStandbyChange'
   | 'handleTextColorChange'
   | 'handleWeatherUnitChange'
+  | 'handleLeaveDelayChange'
   | 'handlehideNotActiveIslandChange'
   | 'hiddenTabs'
   | 'hideNotActiveIslandEnabled'
@@ -86,17 +96,32 @@ type Props = Pick<
   | 'islandBorderEnabled'
   | 'islandX'
   | 'islandY'
+  | 'hasApiKey'
   | 'largeStandbyEnabled'
   | 'moveTabOrder'
   | 'newQuickApp'
+  | 'quickAppMode'
+  | 'setQuickAppMode'
+  | 'executable'
+  | 'setExecutable'
+  | 'argumentLines'
+  | 'setArgumentLines'
+  | 'workingDirectory'
+  | 'setWorkingDirectory'
+  | 'appUrl'
+  | 'setAppUrl'
+  | 'leaveDelayMs'
   | 'positionMode'
   | 'quickApps'
   | 'removeQuickApp'
   | 'removeWorkflow'
   | 'savePosition'
+  | 'saveApiKey'
+  | 'searchUrlTemplate'
+  | 'setSearchUrlTemplate'
+  | 'timeZone'
+  | 'handleTimeZoneChange'
   | 'selectQuickApp'
-  | 'setAiModel'
-  | 'setAiProvider'
   | 'setDefaultTabId'
   | 'setShowSuggestions'
   | 'setTheme'
@@ -116,10 +141,102 @@ type Props = Pick<
   | 'workflowName'
   | 'workflowUrls'
   | 'workflows'
->;
+> & {
+  onSettingsContentWidthChange: (width: number) => void;
+};
 export function SettingsTab(p: Props) {
   const { t, i18n } = useTranslation();
-  const { language, handleLanguageChange } = useSettingsContext();
+  const onSettingsContentWidthChange = p.onSettingsContentWidthChange;
+  const { language, handleLanguageChange, backgroundModeEnabled, handleBackgroundModeChange } =
+    useSettingsContext();
+  const [apiKeyDraft, setApiKeyDraft] = useState('');
+  useEffect(() => {
+    const container = document.getElementById('settings-container');
+    if (!container) return;
+
+    const measureElementText = (element: HTMLElement) => {
+      const text = element.textContent?.trim() ?? '';
+      const computedStyle = window.getComputedStyle(element);
+      const letterSpacing = Number.parseFloat(computedStyle.letterSpacing) || 0;
+      const measuredTextWidth =
+        measureTextWidth(text, computedStyle.font) || Array.from(text).length * 14;
+      return measuredTextWidth + letterSpacing * Array.from(text).length;
+    };
+
+    let frame: number | null = null;
+    const measureContentWidth = () => {
+      if (frame !== null) cancelAnimationFrame(frame);
+      frame = requestAnimationFrame(() => {
+        frame = null;
+        let rowLabelWidth = 0;
+        let settingsRowWidth = 0;
+        let stackedLabelWidth = 0;
+        let sectionHeadingWidth = 0;
+        const contentLabels = container.querySelectorAll<HTMLElement>(
+          `.${styles.label}, .${styles.sectionHeading}`,
+        );
+
+        for (const element of contentLabels) {
+          if (!element.getClientRects().length) continue;
+          const textWidth = measureElementText(element);
+
+          if (element.classList.contains(styles.sectionHeading)) {
+            sectionHeadingWidth = Math.max(sectionHeadingWidth, textWidth);
+          } else if (element.closest(`.${styles.stacked}`)) {
+            stackedLabelWidth = Math.max(stackedLabelWidth, textWidth);
+          } else {
+            rowLabelWidth = Math.max(rowLabelWidth, textWidth);
+          }
+        }
+
+        const rows = container.querySelectorAll<HTMLElement>(
+          `.${styles.row}:not(.${styles.stacked})`,
+        );
+        for (const row of rows) {
+          if (!row.getClientRects().length) continue;
+          const label = row.querySelector<HTMLElement>(`:scope > .${styles.label}`);
+          const labelWidth = label ? measureElementText(label) : 0;
+          const triggers = Array.from(
+            row.querySelectorAll<HTMLElement>('[data-select-value]'),
+          ).flatMap((element) => {
+            const trigger = element.closest('button');
+            return trigger ? [trigger] : [];
+          });
+          const rowGap = Number.parseFloat(window.getComputedStyle(row).columnGap) || 0;
+          const controlsWidth = triggers.reduce(
+            (width, trigger) => width + trigger.getBoundingClientRect().width,
+            0,
+          );
+          const requiredWidth =
+            labelWidth + (triggers.length ? rowGap * triggers.length : 0) + controlsWidth;
+          rowLabelWidth = Math.max(rowLabelWidth, labelWidth);
+          settingsRowWidth = Math.max(settingsRowWidth, requiredWidth);
+        }
+
+        const availableWidth = Math.min(720, Math.max(320, window.innerWidth - 32));
+        const requiredContentWidth = Math.max(
+          sectionHeadingWidth,
+          stackedLabelWidth,
+          rowLabelWidth,
+          settingsRowWidth,
+        );
+        const preferredWidth = Math.ceil(requiredContentWidth + 50);
+        onSettingsContentWidthChange(Math.min(availableWidth, Math.max(495, preferredWidth)));
+      });
+    };
+
+    const mutationObserver = new MutationObserver(measureContentWidth);
+    mutationObserver.observe(container, { childList: true, characterData: true, subtree: true });
+    const resizeObserver = new ResizeObserver(measureContentWidth);
+    resizeObserver.observe(container);
+    measureContentWidth();
+
+    return () => {
+      if (frame !== null) cancelAnimationFrame(frame);
+      mutationObserver.disconnect();
+      resizeObserver.disconnect();
+    };
+  }, [onSettingsContentWidthChange]);
   const boolOptions = [
     { value: 'true', label: t('enabled') },
     { value: 'false', label: t('disabled') },
@@ -132,13 +249,27 @@ export function SettingsTab(p: Props) {
     { value: 'bottom-center', label: t('bottomCenter') },
     { value: 'bottom-right', label: t('bottomRight') },
   ];
+  const timeZoneOptions = [
+    { value: 'system', label: t('system'), keywords: ['system'] },
+    ...supportedTimeZones.map((timeZone) => {
+      const city = timeZone.split('/').at(-1)?.replaceAll('_', ' ') ?? timeZone;
+      return {
+        value: timeZone,
+        label: timeZone,
+        keywords: [timeZone.replaceAll('_', ' '), city],
+      };
+    }),
+  ];
+  const validSearchUrlTemplate = isValidSearchUrlTemplate(p.searchUrlTemplate);
+  const rangeStyle = (value: number, maximum: number) =>
+    ({ '--range-progress': `${(value / maximum) * 100}%` }) as CSSProperties;
   const number = (value: number, decimals = 0) =>
     new Intl.NumberFormat(i18n.language, {
       minimumFractionDigits: decimals,
       maximumFractionDigits: decimals,
     }).format(value);
   return (
-    <div id="settings-container" className={styles.container}>
+    <ElasticScrollArea id="settings-container" className={styles.container}>
       <Section title={t('general')}>
         <Field label={t('language')}>
           <Select
@@ -165,6 +296,16 @@ export function SettingsTab(p: Props) {
             ]}
           />
         </Field>
+        <Field label={t('timeZone')}>
+          <SearchableSelect
+            label={t('timeZone')}
+            value={p.timeZone}
+            onValueChange={p.handleTimeZoneChange}
+            options={timeZoneOptions}
+            searchPlaceholder={t('searchTimeZones')}
+            emptyLabel={t('noTimeZoneMatches')}
+          />
+        </Field>
         {window.electronAPI?.platform !== 'darwin' && (
           <Field label={t('autoLaunch')}>
             <Select
@@ -175,6 +316,19 @@ export function SettingsTab(p: Props) {
             />
           </Field>
         )}
+        <div>
+          <Field label={t('backgroundMode')}>
+            <Select
+              label={t('backgroundMode')}
+              value={String(backgroundModeEnabled)}
+              onValueChange={handleBackgroundModeChange}
+              options={boolOptions}
+            />
+          </Field>
+          <p className={styles.hint}>{t('backgroundModeHint')}</p>
+        </div>
+        <InlineNotices area="system" />
+        <InlineNotices area="settings" codes={['stateSaveFailed', 'autoLaunchFailed']} />
         {p.displays.length > 0 && (
           <Field label={t('display')}>
             <Select
@@ -192,13 +346,41 @@ export function SettingsTab(p: Props) {
           </Field>
         )}
       </Section>
+      <Section title={t('browserSearchSettings')}>
+        <Field label={t('searchEngineUrl')} stacked>
+          <input
+            className={`${styles.input} ${!validSearchUrlTemplate ? styles.invalidInput : ''}`}
+            aria-label={t('searchEngineUrl')}
+            aria-invalid={!validSearchUrlTemplate}
+            value={p.searchUrlTemplate}
+            onChange={(event) => p.setSearchUrlTemplate(event.target.value)}
+          />
+          <p className={styles.hint}>{t('searchEngineUrlHint')}</p>
+          <AnimatePresence initial={false}>
+            {!validSearchUrlTemplate && (
+              <motion.p
+                className={styles.fieldError}
+                role="alert"
+                initial={{ opacity: 0, filter: 'blur(10px)' }}
+                animate={{ opacity: 1, filter: 'blur(0px)' }}
+                exit={{ opacity: 0, filter: 'blur(10px)' }}
+                transition={{ duration: 0.2 }}
+              >
+                {t('invalidSearchUrlTemplate')}
+              </motion.p>
+            )}
+          </AnimatePresence>
+        </Field>
+      </Section>
       <Section title={t('tabManagement')}>
         <p className={styles.hint}>{t('tabInstructions')}</p>
         <div className={styles.tabList}>
           {p.tabOrder.map((id, index) => {
             const tab = TABS.find((item) => item.id === id);
             if (!tab) return null;
-            const hidden = p.hiddenTabs.includes(id);
+            const hidden = id !== SETTINGS_TAB_ID && p.hiddenTabs.includes(id);
+            const visibilityLabel =
+              id === SETTINGS_TAB_ID ? t('settingsAlwaysVisible') : t(hidden ? 'show' : 'hide');
             return (
               <div
                 key={id}
@@ -234,7 +416,6 @@ export function SettingsTab(p: Props) {
                   aria-label={t('defaultTab')}
                   onClick={() => {
                     p.setDefaultTabId(id);
-                    storage.setItem('default-tab', id);
                   }}
                 >
                   <Star
@@ -245,8 +426,9 @@ export function SettingsTab(p: Props) {
                 </button>
                 <button
                   className={styles.iconButton}
-                  title={t(hidden ? 'show' : 'hide')}
-                  aria-label={t(hidden ? 'show' : 'hide')}
+                  disabled={id === SETTINGS_TAB_ID}
+                  title={visibilityLabel}
+                  aria-label={visibilityLabel}
                   onClick={() => p.toggleTabVisibility(id)}
                 >
                   {hidden ? <EyeOff size={15} /> : <Eye size={15} />}
@@ -326,12 +508,14 @@ export function SettingsTab(p: Props) {
             >
               <Field label={t('positionX', { value: number(p.islandX, 1) })}>
                 <input
+                  className={styles.range}
                   aria-label={t('positionX', { value: number(p.islandX, 1) })}
                   type="range"
                   min="0"
                   max="100"
                   step="0.1"
                   value={p.islandX}
+                  style={rangeStyle(p.islandX, 100)}
                   onPointerDown={(event) => {
                     event.stopPropagation();
                     p.updateDragging(true);
@@ -347,11 +531,13 @@ export function SettingsTab(p: Props) {
               </Field>
               <Field label={t('positionY', { value: number(p.islandY) })}>
                 <input
+                  className={styles.range}
                   aria-label={t('positionY', { value: number(p.islandY) })}
                   type="range"
                   min="0"
                   max="500"
                   value={p.islandY}
+                  style={rangeStyle(p.islandY, 500)}
                   onPointerDown={(event) => {
                     event.stopPropagation();
                     p.updateDragging(true);
@@ -453,6 +639,20 @@ export function SettingsTab(p: Props) {
             options={boolOptions}
           />
         </Field>
+        <Field label={t('mouseLeaveDelay', { value: number(p.leaveDelayMs) })} stacked>
+          <input
+            className={styles.range}
+            aria-label={t('mouseLeaveDelay', { value: number(p.leaveDelayMs) })}
+            type="range"
+            min="0"
+            max="2000"
+            step="50"
+            value={p.leaveDelayMs}
+            style={rangeStyle(p.leaveDelayMs, 2000)}
+            onChange={(event) => p.handleLeaveDelayChange(event.target.value)}
+          />
+          <p className={styles.hint}>{t('mouseLeaveDelayHint')}</p>
+        </Field>
       </Section>
       <Section title={t('weather')}>
         <Field label={t('location')}>
@@ -463,7 +663,6 @@ export function SettingsTab(p: Props) {
             value={p.weatherLocation}
             onChange={(event) => {
               p.setWeatherLocation(event.target.value);
-              storage.setItem('location', event.target.value);
             }}
           />
         </Field>
@@ -480,19 +679,31 @@ export function SettingsTab(p: Props) {
         </Field>
       </Section>
       <Section title={t('quickApps')}>
+        <InlineNotices area="quick-apps" />
+        <Field label={t('quickApps')}>
+          <Select
+            label={t('quickApps')}
+            value={p.quickAppMode}
+            onValueChange={p.setQuickAppMode}
+            options={[
+              { value: 'installed', label: t('installedApps') },
+              { value: 'command', label: t('customCommand') },
+              { value: 'url', label: t('urlShortcut') },
+            ]}
+          />
+        </Field>
         <div className={styles.appSearch}>
           <div className={styles.row}>
             <input
               className={styles.input}
-              aria-label={t('addApp')}
+              aria-label={t('quickAppNameHint')}
               value={p.newQuickApp}
-              placeholder={t('addAppHint')}
+              placeholder={t('quickAppNameHint')}
               onChange={(event) => p.handleQuickAppInput(event.target.value)}
               onKeyDown={(event) => {
                 if (event.key === 'Enter') p.addQuickApp();
                 if (event.key === 'Escape') p.setShowSuggestions(false);
               }}
-              onBlur={() => p.setShowSuggestions(false)}
             />
             <button
               className={styles.primaryButton}
@@ -502,11 +713,11 @@ export function SettingsTab(p: Props) {
               <Plus size={18} />
             </button>
           </div>
-          {p.showSuggestions && p.appSuggestions.length > 0 && (
+          {p.quickAppMode === 'installed' && p.showSuggestions && p.appSuggestions.length > 0 && (
             <div className={styles.suggestions} data-island-interactive>
               {p.appSuggestions.map((app) => (
                 <button
-                  key={app.launch}
+                  key={`${app.name}-${JSON.stringify(app.target)}`}
                   className={styles.suggestion}
                   onPointerDown={(event) => {
                     event.preventDefault();
@@ -514,17 +725,51 @@ export function SettingsTab(p: Props) {
                   }}
                 >
                   <span>{app.name}</span>
-                  <span className={styles.launchHint}>{app.launch}</span>
+                  <span className={styles.launchHint}>{t('installedApps')}</span>
                 </button>
               ))}
             </div>
           )}
         </div>
+        {p.quickAppMode === 'command' && (
+          <div className={styles.quickAppFields}>
+            <input
+              className={styles.input}
+              aria-label={t('executablePath')}
+              placeholder={t('executablePath')}
+              value={p.executable}
+              onChange={(event) => p.setExecutable(event.target.value)}
+            />
+            <textarea
+              className={`${styles.input} ${styles.argumentInput}`}
+              aria-label={t('arguments')}
+              placeholder={t('argumentsHint')}
+              value={p.argumentLines}
+              onChange={(event) => p.setArgumentLines(event.target.value)}
+            />
+            <input
+              className={styles.input}
+              aria-label={t('workingDirectory')}
+              placeholder={t('workingDirectory')}
+              value={p.workingDirectory}
+              onChange={(event) => p.setWorkingDirectory(event.target.value)}
+            />
+          </div>
+        )}
+        {p.quickAppMode === 'url' && (
+          <input
+            className={styles.input}
+            aria-label={t('applicationUrl')}
+            placeholder="https://example.com"
+            value={p.appUrl}
+            onChange={(event) => p.setAppUrl(event.target.value)}
+          />
+        )}
         <div className={styles.appList}>
           <AnimatePresence propagate>
             {p.quickApps.map((app, index) => (
               <motion.div
-                key={`qa-${index}`}
+                key={app.id}
                 className={styles.appRow}
                 initial={{ opacity: 0, height: 0 }}
                 animate={{ opacity: 1, height: 'auto' }}
@@ -550,22 +795,13 @@ export function SettingsTab(p: Props) {
         </div>
       </Section>
       <Section title={t('integrations')}>
-        <Field label={t('aiProvider')}>
-          <Select
-            label={t('aiProvider')}
-            value={p.aiProvider}
-            onValueChange={(value) => {
-              p.setAiProvider(value);
-              storage.setItem('ai-provider', value);
-              const model =
-                value === 'groq' ? 'llama-3.3-70b-versatile' : 'meta-llama/llama-3.3-70b-instruct';
-              p.setAiModel(model);
-              storage.setItem('ai-model', model);
-            }}
-            options={[
-              { value: 'groq', label: 'Groq' },
-              { value: 'openrouter', label: 'OpenRouter' },
-            ]}
+        <Field label={t('aiBaseUrl')} stacked>
+          <input
+            className={styles.input}
+            aria-label={t('aiBaseUrl')}
+            value={p.aiBaseUrl}
+            placeholder="https://api.openai.com/v1"
+            onChange={(event) => p.handleApiBaseUrlChange(event.target.value)}
           />
         </Field>
         <Field label={t('aiModel')} stacked>
@@ -573,26 +809,52 @@ export function SettingsTab(p: Props) {
             className={styles.input}
             aria-label={t('aiModel')}
             value={p.aiModel}
-            placeholder={
-              p.aiProvider === 'groq'
-                ? 'llama-3.3-70b-versatile'
-                : 'meta-llama/llama-3.3-70b-instruct'
-            }
-            onChange={(event) => {
-              p.setAiModel(event.target.value);
-              storage.setItem('ai-model', event.target.value);
-            }}
+            placeholder="model-name"
+            onChange={(event) => p.handleAiModelChange(event.target.value)}
           />
         </Field>
         <Field label={t('apiKey')} stacked>
-          <input
-            className={styles.input}
-            aria-label={t('apiKey')}
-            type="password"
-            placeholder={p.aiProvider === 'groq' ? 'gsk_...' : 'sk-or-...'}
-            defaultValue={storage.getItem('api-key') || ''}
-            onChange={(event) => storage.setItem('api-key', event.target.value)}
-          />
+          <div className={styles.keyRow}>
+            <input
+              className={[styles.input, styles.keyInput].join(' ')}
+              aria-label={t('apiKey')}
+              type="password"
+              autoComplete="new-password"
+              placeholder={t('apiKeyHint')}
+              value={apiKeyDraft}
+              onChange={(event) => setApiKeyDraft(event.target.value)}
+            />
+            <div className={styles.keyActions}>
+              <button
+                className={styles.primaryButton}
+                disabled={!apiKeyDraft.trim()}
+                onClick={() => {
+                  void p.saveApiKey(apiKeyDraft).then((saved) => {
+                    if (saved) setApiKeyDraft('');
+                  });
+                }}
+              >
+                {p.hasApiKey ? t('changeApiKey') : t('saveApiKey')}
+              </button>
+              {p.hasApiKey && (
+                <button
+                  className={styles.dangerButton}
+                  title={t('removeApiKey')}
+                  aria-label={t('removeApiKey')}
+                  onClick={() => {
+                    void p.saveApiKey('').then((saved) => {
+                      if (saved) setApiKeyDraft('');
+                    });
+                  }}
+                >
+                  <Trash2 size={14} aria-hidden="true" />
+                  <span>{t('remove')}</span>
+                </button>
+              )}
+            </div>
+          </div>
+          {p.hasApiKey && <p className={styles.keyHint}>{t('apiKeyConfigured')}</p>}
+          <InlineNotices area="settings" codes={['secretStorageUnavailable']} />
         </Field>
       </Section>
       <Section title={t('manageWorkflows')}>
@@ -647,6 +909,6 @@ export function SettingsTab(p: Props) {
           </AnimatePresence>
         </div>
       </Section>
-    </div>
+    </ElasticScrollArea>
   );
 }

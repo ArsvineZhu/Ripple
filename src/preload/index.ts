@@ -1,4 +1,4 @@
-import type { ElectronAPI, InvokeMap } from '../shared/contracts';
+import type { AppNotice, AssistantEvent, ElectronAPI, InvokeMap } from '../shared/contracts';
 import { contextBridge, ipcRenderer } from 'electron';
 
 function invoke<K extends keyof InvokeMap>(
@@ -10,6 +10,25 @@ function invoke<K extends keyof InvokeMap>(
 const api: ElectronAPI = {
   getSystemLocale: () => invoke('get-system-locale'),
   setUILocale: (locale) => invoke('set-ui-locale', locale),
+  getAppBootstrap: () => invoke('get-app-bootstrap'),
+  updateAppState: (patch) => invoke('update-app-state', patch),
+  saveApiKey: (key) => invoke('save-api-key', key),
+  launchQuickApp: (id) => invoke('launch-quick-app', id),
+  discoverApps: (query) => invoke('discover-apps', query),
+  rendererReady: () => invoke('renderer-ready'),
+  startAssistant: (requestId, prompt) => invoke('start-assistant', requestId, prompt),
+  cancelAssistant: (requestId) => invoke('cancel-assistant', requestId),
+  onAppNotice: (callback: (notice: AppNotice) => void) => {
+    const listener = (_event: Electron.IpcRendererEvent, notice: AppNotice) => callback(notice);
+    ipcRenderer.on('app-notice', listener);
+    return () => ipcRenderer.removeListener('app-notice', listener);
+  },
+  onAssistantEvent: (callback: (event: AssistantEvent) => void) => {
+    const listener = (_event: Electron.IpcRendererEvent, payload: AssistantEvent) =>
+      callback(payload);
+    ipcRenderer.on('assistant-event', listener);
+    return () => ipcRenderer.removeListener('assistant-event', listener);
+  },
   setIgnoreMouseEvents: (ignore, forward) => {
     return invoke('set-ignore-mouse-events', ignore, forward);
   },
@@ -22,7 +41,6 @@ const api: ElectronAPI = {
   openExternal: (url) => invoke('open-external', url),
   launchApp: (appName) => invoke('launch-app', appName),
   buildAppCache: () => invoke('build-app-cache'),
-  searchApps: (query) => invoke('search-apps', query),
   getDisplays: () => invoke('get-displays'),
   setDisplay: (displayId) => invoke('set-display', displayId),
   setAutoLaunch: (enable) =>

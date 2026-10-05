@@ -1,238 +1,157 @@
-import { languagePreference } from '../../shared/i18n';
+import type { ChangeEvent } from 'react';
+import { useCallback, useState } from 'react';
+import type { AppSettings, PositionMode } from '../../shared/appState';
+import type { DisplayInfo } from '../../shared/contracts';
 import type { LanguagePreference } from '../../shared/i18n';
 import { changeLanguagePreference } from '../i18n';
-import type { ChangeEvent } from 'react';
-import { useState, useEffect } from 'react';
+import { useAppState } from '../components/AppStateProvider';
+import { useNotifications } from '../components/NotificationProvider';
 
-import type { DisplayInfo } from '../../shared/contracts';
+export function useSettings(initialHasApiKey: boolean) {
+  const { state, updateState } = useAppState();
+  const { notify } = useNotifications();
+  const settings = state.settings;
+  const [displays, setDisplays] = useState<DisplayInfo[]>([]);
+  const [manualPosition, setManualPosition] = useState({
+    x: settings.islandX,
+    y: settings.islandY,
+  });
+  const [hasApiKey, setHasApiKey] = useState(initialHasApiKey);
+  const updateSettings = useCallback(
+    (patch: Partial<AppSettings>) => updateState({ settings: patch }),
+    [updateState],
+  );
 
-import { storage } from '../lib/storage';
-export function useSettings() {
-  const [language, setLanguage] = useState(() => languagePreference(storage.getItem('language')));
   const handleLanguageChange = (value: LanguagePreference) => {
-    setLanguage(value);
+    updateSettings({ language: value });
     void changeLanguagePreference(value);
   };
-  const [batteryAlertsEnabled, setBatteryAlertsEnabled] = useState(
-    storage.getItem('battery-alerts') !== 'false',
-  );
-  const [islandBorderEnabled, setIslandBorderEnabled] = useState(
-    storage.getItem('island-border') === 'true',
-  );
-  const [standbyBorderEnabled, setStandbyEnabled] = useState(
-    storage.getItem('standby-mode') === 'true',
-  );
-  const [largeStandbyEnabled, setLargeStandbyEnabled] = useState(
-    storage.getItem('large-standby-mode') === 'true',
-  );
-  const [hideNotActiveIslandEnabled, sethideNotActiveIslandEnabled] = useState(
-    storage.getItem('hide-island-notactive') === 'true',
-  );
-  const [showInfoWhenIdleEnabled, setShowInfoWhenIdleEnabled] = useState(
-    storage.getItem('show-info-when-idle') === 'true',
-  );
-  const [hourFormat, setHourFormat] = useState(
-    (storage.getItem('hour-format') || '12-hr') === '12-hr',
-  );
-  const [weatherUnit, setweatherUnit] = useState(storage.getItem('weather-unit') || 'f');
-  const [theme, setTheme] = useState('default');
-  const [bgColor, setBgColor] = useState(storage.getItem('bg-color') || '#000000');
-  const [textColor, setTextColor] = useState(storage.getItem('text-color') || '#FFFFFF');
-  const [bgImage, setBgImage] = useState(storage.getItem('bg-image') || 'none');
-  const [displays, setDisplays] = useState<DisplayInfo[]>([]);
-  const [currentDisplayId, setCurrentDisplayId] = useState(storage.getItem('display-id') || '');
-  const [weatherLocation, setWeatherLocation] = useState(storage.getItem('location') || '');
-  const [autoLaunchEnabled, setAutoLaunchEnabled] = useState(
-    storage.getItem('auto-launch') === 'true',
-  );
-  const [positionMode, setPositionMode] = useState(
-    storage.getItem('position-mode') || storage.getItem('side-mode') || 'free',
-  );
-  const [islandX, setIslandX] = useState(() => {
-    const saved = storage.getItem('island-x');
-    const num = Number(saved);
-    return saved !== null && !isNaN(num) ? Math.max(0, Math.min(100, num)) : 50;
-  });
-  const [islandY, setIslandY] = useState(() => {
-    const saved = storage.getItem('island-y');
-    const num = Number(saved);
-    return saved !== null && !isNaN(num) ? Math.max(0, Math.min(1000, num)) : 20;
-  });
-  useEffect(() => {
-    if (!storage.getItem('battery-alerts')) {
-      storage.setItem('battery-alerts', 'true');
-    }
-    if (!storage.getItem('default-tab')) {
-      storage.setItem('default-tab', '2');
-    }
-    if (!storage.getItem('island-border')) {
-      storage.setItem('island-border', 'false');
-    }
-    if (!storage.getItem('hide-island-notactive')) {
-      storage.setItem('hide-island-notactive', 'false');
-    }
-    if (!storage.getItem('standby-mode')) {
-      storage.setItem('standby-mode', 'false');
-    }
-    if (!storage.getItem('hour-format')) {
-      storage.setItem('hour-format', '12-hr');
-    }
-    if (!storage.getItem('island-x')) {
-      storage.setItem('island-x', '50');
-    }
-    if (!storage.getItem('island-y')) {
-      storage.setItem('island-y', '20');
-    }
-    if (!storage.getItem('bg-color')) {
-      storage.setItem('bg-color', '#000000');
-    }
-    if (!storage.getItem('text-color')) {
-      storage.setItem('text-color', '#FFFFFF');
-    }
-    if (!storage.getItem('weather-unit')) {
-      storage.setItem('weather-unit', 'f');
-    }
-    if (!storage.getItem('auto-launch')) {
-      storage.setItem('auto-launch', 'false');
-    }
-  }, []);
-  const handleBatteryAlertsChange = (input: string) => {
-    const value = input === 'true';
-    setBatteryAlertsEnabled(value);
-    storage.setItem('battery-alerts', value ? 'true' : 'false');
-  };
-  const handleIslandBorderChange = (input: string) => {
-    const value = input === 'true';
-    setIslandBorderEnabled(value);
-    storage.setItem('island-border', value ? 'true' : 'false');
-  };
-  const handleStandbyChange = (input: string) => {
-    const value = input === 'true';
-    setStandbyEnabled(value);
-    storage.setItem('standby-mode', value ? 'true' : 'false');
-  };
-  const handleLargeStandbyChange = (input: string) => {
-    const value = input === 'true';
-    setLargeStandbyEnabled(value);
-    storage.setItem('large-standby-mode', value ? 'true' : 'false');
-  };
-  const handleHourFormatChange = (input: string) => {
-    const value = input;
-    setHourFormat(value === '12-hr');
-    storage.setItem('hour-format', value);
-  };
-  const handleAutoLaunchChange = (input: string) => {
-    const value = input === 'true';
-    setAutoLaunchEnabled(value);
-    storage.setItem('auto-launch', value ? 'true' : 'false');
-    window.electronAPI?.setAutoLaunch(value);
-  };
-  const handlehideNotActiveIslandChange = (input: string) => {
-    const value = input === 'true';
-    sethideNotActiveIslandEnabled(value);
-    storage.setItem('hide-island-notactive', value ? 'true' : 'false');
-  };
-  const handleShowInfoWhenIdleChange = (input: string) => {
-    const value = input === 'true';
-    setShowInfoWhenIdleEnabled(value);
-    storage.setItem('show-info-when-idle', value ? 'true' : 'false');
-  };
-  const handleWeatherUnitChange = (input: string) => {
-    const value = input === 'c' ? 'c' : 'f';
-    setweatherUnit(value);
-    storage.setItem('weather-unit', value);
-  };
-  const handleBgColorChange = (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const value = e.target.value;
-    setBgColor(value);
-    storage.setItem('bg-color', value);
-  };
-  const handleTextColorChange = (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const value = e.target.value;
-    setTextColor(value);
-    storage.setItem('text-color', value);
-  };
-  const handleDisplayChange = (input: string) => {
-    const displayId = input;
-    setCurrentDisplayId(displayId);
-    storage.setItem('display-id', displayId);
-    if (window.electronAPI?.setDisplay) {
-      window.electronAPI.setDisplay(displayId);
+  const handleBatteryAlertsChange = (input: string) =>
+    updateSettings({ batteryAlerts: input === 'true' });
+  const handleIslandBorderChange = (input: string) =>
+    updateSettings({ islandBorder: input === 'true' });
+  const handleStandbyChange = (input: string) => updateSettings({ standbyMode: input === 'true' });
+  const handleLargeStandbyChange = (input: string) =>
+    updateSettings({ largeStandbyMode: input === 'true' });
+  const handleHourFormatChange = (input: string) =>
+    updateSettings({ hourFormat: input === '12-hr' ? '12-hr' : '24-hr' });
+  const handleTimeZoneChange = (timeZone: string) => updateSettings({ timeZone });
+  const handleAutoLaunchChange = async (input: string) => {
+    const enable = input === 'true';
+    try {
+      await window.electronAPI?.setAutoLaunch(enable);
+      updateSettings({ autoLaunch: enable });
+    } catch (error) {
+      notify({
+        severity: 'error',
+        code: 'autoLaunchFailed',
+        area: 'settings',
+        detail: error instanceof Error ? error.message : String(error),
+      });
     }
   };
-  const handleIslandXChange = (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const value = Number(e.target.value);
-    setIslandX(value);
+  const handleBackgroundModeChange = (input: string) =>
+    updateSettings({ backgroundMode: input === 'true' });
+  const handlehideNotActiveIslandChange = (input: string) =>
+    updateSettings({ hideIslandWhenInactive: input === 'true' });
+  const handleShowInfoWhenIdleChange = (input: string) =>
+    updateSettings({ showInfoWhenIdle: input === 'true' });
+  const handleWeatherUnitChange = (input: string) =>
+    updateSettings({ weatherUnit: input === 'c' ? 'c' : 'f' });
+  const handleBgColorChange = (event: ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
+    updateSettings({ backgroundColor: event.target.value });
+  const handleTextColorChange = (event: ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
+    updateSettings({ textColor: event.target.value });
+  const handleDisplayChange = (displayId: string) => {
+    updateSettings({ displayId });
+    void window.electronAPI?.setDisplay(displayId).catch(() => {});
   };
-  const handleIslandYChange = (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const value = Number(e.target.value);
-    setIslandY(value);
-  };
-  const savePosition = () => {
-    storage.setItem('island-x', islandX);
-    storage.setItem('island-y', islandY);
-  };
-  const handleBgImageChange = (e: ChangeEvent<HTMLInputElement | HTMLSelectElement>) => {
-    const value = e.target.value;
-    setBgImage(value);
-    storage.setItem('bg-image', value);
-  };
-  useEffect(() => {
+  const handleIslandXChange = (event: ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
+    setManualPosition((position) => ({ ...position, x: Number(event.target.value) }));
+  const handleIslandYChange = (event: ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
+    setManualPosition((position) => ({ ...position, y: Number(event.target.value) }));
+  const savePosition = () =>
+    updateSettings({ islandX: manualPosition.x, islandY: manualPosition.y });
+  const handleBgImageChange = (event: ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
+    updateSettings({ backgroundImage: event.target.value });
+  const setTheme = (theme: string) => {
     if (theme === 'sleek-black') {
-      storage.setItem('bg-color', 'rgba(0, 0, 0, 0.64)');
-      storage.setItem('text-color', 'rgba(255, 255, 255)');
-      setBgColor('rgba(0, 0, 0, 0.64)');
-      setTextColor('rgba(255, 255, 255)');
+      updateSettings({
+        theme: 'sleek-black',
+        backgroundColor: 'rgba(0, 0, 0, 0.64)',
+        textColor: 'rgba(255, 255, 255)',
+      });
     } else if (theme === 'win95') {
-      storage.setItem('bg-color', 'rgba(195, 195, 195)');
-      storage.setItem('text-color', 'rgba(0, 0, 0)');
-      setBgColor('rgba(195, 195, 195)');
-      setTextColor('rgba(0, 0, 0)');
-    } else if (theme === 'invisible') {
-      storage.setItem('bg-image', 'none');
-      setBgImage('none');
-      storage.setItem('bg-color', 'rgba(255, 255, 255, 0)');
-      storage.setItem('text-color', 'rgba(0, 0, 0, 0)');
-      setBgColor('rgba(255, 255, 255, 0)');
-      setTextColor('rgba(0, 0, 0, 0)');
-    } else if (theme === 'none') {
-      const defaultBg = '#000000';
-      const defaultText = '#FFFFFF';
-      storage.setItem('bg-color', defaultBg);
-      storage.setItem('text-color', defaultText);
-      setBgColor(defaultBg);
-      setTextColor(defaultText);
+      updateSettings({
+        theme: 'win95',
+        backgroundColor: 'rgba(195, 195, 195)',
+        textColor: 'rgba(0, 0, 0)',
+      });
+    } else {
+      updateSettings({ theme: 'default', backgroundColor: '#000000', textColor: '#FFFFFF' });
     }
-  }, [theme]);
-  useEffect(() => {
-    void window.electronAPI?.setAutoLaunch(autoLaunchEnabled);
-  }, [autoLaunchEnabled]);
+  };
+  const setPositionMode = (positionMode: string) =>
+    updateSettings({ positionMode: positionMode as PositionMode });
+  const handleApiBaseUrlChange = (aiBaseUrl: string) => updateSettings({ aiBaseUrl });
+  const handleAiModelChange = (aiModel: string) => updateSettings({ aiModel });
+  const saveApiKey = async (key: string): Promise<boolean> => {
+    try {
+      await window.electronAPI?.saveApiKey(key.trim());
+      setHasApiKey(Boolean(key.trim()));
+      return true;
+    } catch (error) {
+      notify({
+        severity: 'error',
+        code: 'secretStorageUnavailable',
+        area: 'settings',
+        detail: error instanceof Error ? error.message : String(error),
+      });
+      return false;
+    }
+  };
+
   return {
-    language,
+    language: settings.language,
+    searchUrlTemplate: settings.searchUrlTemplate,
+    setSearchUrlTemplate: (searchUrlTemplate: string) => updateSettings({ searchUrlTemplate }),
     handleLanguageChange,
-    batteryAlertsEnabled,
-    islandBorderEnabled,
-    standbyBorderEnabled,
-    largeStandbyEnabled,
-    hideNotActiveIslandEnabled,
-    showInfoWhenIdleEnabled,
-    hourFormat,
-    weatherUnit,
-    theme,
+    batteryAlertsEnabled: settings.batteryAlerts,
+    islandBorderEnabled: settings.islandBorder,
+    standbyBorderEnabled: settings.standbyMode,
+    largeStandbyEnabled: settings.largeStandbyMode,
+    hideNotActiveIslandEnabled: settings.hideIslandWhenInactive,
+    showInfoWhenIdleEnabled: settings.showInfoWhenIdle,
+    hourFormat: settings.hourFormat === '12-hr',
+    timeZone: settings.timeZone,
+    handleTimeZoneChange,
+    weatherUnit: settings.weatherUnit,
+    theme: settings.theme,
     setTheme,
-    bgColor,
-    textColor,
-    bgImage,
+    bgColor: settings.backgroundColor,
+    textColor: settings.textColor,
+    bgImage: settings.backgroundImage,
     displays,
     setDisplays,
-    currentDisplayId,
-    weatherLocation,
-    setWeatherLocation,
-    autoLaunchEnabled,
-    positionMode,
+    currentDisplayId: settings.displayId || '',
+    weatherLocation: settings.weatherLocation,
+    setWeatherLocation: (weatherLocation: string) => updateSettings({ weatherLocation }),
+    autoLaunchEnabled: settings.autoLaunch,
+    backgroundModeEnabled: settings.backgroundMode,
+    handleBackgroundModeChange,
+    positionMode: settings.positionMode,
     setPositionMode,
-    islandX,
-    islandY,
+    islandX: manualPosition.x,
+    islandY: manualPosition.y,
+    leaveDelayMs: settings.leaveDelayMs,
+    hasApiKey,
+    aiBaseUrl: settings.aiBaseUrl,
+    aiModel: settings.aiModel,
+    saveApiKey,
+    handleApiBaseUrlChange,
+    handleAiModelChange,
+    handleLeaveDelayChange: (input: string) =>
+      updateSettings({ leaveDelayMs: Math.max(0, Math.min(2000, Number(input))) }),
     handleBatteryAlertsChange,
     handleIslandBorderChange,
     handleStandbyChange,

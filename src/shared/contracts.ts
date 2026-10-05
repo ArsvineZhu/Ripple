@@ -1,4 +1,6 @@
 import type { Locale } from './i18n';
+import type { AppState, AppStatePatch } from './appState';
+import { z } from 'zod';
 export interface MediaTrack {
   name: string;
   artist: string;
@@ -7,14 +9,46 @@ export interface MediaTrack {
   state: string;
   source: string;
 }
-export interface AppEntry {
-  name: string;
-  launch: string;
-}
-export interface Workflow {
-  name: string;
-  urls: string[];
-}
+export const QuickAppTargetSchema = z.discriminatedUnion('kind', [
+  z.object({ kind: z.literal('desktop-entry'), desktopFile: z.string().min(1) }).strict(),
+  z
+    .object({
+      kind: z.literal('command'),
+      executable: z.string().min(1),
+      args: z.array(z.string()).max(128),
+      workingDirectory: z.string().min(1).optional(),
+    })
+    .strict(),
+  z
+    .object({
+      kind: z.literal('platform-app'),
+      platform: z.enum(['win32', 'darwin']),
+      identifier: z.string().min(1),
+    })
+    .strict(),
+  z
+    .object({
+      kind: z.literal('url'),
+      url: z.url().refine((value) => ['http:', 'https:'].includes(new URL(value).protocol)),
+    })
+    .strict(),
+]);
+export type QuickAppTarget = z.infer<typeof QuickAppTargetSchema>;
+
+export const QuickAppSchema = z
+  .object({ id: z.string().min(1), name: z.string().min(1), target: QuickAppTargetSchema })
+  .strict();
+export type QuickApp = z.infer<typeof QuickAppSchema>;
+
+export const AppEntrySchema = z
+  .object({ name: z.string().min(1), target: QuickAppTargetSchema })
+  .strict();
+export type AppEntry = z.infer<typeof AppEntrySchema>;
+
+export const WorkflowSchema = z
+  .object({ name: z.string().min(1), urls: z.array(z.string()) })
+  .strict();
+export type Workflow = z.infer<typeof WorkflowSchema>;
 export interface DisplayInfo {
   id: number;
   label: string;
@@ -29,7 +63,87 @@ export interface InputRect {
 }
 export type MediaCommand = 'previous' | 'playpause' | 'next';
 export type IslandMode = 'still' | 'quick' | 'large';
+export type NoticeCode =
+  | 'appLaunchFailed'
+  | 'autoLaunchFailed'
+  | 'backgroundModeFailed'
+  | 'stateSaveFailed'
+  | 'stateLoadFailed'
+  | 'inputShapeFailed'
+  | 'windowLoadFailed'
+  | 'missingApiKey'
+  | 'invalidAISettings'
+  | 'aiRequestFailed'
+  | 'noAiResponse'
+  | 'invalidQuickApp'
+  | 'secretStorageUnavailable'
+  | 'invalidSearchUrlTemplate'
+  | 'invalidSearchTarget'
+  | 'searchOpenFailed'
+  | 'unknownError';
+
+export type NoticeArea =
+  'assistant' | 'browser-search' | 'quick-apps' | 'settings' | 'system' | 'tasks' | 'workflows';
+
+export function noticeAreaForCode(code: NoticeCode): NoticeArea {
+  switch (code) {
+    case 'appLaunchFailed':
+      return 'workflows';
+    case 'missingApiKey':
+    case 'invalidAISettings':
+    case 'aiRequestFailed':
+    case 'noAiResponse':
+      return 'assistant';
+    case 'invalidQuickApp':
+      return 'quick-apps';
+    case 'invalidSearchUrlTemplate':
+    case 'invalidSearchTarget':
+    case 'searchOpenFailed':
+      return 'browser-search';
+    case 'autoLaunchFailed':
+    case 'backgroundModeFailed':
+    case 'stateSaveFailed':
+    case 'secretStorageUnavailable':
+      return 'settings';
+    case 'stateLoadFailed':
+    case 'inputShapeFailed':
+    case 'windowLoadFailed':
+    case 'unknownError':
+      return 'system';
+  }
+}
+
+export function noticeAreaForPatch(patch: AppStatePatch): NoticeArea {
+  if ('tasks' in patch) return 'tasks';
+  if ('workflows' in patch) return 'workflows';
+  if ('quickApps' in patch) return 'quick-apps';
+  return 'settings';
+}
+
+export interface AppNotice {
+  id: string;
+  severity: 'warning' | 'error';
+  code: NoticeCode;
+  area: NoticeArea;
+  detail?: string;
+}
+export type AssistantEvent =
+  | { requestId: string; kind: 'delta'; content: string }
+  | { requestId: string; kind: 'done' }
+  | { requestId: string; kind: 'error'; code: NoticeCode; detail?: string };
+interface AppBootstrap {
+  state: AppState;
+  hasApiKey: boolean;
+}
 export interface InvokeMap {
+  'get-app-bootstrap': { args: []; result: AppBootstrap };
+  'update-app-state': { args: [patch: AppStatePatch]; result: AppState };
+  'save-api-key': { args: [key: string]; result: void };
+  'launch-quick-app': { args: [id: string]; result: void };
+  'discover-apps': { args: [query: string]; result: AppEntry[] };
+  'renderer-ready': { args: []; result: void };
+  'start-assistant': { args: [requestId: string, prompt: string]; result: void };
+  'cancel-assistant': { args: [requestId: string]; result: void };
   'get-system-locale': { args: []; result: string };
   'set-ui-locale': { args: [locale: Locale]; result: void };
   'set-ignore-mouse-events': { args: [ignore: boolean, forward: boolean]; result: void };
@@ -41,13 +155,22 @@ export interface InvokeMap {
   'open-external': { args: [url: string]; result: void };
   'launch-app': { args: [name: string]; result: void };
   'build-app-cache': { args: []; result: void };
-  'search-apps': { args: [query: string]; result: AppEntry[] };
   'get-displays': { args: []; result: DisplayInfo[] };
   'set-display': { args: [id: string | number]; result: void };
   'set-auto-launch': { args: [enable: boolean]; result: void };
   'focus-window': { args: []; result: void };
 }
 export interface ElectronAPI {
+  getAppBootstrap(): Promise<AppBootstrap>;
+  updateAppState(patch: AppStatePatch): Promise<AppState>;
+  saveApiKey(key: string): Promise<void>;
+  launchQuickApp(id: string): Promise<void>;
+  discoverApps(query: string): Promise<AppEntry[]>;
+  rendererReady(): Promise<void>;
+  startAssistant(requestId: string, prompt: string): Promise<void>;
+  cancelAssistant(requestId: string): Promise<void>;
+  onAppNotice(callback: (notice: AppNotice) => void): () => void;
+  onAssistantEvent(callback: (event: AssistantEvent) => void): () => void;
   getSystemLocale(): Promise<string>;
   setUILocale(locale: Locale): Promise<void>;
   platform: string;
@@ -61,7 +184,6 @@ export interface ElectronAPI {
   openExternal(url: string): Promise<void>;
   launchApp(name: string): Promise<void>;
   buildAppCache(): Promise<void>;
-  searchApps(query: string): Promise<AppEntry[]>;
   getDisplays(): Promise<DisplayInfo[]>;
   setDisplay(id: string | number): Promise<void>;
   setAutoLaunch(enable: boolean): Promise<void>;

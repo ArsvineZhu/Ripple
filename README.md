@@ -1,28 +1,28 @@
-[简体中文](README.zh-CN.md) · English is canonical.
+[简体中文](README.zh-CN.md)
 
-# Ripple
+# Ripple Next
 
-A cross-platform Dynamic Island desktop companion, maintained in [ArsvineZhu/Ripple](https://github.com/ArsvineZhu/Ripple), based on TopMyster's MIT-licensed project.
+A cross-platform Dynamic Island desktop companion developed in [ArsvineZhu/Ripple-Next](https://github.com/ArsvineZhu/Ripple-Next), based on TopMyster's MIT-licensed Ripple project.
 
-Ripple provides browser search, workflows and quick apps, time/weather/battery overview, now playing, Groq/OpenRouter AI chat, clipboard history, tasks, and settings. Hover opens Quick mode; click opens Large mode. Still, stealth, standby, tab ordering, keyboard navigation, themes, positioning, display selection and platform alerts are retained.
+Ripple Next includes browser search, workflows, quick apps, time/weather/battery overview, media controls, AI chat through OpenAI-compatible endpoints, clipboard history, tasks and settings. Linux quick apps can launch installed desktop entries, URLs or custom commands with separate arguments.
 
-Install packages from [this fork's releases](https://github.com/ArsvineZhu/Ripple/releases). Windows uses MSI, macOS uses DMG, and Linux uses DEB/RPM. Built artifacts can also be downloaded from successful Actions runs.
+The interface supports Simplified Chinese, English, Traditional Chinese and Japanese. It follows the system language by default and supports an immediate, persistent override in Settings.
 
-The interface supports Simplified Chinese, English, Traditional Chinese and Japanese. It follows the system language by default; select a language in Settings for an immediate, persistent override.
+Matching version tags are built and published by GitHub Actions; see the [release guide](docs/release.md).
 
 ## Develop
 
-Use the Node LTS version recorded in [.node-version](.node-version) and npm 11 or newer.
+Use the Node version recorded in [.node-version](.node-version) and pnpm 12 or newer. Node 22.13+ is required by the current toolchain.
 
 ```sh
-git clone https://github.com/ArsvineZhu/Ripple.git
-cd Ripple
-npm ci
-npm start
+git clone https://github.com/ArsvineZhu/Ripple-Next.git
+cd Ripple-Next
+pnpm install --frozen-lockfile
+pnpm start
 ```
 
-See the [developer guide](docs/development.md) for prerequisites, checks and packaging, [usage guide](instructions.md) for interactions, and [repository map](INDEX.md) for architecture. Current release validation is described in the [release guide](docs/release.md).
+See the [developer guide](docs/development.md) for prerequisites, checks and packaging, the [usage guide](instructions.md) for interactions, and the [repository map](INDEX.md) for architecture.
 
 ## License
 
-[MIT](LICENSE). Original authorship and license attribution are retained.
+[MIT](LICENSE). Original project attribution is retained.

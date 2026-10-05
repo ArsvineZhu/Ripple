@@ -19,4 +19,16 @@
   width: 100%;
   display: flex;
   justify-content: center;
+  flex-direction: column;
+  align-items: center;
+}
+
+.error {
+  max-width: 90%;
+  margin: 0 0 12px;
+  color: #ff8b8b;
+  font-size: 12px;
+  line-height: 1.4;
+  text-align: center;
+  overflow-wrap: anywhere;
 }

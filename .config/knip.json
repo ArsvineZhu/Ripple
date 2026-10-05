@@ -21,6 +21,8 @@
     "ioreg",
     "pactl",
     "osascript",
-    "playerctl"
+    "playerctl",
+    "gio",
+    "explorer.exe"
   ]
 }

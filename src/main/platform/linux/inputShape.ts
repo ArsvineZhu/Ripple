@@ -21,18 +21,92 @@ interface Shape {
     cb: (error: Error | null, result: { rectangles: number[][] }) => void,
   ): void;
 }
-interface XDisplay {
-  client: {
-    require(name: string, cb: (error: Error | null, shape: Shape) => void): void;
-    terminate(): void;
-  };
+interface X11Client {
+  require(name: string, cb: (error: Error | null, shape: Shape) => void): void;
+  terminate(): void;
+  InternAtom(
+    onlyIfExists: boolean,
+    name: string,
+    cb: (error: Error | null, atom: number) => void,
+  ): void;
+  SendClientMessage(
+    destination: number,
+    window: number,
+    messageType: number,
+    format: number,
+    data: number[],
+    eventMask: number,
+    cb: (error: Error | null) => void,
+  ): void;
 }
+interface XDisplay {
+  client: X11Client;
+  screen: Array<{ root: number }>;
+}
+const EWMH_SUBSTRUCTURE_EVENT_MASK = 0x00080000 | 0x00100000;
 export function createLinuxInputShape(getWindow: () => BrowserWindow | null, onReady: () => void) {
+  let errorHandler = (error: unknown) => console.error('Linux input shape error:', error);
   let mainWindowInputShapeReady = false;
   let x11Display: XDisplay | null = null;
   let x11Shape: Shape | null = null;
   let pendingInputShape: InputRect | null = null;
   let inputShapeCheckPending = false;
+  let skipTaskbar = false;
+  let taskbarAtoms: Promise<[number, number]> | null = null;
+
+  const internAtom = (name: string) =>
+    new Promise<number>((resolve, reject) => {
+      if (!x11Display) {
+        reject(new Error('X11 connection is unavailable'));
+        return;
+      }
+      x11Display.client.InternAtom(false, name, (error, atom) => {
+        if (error) reject(error);
+        else resolve(atom);
+      });
+    });
+
+  const applyTaskbarState = () => {
+    const mainWindow = getWindow();
+    const display = x11Display;
+    if (
+      !mainWindow ||
+      process.platform !== 'linux' ||
+      !display ||
+      !mainWindow.isVisible() ||
+      !display.screen[0]
+    )
+      return;
+
+    const hidden = skipTaskbar;
+    const windowId = mainWindow.getNativeWindowHandle().readUInt32LE(0);
+    taskbarAtoms ??= Promise.all([
+      internAtom('_NET_WM_STATE'),
+      internAtom('_NET_WM_STATE_SKIP_TASKBAR'),
+    ]);
+    void taskbarAtoms
+      .then(([stateAtom, skipTaskbarAtom]) => {
+        if (
+          mainWindow.isDestroyed() ||
+          getWindow() !== mainWindow ||
+          x11Display !== display ||
+          !mainWindow.isVisible()
+        )
+          return;
+        display.client.SendClientMessage(
+          display.screen[0]!.root,
+          windowId,
+          stateAtom,
+          32,
+          [hidden ? 1 : 0, skipTaskbarAtom, 0, 1, 0],
+          EWMH_SUBSTRUCTURE_EVENT_MASK,
+          (error) => {
+            if (error) errorHandler(error);
+          },
+        );
+      })
+      .catch(errorHandler);
+  };
 
   const apply = (rect: InputRect) => {
     const mainWindow = getWindow();
@@ -62,7 +136,7 @@ export function createLinuxInputShape(getWindow: () => BrowserWindow | null, onR
     x11Shape.GetRectangles(windowId, x11Shape.Kind.Input, (error, result) => {
       inputShapeCheckPending = false;
       if (error) {
-        console.error('Failed to read Linux window input shape:', error);
+        errorHandler(error);
         return;
       }
 
@@ -76,7 +150,7 @@ export function createLinuxInputShape(getWindow: () => BrowserWindow | null, onR
         actual[2] >= bounds.width * scale ||
         actual[3] >= bounds.height * scale
       ) {
-        console.error('Linux window input shape still covers the full window:', result.rectangles);
+        errorHandler(new Error('Linux window input shape still covers the full window'));
         return;
       }
 
@@ -90,16 +164,16 @@ export function createLinuxInputShape(getWindow: () => BrowserWindow | null, onR
 
     x11Module.createClient((error, display) => {
       if (error) {
-        console.error('Failed to connect to X11 for input shaping:', error);
+        errorHandler(error);
         return;
       }
 
       display.client.on('error', (clientError) => {
-        console.error('X11 input-shape connection error:', clientError);
+        errorHandler(clientError);
       });
       (display as unknown as XDisplay).client.require('shape', (shapeError, shape) => {
         if (shapeError) {
-          console.error('X11 Shape extension is unavailable:', shapeError);
+          errorHandler(shapeError);
           display.client.terminate();
           return;
         }
@@ -113,8 +187,15 @@ export function createLinuxInputShape(getWindow: () => BrowserWindow | null, onR
 
   return {
     apply,
+    setSkipTaskbar: (hidden: boolean) => {
+      skipTaskbar = hidden;
+      applyTaskbarState();
+    },
     initialize,
     isReady: () => mainWindowInputShapeReady,
+    setErrorHandler: (handler: (error: unknown) => void) => {
+      errorHandler = handler;
+    },
     reset: () => {
       mainWindowInputShapeReady = false;
       inputShapeCheckPending = false;

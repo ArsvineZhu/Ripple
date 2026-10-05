@@ -33,7 +33,9 @@ export function Select({ value, options, onValueChange, label, disabled }: Props
         disabled={disabled}
         data-island-interactive
       >
-        <span>{options.find((option) => option.value === value)?.label ?? label}</span>
+        <span data-select-value>
+          {options.find((option) => option.value === value)?.label ?? label}
+        </span>
         <span>
           <ChevronDown size={14} />
         </span>

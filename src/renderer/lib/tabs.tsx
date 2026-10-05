@@ -6,6 +6,7 @@ import { Mic } from 'lucide-react';
 import { List } from 'lucide-react';
 import { Check } from 'lucide-react';
 import { Settings } from 'lucide-react';
+import { SETTINGS_TAB_ID } from '../../shared/appState';
 export const TABS = [
   {
     id: 0,
@@ -43,7 +44,7 @@ export const TABS = [
     icon: (color: string) => <Check size={16} color={color} />,
   },
   {
-    id: 7,
+    id: SETTINGS_TAB_ID,
     nameKey: 'tabSettings' as const,
     icon: (color: string) => <Settings size={16} color={color} />,
   },

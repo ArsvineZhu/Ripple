@@ -10,17 +10,31 @@ if (process.platform === 'linux') {
 }
 let mainWindow: BrowserWindow | null = null;
 let mainWindowReady = false;
+let rendererIsReady = false;
+let backgroundMode = false;
+const applySkipTaskbar = () => {
+  if (!mainWindow) return;
+  if (process.platform === 'linux') inputShape.setSkipTaskbar(backgroundMode);
+  else mainWindow.setSkipTaskbar(backgroundMode);
+};
 export const showMainWindow = () => {
-  if (!mainWindow || !mainWindowReady) return;
+  if (!mainWindow || !mainWindowReady || !rendererIsReady) return;
   if (process.platform === 'linux' && !inputShape.isReady()) return;
 
   mainWindow.show();
+  applySkipTaskbar();
   mainWindow.setAlwaysOnTop(true, process.platform === 'linux' ? 'screen-saver' : 'pop-up-menu');
   mainWindow.focus();
 };
 
-export const createWindow = () => {
+export const markRendererReady = () => {
+  rendererIsReady = true;
+  showMainWindow();
+};
+
+export const createWindow = (onLoadError: (error: unknown) => void = () => {}) => {
   mainWindowReady = false;
+  rendererIsReady = false;
   inputShape.reset();
   const primaryDisplay = screen.getPrimaryDisplay();
   const { x, y, width, height } = primaryDisplay.bounds;
@@ -47,7 +61,7 @@ export const createWindow = () => {
     frame: false,
     ...(isWindows ? {} : { thickFrame: false }),
     hasShadow: false,
-    skipTaskbar: true,
+    skipTaskbar: backgroundMode,
     icon: getIconPath(),
     ...(isMac ? { hiddenInMissionControl: true } : {}),
     ...(windowType ? { type: windowType } : {}),
@@ -60,7 +74,7 @@ export const createWindow = () => {
       preload: path.join(__dirname, 'preload.cjs'),
       devTools: false,
     },
-    show: !isLinux,
+    show: false,
   });
 
   if (!isLinux) {
@@ -69,21 +83,10 @@ export const createWindow = () => {
     mainWindow.setIgnoreMouseEvents(false);
   }
 
-  const showDelay = isLinux ? 500 : 0;
-
   mainWindow.once('ready-to-show', () => {
-    setTimeout(() => {
-      mainWindowReady = true;
-      showMainWindow();
-    }, showDelay);
+    mainWindowReady = true;
+    showMainWindow();
   });
-
-  setTimeout(() => {
-    if (mainWindow && !mainWindow.isVisible()) {
-      mainWindowReady = true;
-      showMainWindow();
-    }
-  }, 5000);
 
   mainWindow.on('closed', () => {
     mainWindow = null;
@@ -94,15 +97,22 @@ export const createWindow = () => {
   } catch {}
 
   if (MAIN_WINDOW_VITE_DEV_SERVER_URL) {
-    void mainWindow.loadURL(MAIN_WINDOW_VITE_DEV_SERVER_URL);
+    void mainWindow.loadURL(MAIN_WINDOW_VITE_DEV_SERVER_URL).catch(onLoadError);
   } else {
     const rendererPath = path.join(__dirname, `../renderer/${MAIN_WINDOW_VITE_NAME}/index.html`);
-    void mainWindow.loadFile(rendererPath);
+    void mainWindow.loadFile(rendererPath).catch(onLoadError);
   }
 };
 
 export const getMainWindow = () => mainWindow;
+export const setWindowBackgroundMode = (enabled: boolean) => {
+  backgroundMode = enabled;
+  applySkipTaskbar();
+};
 const inputShape = createLinuxInputShape(() => mainWindow, showMainWindow);
-export const initializeLinuxInputShape = inputShape.initialize;
+export const initializeLinuxInputShape = (onError?: (error: unknown) => void) => {
+  if (onError) inputShape.setErrorHandler(onError);
+  inputShape.initialize();
+};
 export const applyLinuxInputShape = inputShape.apply;
 export const closeInputConnection = inputShape.close;

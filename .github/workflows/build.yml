@@ -1,7 +1,8 @@
-name: Check and package
+name: Ripple Next CI and Release
 on:
   push:
     branches: [main, master]
+    tags: ['v*']
   pull_request:
     branches: [main, master]
   workflow_dispatch:
@@ -15,10 +16,21 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version-file: .node-version
-          cache: npm
-      - run: npm ci
-      - run: npm run check
-      - run: npm test
+      - uses: pnpm/setup@c9883cc79df532ad1a7b81bf9ab944ceb090d65c
+        with:
+          install: false
+          cache: true
+      - run: pnpm install --frozen-lockfile
+      - name: Verify release tag
+        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+        run: |
+          expected_tag="v$(node -p 'require("./package.json").version')"
+          if [ "$GITHUB_REF_NAME" != "$expected_tag" ]; then
+            echo "Tag $GITHUB_REF_NAME does not match package version $expected_tag" >&2
+            exit 1
+          fi
+      - run: pnpm check
+      - run: pnpm test
   build:
     needs: check
     name: Package ${{ matrix.name }}
@@ -36,7 +48,10 @@ jobs:
       - uses: actions/setup-node@v7
         with:
           node-version-file: .node-version
-          cache: npm
+      - uses: pnpm/setup@c9883cc79df532ad1a7b81bf9ab944ceb090d65c
+        with:
+          install: false
+          cache: true
       - name: Linux installer prerequisites
         if: runner.os == 'Linux'
         run: sudo apt-get update && sudo apt-get install -y rpm fakeroot dpkg
@@ -46,11 +61,11 @@ jobs:
         run: |
           choco install wixtoolset --no-progress -y
           "${env:ProgramFiles(x86)}\WiX Toolset v3.14\bin" | Out-File -FilePath $env:GITHUB_PATH -Encoding utf8 -Append
-      - run: npm ci
-      - run: npm run make -- --arch=${{ matrix.arch }}
+      - run: pnpm install --frozen-lockfile
+      - run: pnpm run make --arch=${{ matrix.arch }}
       - uses: actions/upload-artifact@v7
         with:
-          name: Ripple-${{ matrix.name }}
+          name: RippleNext-${{ matrix.name }}
           path: |
             out/make/**/*.dmg
             out/make/**/*.msi
@@ -58,3 +73,55 @@ jobs:
             out/make/**/*.rpm
             out/make/**/*.zip
           if-no-files-found: error
+  release:
+    needs: build
+    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    runs-on: ubuntu-latest
+    permissions:
+      contents: write
+    steps:
+      - uses: actions/checkout@v7
+      - uses: actions/download-artifact@v7
+        with:
+          pattern: RippleNext-*
+          path: release-assets
+          merge-multiple: true
+      - name: Publish GitHub Release
+        env:
+          GH_TOKEN: ${{ github.token }}
+          GH_REPO: ${{ github.repository }}
+          RELEASE_TAG: ${{ github.ref_name }}
+        run: |
+          mapfile -d '' release_files < <(find release-assets -type f -print0 | sort -z)
+          if [ "${#release_files[@]}" -eq 0 ]; then
+            echo "No package files were downloaded" >&2
+            exit 1
+          fi
+
+          release_version="${RELEASE_TAG#v}"
+          english_notes="docs/releases/${release_version}.en.md"
+          chinese_notes="docs/releases/${release_version}.zh-CN.md"
+          release_notes_file="${RUNNER_TEMP}/release-notes.md"
+          if [[ -f "$english_notes" && -f "$chinese_notes" ]]; then
+            cat "$english_notes" > "$release_notes_file"
+            printf '\n---\n\n' >> "$release_notes_file"
+            cat "$chinese_notes" >> "$release_notes_file"
+            release_notes_args=(--notes-file "$release_notes_file")
+          elif [[ -e "$english_notes" || -e "$chinese_notes" ]]; then
+            echo "Both English and Simplified Chinese release notes are required" >&2
+            exit 1
+          else
+            release_notes_args=(--generate-notes)
+          fi
+
+          release_type_args=()
+          if [[ "$RELEASE_TAG" == *-* ]]; then
+            release_type_args+=(--prerelease)
+          fi
+
+          gh release create "$RELEASE_TAG" \
+            --verify-tag \
+            --title "Ripple Next $RELEASE_TAG" \
+            "${release_type_args[@]}" \
+            "${release_notes_args[@]}" \
+            "${release_files[@]}"

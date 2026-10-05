@@ -1,18 +1,17 @@
-import { useState, useEffect } from 'react';
-
-import { storage } from '../lib/storage';
+import { useState } from 'react';
+import { useAppState } from '../components/AppStateProvider';
 export function useTasks() {
-  const [tasks, setTasks] = useState(storage.read('tasks', []));
+  const { state, updateState } = useAppState();
+  const tasks = state.tasks;
   const [taskText, setTaskText] = useState('');
-  useEffect(() => storage.setItem('tasks', JSON.stringify(tasks)), [tasks]);
   function addTask() {
     if (taskText.trim()) {
-      setTasks((prev) => [...prev, taskText.trim()]);
+      updateState({ tasks: [...tasks, taskText.trim()] });
       setTaskText('');
     }
   }
   function removeTask(index: number) {
-    setTasks((prev) => prev.filter((_, i) => i !== index));
+    updateState({ tasks: tasks.filter((_, i) => i !== index) });
   }
   return { tasks, taskText, setTaskText, addTask, removeTask };
 }

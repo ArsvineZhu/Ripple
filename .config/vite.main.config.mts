@@ -4,5 +4,6 @@ export default defineConfig({
     minify: true,
     reportCompressedSize: false,
     lib: { entry: 'src/main/index.ts', fileName: () => 'main.cjs', formats: ['cjs'] },
+    rolldownOptions: { external: ['better-sqlite3'] },
   },
 });

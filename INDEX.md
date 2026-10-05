@@ -1,4 +1,4 @@
-[简体中文](INDEX.zh-CN.md) · English is canonical.
+[简体中文](INDEX.zh-CN.md)
 
 # Repository map
 

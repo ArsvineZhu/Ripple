@@ -1,9 +1,11 @@
-[English](README.md) · 英文为规范来源。
+[English](README.md)
 
-# Main process
+# 主进程
 
-主进程拥有生命周期、托盘、透明显示窗口、IPC 注册和系统副作用。服务分派至平台适配器，Linux 输入区域位于 platform/linux/inputShape.ts；从 index.ts 和 ipc.ts 阅读，renderer API 定义在 shared/contracts.ts。
+Main 管理应用生命周期、托盘、透明窗口、IPC 校验和系统能力。`index.ts` 设置 Ripple Next 专用用户数据目录，并在创建 renderer 窗口前载入类型化状态和安全凭据服务。
 
-语言 IPC 返回 Electron 的系统语言，并在重建托盘文案前校验 renderer 传入的已解析语言。语言偏好由 renderer 管理；缺失的媒体元数据保持为空，由视图显示本地化的替代文案。
+服务负责原子状态存储、加密 API key、应用内通知、AI 请求、应用发现与启动、开机启动；平台适配器封装 Linux、macOS 和 Windows 差异。`ipc.ts` 校验发送方和 payload，共享类型见[shared 说明](../shared/README.zh-CN.md)。
 
-参见 [开发指南](../../docs/development.zh-CN.md) 和 [仓库地图](../../INDEX.zh-CN.md)。
+Linux 窗口需等 renderer 就绪并确认首个 X11 `ShapeInput` 区域后显示。X11 客户端保持静态打包；输入区域继续使用 `ShapeInput`。
+
+参见[开发指南](../../docs/development.zh-CN.md)和[仓库地图](../../INDEX.zh-CN.md)。

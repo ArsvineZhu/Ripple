@@ -28,13 +28,20 @@ function updateTrayMenu() {
     ]),
   );
 }
-export function createTray() {
-  try {
-    tray = new Tray(nativeImage.createFromPath(getIconPath()).resize({ width: 16, height: 16 }));
-    tray.setToolTip('Ripple');
-    locale = locale || resolveLocale('system', app.getLocale());
-    updateTrayMenu();
-  } catch (error) {
-    console.error('Failed to create tray:', error);
-  }
+function createTray() {
+  if (tray) return;
+  locale = locale || resolveLocale('system', app.getLocale());
+  tray = new Tray(nativeImage.createFromPath(getIconPath()).resize({ width: 16, height: 16 }));
+  tray.setToolTip('Ripple Next');
+  updateTrayMenu();
+}
+
+function destroyTray() {
+  tray?.destroy();
+  tray = null;
+}
+
+export function setTrayVisible(visible: boolean) {
+  if (visible) createTray();
+  else destroyTray();
 }

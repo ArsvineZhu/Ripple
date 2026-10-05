@@ -1,17 +1,17 @@
-[简体中文](release.zh-CN.md) · English is canonical.
+[简体中文](release.zh-CN.md)
 
-# Release and runtime acceptance
+# Package and runtime acceptance
 
-Run `npm run check`, `npm test`, then `npm run make` on the target platform. CI's build matrix covers Windows x64 MSI, macOS x64/arm64 DMG and Linux x64 DEB/RPM/ZIP. Installers are named `Ripple-<OS>-v<version>` (macOS includes architecture). Build results live under `out/make`.
+Run `pnpm check`, `pnpm test`, then `pnpm make` on the matching host. CI packages macOS x64/arm64 DMG, Windows x64 MSI and Linux x64 DEB/RPM/ZIP. Installers and Actions artifacts use the `RippleNext-<platform>` identity. Pushing a `v<version>` tag matching `package.json` runs the matrix and creates a GitHub Release with all package files. Branch and pull-request runs only build downloadable Actions artifacts.
 
-The application identity remains `ripple` / `Ripple`; the existing userData directory and localStorage keys remain compatible with 3.3.0. Version 3.4.0 established the TypeScript architecture and project governance. Version 3.5.0 adds English, Simplified Chinese, Traditional Chinese and Japanese localization, plus settings, clipboard and layout refinements. Preserve real user data while smoke testing; use a separate temporary profile for automated interaction. Never publish a development-only sandbox override in launchers or desktop entries.
+The current beta notes are available in [English](releases/4.0.0-beta.1.en.md) and [简体中文](releases/4.0.0-beta.1.zh-CN.md). The product/package identity is `ripple-next` / `Ripple Next`, with macOS bundle ID `com.arsvinezhu.ripple-next`. Ripple Next stores state and encrypted API-key ciphertext in `ripple-next.sqlite` under its platform-specific user-data directory. Numbered schema changes are applied from `src/main/database/migrations/`; runtime SQL stays in `.sql` resources. The former Ripple data directory is not read or migrated. When Linux autostart is enabled, Ripple Next writes `ripple-next.desktop` and removes the old `ripple.desktop` autostart entry.
 
-Linux desktop entries and autostart use `--ozone-platform=x11`. DEB/RPM staging retains the root-owned SUID sandbox helper permissions. The RPM template explicitly uses staging paths and a temporary RPM database so both RPM 4 and RPM 6 builds work without modifying the host database.
+Linux desktop launch uses XDG application entries and `gio launch`; custom command targets use separate argv items without a shell. The X11 helper is statically bundled. Linux startup remains hidden until the renderer is ready and ShapeInput has been queried to confirm the Island region. Keep `--ozone-platform=x11` in Linux autostart entries. RPM staging retains the root-owned SUID sandbox helper.
 
-## Acceptance
+## Runtime acceptance
 
-Check tray Show/Hide/Quit, startup, transparent Island rendering, outside clicks, hover/click modes, repeated expand/collapse, arrows/wheel/Ctrl-number navigation, all available tabs, themes, display/position selection, tab ordering/hiding/default selection, and saved settings after restart. Check tasks/workflows/quick apps, clipboard copy, AI configuration, overview/weather/battery and media controls. Media and hardware alerts require an active media source or corresponding device.
+Check tray Show/Hide/Quit, startup, transparent Island rendering, outside clicks, hover/click modes, repeated expand/collapse, arrow/wheel/Ctrl-number navigation, all tabs, themes, display/position selection, tab ordering/hiding/default selection and state after restart. Check installed Linux app discovery/launch, custom command arguments and working directory, URL targets, workflows, clipboard, AI Base URL/model/key and cancellation, overview/weather/battery, media controls and notices. Hardware/media alerts require their corresponding device or source.
 
-Native macOS and Windows media/device/autostart behavior needs a matching host. Passing package builds and adapter contracts establishes build compatibility, not native runtime verification. Record those results independently from Linux checks. AI provider requests require the user's own key; do not include keys or clipboard contents in logs.
+For pointer leave, verify the configured 0–2000 ms delay, cancellation on re-entry/menu/focus/drag, and the geometry gate after the Island moves or shrinks under the pointer. Verify X11 input shaping and click-through at the viewport edges.
 
-An upgrade that leaves a previous process running can show old code; quit that process before launching the new binary. [Catalog](INDEX.md).
+Native macOS and Windows media/device/autostart behavior requires a matching host. Record native runtime results separately from package builds. Do not include API keys or clipboard contents in logs. Pushing a matching `v<version>` tag starts the release workflow; versions containing a prerelease suffix such as `-beta.1` are published as GitHub prereleases. The workflow uses the matching English and Simplified Chinese release-note files when both exist, and GitHub-generated notes otherwise.

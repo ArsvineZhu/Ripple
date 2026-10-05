@@ -1,9 +1,11 @@
-[简体中文](README.zh-CN.md) · English is canonical.
+[简体中文](README.zh-CN.md)
 
 # Preload bridge
 
-Owns the isolated contextBridge API. index.ts maps explicit methods to named IPC channels and exposes platform identity. Shared contracts define the renderer-facing type; raw IPC objects stay inside preload.
+Preload exposes the isolated `electronAPI` through explicit `contextBridge` methods. It maps typed calls and events to named IPC channels from [shared contracts](../shared/README.md); renderer code never receives raw `ipcRenderer` access.
 
-`getSystemLocale` reads the system language; `setUILocale` synchronizes a supported resolved language to main. Language preference and dictionary loading remain outside the bridge.
+The bridge covers app-state bootstrap and patches, secure API-key save/removal, quick-app discovery and launch, AI stream events and cancellation, notices, locale, media, autostart, display and window input shape. API-key material is sent to main for storage and is absent from the bootstrap response.
 
-See [development](../../docs/development.md) and [repository map](../../INDEX.md).
+Keep this bundle sandbox-compatible and keep each bridge method aligned with its shared request, response and event contract.
+
+See the [developer guide](../../docs/development.md) and [repository map](../../INDEX.md).
