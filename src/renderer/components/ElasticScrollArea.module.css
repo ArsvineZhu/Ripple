@@ -1,0 +1,23 @@
+.viewport {
+  min-height: 0;
+  overflow: hidden;
+  overscroll-behavior: contain;
+}
+
+.viewport :global(.scrollbar-track) {
+  background: transparent !important;
+}
+
+.viewport :global(.scrollbar-track-y) {
+  width: 4px !important;
+}
+
+.viewport :global(.scrollbar-thumb) {
+  width: 3px !important;
+  border-radius: 999px;
+  background: color-mix(in srgb, var(--island-text-color), transparent 58%) !important;
+}
+
+.viewport :global(.scrollbar-track-x) {
+  display: none !important;
+}

@@ -290,7 +290,7 @@ export function QuickView({
                   t('microphone')
                 ) : bluetoothAlert ? (
                   t('connected')
-                ) : weather.temp ? (
+                ) : weather ? (
                   <div className={styles['weather']}>
                     <WeatherIcon status={weather.status} size={14} color={textColor} />
                     <span>{number(weather.temp)}º</span>

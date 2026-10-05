@@ -1,9 +1,8 @@
 import { useTranslation } from 'react-i18next';
 import { useIslandInteraction } from './useIslandInteraction';
-import { useEffect, useReducer } from 'react';
+import { useEffect, useReducer, useState } from 'react';
 
 import { measureTextWidth } from '../lib/text';
-import { storage } from '../lib/storage';
 import { useAssistant } from './useAssistant';
 import { useTasks } from './useTasks';
 import { useWorkflows } from './useWorkflows';
@@ -19,9 +18,12 @@ import { useSettingsContext } from '../components/SettingsProvider';
 import { modeReducer, resolveMode } from '../lib/modes';
 import { useNavigation } from './useNavigation';
 import { useWindowInput } from './useWindowInput';
+import { useAppState } from '../components/AppStateProvider';
 export function useIslandController() {
   const { t } = useTranslation();
+  const { state: appState, updateState } = useAppState();
   const [requestedMode, setMode] = useReducer(modeReducer, 'still');
+  const [settingsContentWidth, setSettingsContentWidth] = useState<number | null>(null);
   const {
     batteryAlertsEnabled,
     islandBorderEnabled,
@@ -29,7 +31,18 @@ export function useIslandController() {
     largeStandbyEnabled,
     hideNotActiveIslandEnabled,
     showInfoWhenIdleEnabled,
+    leaveDelayMs,
+    hasApiKey,
+    aiBaseUrl,
+    aiModel,
+    saveApiKey,
+    searchUrlTemplate,
+    setSearchUrlTemplate,
+    handleApiBaseUrlChange,
+    handleAiModelChange,
+    handleLeaveDelayChange,
     hourFormat,
+    timeZone,
     weatherUnit,
     theme,
     setTheme,
@@ -51,6 +64,7 @@ export function useIslandController() {
     handleStandbyChange,
     handleLargeStandbyChange,
     handleHourFormatChange,
+    handleTimeZoneChange,
     handleAutoLaunchChange,
     handlehideNotActiveIslandChange,
     handleShowInfoWhenIdleChange,
@@ -81,17 +95,18 @@ export function useIslandController() {
     beginPositionChange,
     finishPositionChange,
     leave,
+    geometryExited,
     isOverlayOpen,
   } = useIslandInteraction({
     setMode,
     standby: standbyBorderEnabled,
     largeStandby: largeStandbyEnabled,
+    leaveDelayMs,
   });
   const handlePositionChange = (value: string) => {
     if (value === positionMode) return;
     beginPositionChange();
     setPositionMode(value);
-    storage.setItem('position-mode', value);
   };
   const {
     asked,
@@ -101,10 +116,7 @@ export function useIslandController() {
     setAIAnswer,
     userText,
     setUserText,
-    aiProvider,
-    setAiProvider,
-    aiModel,
-    setAiModel,
+    resetAssistant,
     askAI,
   } = useAssistant();
   const { tasks, taskText, setTaskText, addTask, removeTask } = useTasks();
@@ -121,6 +133,16 @@ export function useIslandController() {
   const {
     quickApps,
     newQuickApp,
+    quickAppMode,
+    setQuickAppMode,
+    executable,
+    setExecutable,
+    argumentLines,
+    setArgumentLines,
+    workingDirectory,
+    setWorkingDirectory,
+    appUrl,
+    setAppUrl,
     handleQuickAppInput,
     selectQuickApp,
     appSuggestions,
@@ -130,11 +152,17 @@ export function useIslandController() {
     addQuickApp,
     removeQuickApp,
   } = useQuickApps();
-  const { browserSearch, setBrowserSearch, searchBrowser } = useBrowserSearch();
+  const { browserSearch, setBrowserSearch, searchBrowser, searchError, setSearchError } =
+    useBrowserSearch();
   const { clipboard, copyToClipboard } = useClipboard();
-  const { time, weather } = useOverview(hourFormat);
+  const { time, weather } = useOverview(hourFormat, timeZone, weatherLocation, weatherUnit);
   const { percent, charging } = useBattery();
-  const { alert, chargingAlert } = useBatteryAlerts({ percent, charging, setMode });
+  const { alert, chargingAlert } = useBatteryAlerts({
+    percent,
+    charging,
+    enabled: batteryAlertsEnabled,
+    setMode,
+  });
   const { bluetoothAlert, cameraInUse, cameraAlert, microphoneInUse, microphoneAlert } =
     useDeviceAlerts(setMode);
   const {
@@ -156,7 +184,8 @@ export function useIslandController() {
     handlePointerMove,
     handlePointerUp,
   } = useNavigation({ spotifyTrack, mode, isDragging, setMode });
-  const { islandElementRef, syncLinuxWindowShape } = useWindowInput();
+  const { islandElementRef, syncLinuxWindowShape, trackPointerPosition } =
+    useWindowInput(geometryExited);
   let isPlaying = spotifyTrack?.state === 'playing';
   const trackTitle = spotifyTrack ? spotifyTrack.name || t('unknownSong') : '';
   const trackArtist = spotifyTrack ? spotifyTrack.artist || t('unknownArtist') : '';
@@ -166,7 +195,7 @@ export function useIslandController() {
   let width =
     mode === 'large'
       ? currentTab === 7
-        ? 495
+        ? (settingsContentWidth ?? 495)
         : currentTab === 1
           ? 480
           : currentTab === 3
@@ -209,25 +238,21 @@ export function useIslandController() {
                 : 190
       : 40;
   useEffect(() => {
-    const savedDisplayId = storage.getItem('display-id');
+    const savedDisplayId = appState.settings.displayId;
     if (savedDisplayId && window.electronAPI?.setDisplay) {
-      window.electronAPI.setDisplay(savedDisplayId);
+      void window.electronAPI.setDisplay(savedDisplayId);
     }
 
-    if (!storage.getItem('newuser')) {
-      storage.setItem('newuser', 'true');
-    }
-
-    if (storage.getItem('newuser') === 'true') {
+    if (!appState.settings.welcomeShown) {
       const timer = setTimeout(() => {
         void window.electronAPI.openExternal(
-          'https://github.com/ArsvineZhu/Ripple/blob/main/instructions.md',
+          'https://github.com/ArsvineZhu/Ripple-Next/blob/main/instructions.md',
         );
-        storage.setItem('newuser', 'false');
+        updateState({ settings: { welcomeShown: true } });
       }, 3000);
       return () => clearTimeout(timer);
     }
-  }, []);
+  }, [appState.settings.displayId, appState.settings.welcomeShown, updateState]);
   useEffect(() => {
     if (currentTab === 7 && window.electronAPI?.getDisplays) {
       window.electronAPI.getDisplays().then(setDisplays);
@@ -279,6 +304,7 @@ export function useIslandController() {
     handlePointerUp,
     sideStyles,
     width,
+    onSettingsContentWidthChange: setSettingsContentWidth,
     height,
     hideNotActiveIslandEnabled,
     bgColor,
@@ -287,6 +313,7 @@ export function useIslandController() {
     theme,
     currentTab,
     syncLinuxWindowShape,
+    trackPointerPosition,
     bgImage,
     islandBorderEnabled,
     cameraInUse,
@@ -316,6 +343,10 @@ export function useIslandController() {
     browserSearch,
     setBrowserSearch,
     searchBrowser,
+    searchError,
+    setSearchError,
+    searchUrlTemplate,
+    setSearchUrlTemplate,
     workflows,
     openWorkflow,
     quickApps,
@@ -328,6 +359,7 @@ export function useIslandController() {
     aiAnswer,
     assistantError,
     setAIAnswer,
+    resetAssistant,
     clipboard,
     copyToClipboard,
     tasks,
@@ -337,6 +369,8 @@ export function useIslandController() {
     addTask,
     hourFormat,
     handleHourFormatChange,
+    timeZone,
+    handleTimeZoneChange,
     autoLaunchEnabled,
     handleAutoLaunchChange,
     displays,
@@ -374,6 +408,16 @@ export function useIslandController() {
     weatherUnit,
     handleWeatherUnitChange,
     newQuickApp,
+    quickAppMode,
+    setQuickAppMode,
+    executable,
+    setExecutable,
+    argumentLines,
+    setArgumentLines,
+    workingDirectory,
+    setWorkingDirectory,
+    appUrl,
+    setAppUrl,
     handleQuickAppInput,
     selectQuickApp,
     setShowSuggestions,
@@ -382,10 +426,14 @@ export function useIslandController() {
     appSuggestions,
     handleQaChange,
     removeQuickApp,
-    aiProvider,
-    setAiProvider,
-    setAiModel,
+    aiBaseUrl,
     aiModel,
+    hasApiKey,
+    saveApiKey,
+    handleApiBaseUrlChange,
+    handleAiModelChange,
+    leaveDelayMs,
+    handleLeaveDelayChange,
     workflowName,
     setWorkflowName,
     workflowUrls,

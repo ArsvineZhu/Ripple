@@ -1,45 +1,48 @@
 import { useTranslation } from 'react-i18next';
 import { formatTime } from '../lib/date';
 import { useState, useEffect } from 'react';
+import { fetchCurrentWeather } from '../lib/weather';
+import type { WeatherReading } from '../lib/weather';
 
-import { storage } from '../lib/storage';
-export function useOverview(hourFormat: boolean) {
+export function useOverview(
+  hourFormat: boolean,
+  timeZone: string,
+  location: string,
+  weatherUnit: 'f' | 'c',
+) {
   const { i18n } = useTranslation();
   const [time, setTime] = useState<string | null>(null);
-  const [weather, setWeather] = useState<{ temp: string | number; status: string }>({
-    temp: '',
-    status: '',
-  });
+  const [weather, setWeather] = useState<WeatherReading | null>(null);
   useEffect(() => {
     const update = () => {
-      setTime(formatTime(i18n.language, hourFormat, new Date()));
+      setTime(formatTime(i18n.language, hourFormat, new Date(), timeZone));
     };
     update();
     const timer = setInterval(update, 1000);
     return () => clearInterval(timer);
-  }, [hourFormat, i18n.language]);
+  }, [hourFormat, i18n.language, timeZone]);
   useEffect(() => {
+    if (!location.trim()) {
+      setWeather(null);
+      return;
+    }
+    let active = true;
     const getWeather = async () => {
       try {
-        const response = await fetch(
-          `https://api.weatherapi.com/v1/current.json?key=0b18c67c443543e0a6045401250911&q=${storage.getItem(
-            'location',
-          )}&aqi=no`,
-        );
-        const data = await response.json();
-        const unit = storage.getItem('weather-unit');
-        const key = unit === 'f' ? 'temp_f' : 'temp_c';
-        setWeather({
-          temp: Math.round(data?.current?.[key]),
-          status: data?.current?.condition?.text || '',
-        });
-      } catch (e) {
-        console.error('Weather fetch failed', e);
+        const currentWeather = await fetchCurrentWeather(location, weatherUnit);
+        if (active) setWeather(currentWeather);
+      } catch (error) {
+        if (active) setWeather(null);
+        console.error('Weather fetch failed', error);
       }
     };
-    getWeather();
+    setWeather(null);
+    void getWeather();
     const interval = setInterval(getWeather, 600000); // Update every 10 mins
-    return () => clearInterval(interval);
-  }, []);
+    return () => {
+      active = false;
+      clearInterval(interval);
+    };
+  }, [location, weatherUnit]);
   return { time, weather };
 }

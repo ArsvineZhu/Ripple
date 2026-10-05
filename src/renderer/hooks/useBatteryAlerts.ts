@@ -1,15 +1,15 @@
 import type { Dispatch, SetStateAction } from 'react';
 import type { IslandMode } from '../../shared/contracts';
 import { useState, useEffect } from 'react';
-
-import { storage } from '../lib/storage';
 export function useBatteryAlerts({
   percent,
   charging,
+  enabled,
   setMode,
 }: {
   percent: number | string | null;
   charging: boolean;
+  enabled: boolean;
   setMode: Dispatch<SetStateAction<IslandMode>>;
 }) {
   const [alert, setAlert] = useState<boolean | null>(null);
@@ -17,7 +17,7 @@ export function useBatteryAlerts({
   useEffect(() => {
     if (
       (percent === 20 || percent === 15 || percent === 10 || percent === 5 || percent === 3) &&
-      storage.getItem('battery-alerts') === 'true'
+      enabled
     ) {
       setMode('quick');
       setAlert(true);
@@ -29,9 +29,9 @@ export function useBatteryAlerts({
         clearTimeout(timerId);
       };
     }
-  }, [percent, setMode]);
+  }, [percent, enabled, setMode]);
   useEffect(() => {
-    if (charging === true && storage.getItem('battery-alerts') === 'true') {
+    if (charging === true && enabled) {
       setMode('quick');
       setChargingAlert(true);
       const timerId = setTimeout(() => {
@@ -42,6 +42,6 @@ export function useBatteryAlerts({
         clearTimeout(timerId);
       };
     }
-  }, [charging, setMode]);
+  }, [charging, enabled, setMode]);
   return { alert, chargingAlert };
 }

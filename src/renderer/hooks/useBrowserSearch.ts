@@ -1,27 +1,34 @@
-import { useState } from 'react';
+import { useCallback, useState } from 'react';
+import type { NoticeCode } from '../../shared/contracts';
+import { useAppState } from '../components/AppStateProvider';
+import { createSearchUrl, isValidSearchUrlTemplate } from '../lib/search';
 
 export function useBrowserSearch() {
+  const { state } = useAppState();
   const [browserSearch, setBrowserSearch] = useState('');
-  function searchBrowser() {
-    const trimmedSearch = browserSearch.trim();
-    if (!trimmedSearch) return;
-    if (trimmedSearch.includes('.')) {
-      const hasProtocol = /^https?:\/\//i.test(trimmedSearch);
-      const urlToOpen = hasProtocol ? trimmedSearch : `https://${trimmedSearch}`;
-      if (window.electronAPI?.openExternal) {
-        void window.electronAPI.openExternal(urlToOpen);
-      } else {
-        window.open(urlToOpen, '_blank');
-      }
-    } else {
-      const encodedQuery = encodeURIComponent(trimmedSearch);
-      const url = `https://www.google.com/search?q=${encodedQuery}`;
-      if (window.electronAPI?.openExternal) {
-        void window.electronAPI.openExternal(url);
-      } else {
-        window.open(url, '_blank');
-      }
+  const [searchError, setSearchError] = useState<NoticeCode | null>(null);
+  const searchUrlTemplate = state.settings.searchUrlTemplate;
+  const searchBrowser = useCallback(async () => {
+    const query = browserSearch.trim();
+    if (!query) return;
+
+    const target = createSearchUrl(query, searchUrlTemplate);
+    if (!target) {
+      setSearchError(
+        isValidSearchUrlTemplate(searchUrlTemplate)
+          ? 'invalidSearchTarget'
+          : 'invalidSearchUrlTemplate',
+      );
+      return;
     }
-  }
-  return { browserSearch, setBrowserSearch, searchBrowser };
+
+    setSearchError(null);
+    try {
+      if (window.electronAPI?.openExternal) await window.electronAPI.openExternal(target);
+      else window.open(target, '_blank');
+    } catch {
+      setSearchError('searchOpenFailed');
+    }
+  }, [browserSearch, searchUrlTemplate]);
+  return { browserSearch, setBrowserSearch, searchBrowser, searchError, setSearchError };
 }

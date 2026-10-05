@@ -1,31 +1,41 @@
 import { app } from 'electron';
-import fs from 'node:fs';
+import fs from 'node:fs/promises';
 import path from 'node:path';
+import { randomUUID } from 'node:crypto';
 import { getIconPath } from '../../assets';
-export function setAutoLaunch(enable: boolean): void {
-  const autostartPath = path.join(app.getPath('home'), '.config', 'autostart');
-  const desktopFilePath = path.join(autostartPath, 'ripple.desktop');
 
-  try {
-    if (enable) {
-      if (!fs.existsSync(autostartPath)) {
-        fs.mkdirSync(autostartPath, { recursive: true });
-      }
-      const desktopFileContent = `[Desktop Entry]
+function desktopExecArgument(value: string) {
+  return `"${value.replaceAll('\\', '\\\\').replaceAll('"', '\\"').replaceAll('%', '%%')}"`;
+}
+
+export async function setAutoLaunch(enable: boolean): Promise<void> {
+  const autostartPath = path.join(app.getPath('home'), '.config', 'autostart');
+  const nextEntryPath = path.join(autostartPath, 'ripple-next.desktop');
+  const legacyEntryPath = path.join(autostartPath, 'ripple.desktop');
+
+  if (!enable) {
+    await fs.rm(nextEntryPath, { force: true });
+    return;
+  }
+
+  await fs.mkdir(autostartPath, { recursive: true });
+  const temporaryPath = path.join(autostartPath, `.ripple-next.${randomUUID()}.tmp`);
+  const content = `[Desktop Entry]
 Type=Application
 Version=1.0
-Name=Ripple
-Comment=Ripple Desktop Assistant
-Exec="${app.getPath('exe')}" --ozone-platform=x11\nIcon=${getIconPath()}
+Name=Ripple Next
+Comment=Ripple Next Desktop Island
+Exec=${desktopExecArgument(app.getPath('exe'))} --ozone-platform=x11
+Icon=${getIconPath()}
 Terminal=false
+StartupNotify=false
 `;
-      fs.writeFileSync(desktopFilePath, desktopFileContent);
-    } else {
-      if (fs.existsSync(desktopFilePath)) {
-        fs.unlinkSync(desktopFilePath);
-      }
-    }
-  } catch (e) {
-    console.error('Failed to set auto-launch on Linux:', e);
+  await fs.writeFile(temporaryPath, content, { encoding: 'utf8', mode: 0o644, flag: 'wx' });
+  try {
+    await fs.rename(temporaryPath, nextEntryPath);
+  } catch (error) {
+    await fs.rm(temporaryPath, { force: true });
+    throw error;
   }
+  await fs.rm(legacyEntryPath, { force: true });
 }

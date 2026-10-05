@@ -3,8 +3,10 @@
   align-items: center;
   justify-content: space-between;
   gap: 10px;
-  min-width: 140px;
-  max-width: 220px;
+  width: max-content;
+  min-width: 96px;
+  max-width: 280px;
+  flex: 0 0 auto;
   min-height: 36px;
   padding: 7px 12px;
   font-size: 14px;
@@ -15,29 +17,35 @@
   border-radius: var(--control-radius);
   cursor: pointer;
 }
+
 .trigger > span:first-child {
   min-width: 0;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
 }
+
 .trigger > span:last-child {
   flex-shrink: 0;
   display: flex;
 }
+
 .trigger:hover,
 .trigger[data-state='open'] {
   background: var(--control-hover);
   border-color: var(--control-focus);
 }
+
 .trigger:focus-visible {
   outline: 2px solid var(--island-text-color);
   outline-offset: 2px;
 }
+
 .trigger:disabled {
   opacity: 0.45;
   cursor: default;
 }
+
 .content {
   z-index: 2;
   pointer-events: auto;
@@ -52,11 +60,13 @@
   overflow: hidden;
   font-size: 14px;
 }
+
 .viewport {
   overflow-y: auto;
   max-height: var(--radix-dropdown-menu-content-available-height);
   padding: 4px;
 }
+
 .item {
   display: flex;
   align-items: center;
@@ -70,13 +80,16 @@
   user-select: none;
   overflow-wrap: anywhere;
 }
+
 .item[data-highlighted] {
   background: var(--control-hover);
 }
+
 .item[data-disabled] {
   opacity: 0.45;
   pointer-events: none;
 }
+
 .indicator {
   position: absolute;
   right: 8px;

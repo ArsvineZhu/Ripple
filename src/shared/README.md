@@ -1,9 +1,9 @@
-[简体中文](README.zh-CN.md) · English is canonical.
+[简体中文](README.zh-CN.md)
 
 # Shared contracts
 
-Owns serializable IPC/domain types and pure window-input geometry. Main, preload and renderer consume these contracts. It has no runtime service dependencies. Contract tests live in tests/contracts.test.ts.
+Shared defines serializable IPC and domain contracts, Zod schemas for persisted app state and quick-app targets, and pure input-geometry helpers. Main, preload and renderer consume these definitions; runtime services stay in their owning layers.
 
-`i18n` owns the supported language types, system-language resolution and all four plain message catalogs. English defines the key structure; translations must preserve keys and interpolation variables. Runtime i18next setup belongs to renderer, while main consumes only the pure resources for tray labels.
+`contracts.ts` owns request, response, notice and assistant-stream shapes. `appState.ts` owns the persisted schema and fresh defaults. `i18n/` owns locale types, language resolution and bundled catalogs; renderer initializes i18next, while main uses the catalog for tray labels.
 
-See [development](../../docs/development.md) and [repository map](../../INDEX.md).
+See the [developer guide](../../docs/development.md) and [repository map](../../INDEX.md).

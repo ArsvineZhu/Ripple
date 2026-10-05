@@ -21,10 +21,6 @@
   position: relative;
 }
 
-.container::-webkit-scrollbar {
-  display: none;
-}
-
 .container {
   animation: none;
   display: flex;
@@ -35,8 +31,7 @@
   padding: 15px 20px;
   box-sizing: border-box;
   z-index: 100;
-  overflow-y: auto;
-  overflow-x: hidden;
+  overflow: hidden;
   pointer-events: auto;
 }
 

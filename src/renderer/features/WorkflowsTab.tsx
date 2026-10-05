@@ -2,7 +2,8 @@ import styles from './WorkflowsTab.module.css';
 import { useTranslation } from 'react-i18next';
 import { AnimatePresence } from 'motion/react';
 import { motion } from 'motion/react';
-import { openApp } from '../lib/launch';
+import { InlineNotices } from '../components/InlineNotices';
+import { ElasticScrollArea } from '../components/ElasticScrollArea';
 import type { IslandController } from '../hooks/useIslandController';
 type Props = Pick<
   IslandController,
@@ -12,7 +13,7 @@ export function WorkflowsTab({ workflows, openWorkflow, bgColor, textColor, quic
   const { t } = useTranslation();
   return (
     <div className={styles.container}>
-      <div className={styles.workflowList} id="workflows">
+      <ElasticScrollArea className={styles.workflowList} id="workflows">
         <AnimatePresence propagate>
           {workflows.length === 0 ? (
             <motion.p
@@ -44,10 +45,15 @@ export function WorkflowsTab({ workflows, openWorkflow, bgColor, textColor, quic
             ))
           )}
         </AnimatePresence>
-      </div>
+      </ElasticScrollArea>
+
+      <InlineNotices area="workflows" />
 
       <div
         className={styles.quickAppStrip}
+        onWheel={(event) => event.stopPropagation()}
+        onPointerDownCapture={(event) => event.stopPropagation()}
+        data-island-interactive
         style={{
           borderTop: `1px solid color-mix(in srgb, ${textColor}, transparent 90%)`,
           background: `color-mix(in srgb, ${textColor}, transparent 98%)`,
@@ -55,12 +61,12 @@ export function WorkflowsTab({ workflows, openWorkflow, bgColor, textColor, quic
       >
         <div className={styles.quickAppList} id="quick-apps">
           <AnimatePresence propagate>
-            {quickApps.map((app, i) => (
+            {quickApps.map((app) => (
               <motion.button
-                key={`main-qa-${app.name}-${i}`}
+                key={`main-qa-${app.id}`}
                 className={styles.appButton}
                 onClick={() => {
-                  openApp(app.launch);
+                  void window.electronAPI?.launchQuickApp(app.id).catch(() => {});
                 }}
                 initial={{ opacity: 0 }}
                 animate={{ opacity: 1 }}

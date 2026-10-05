@@ -1,5 +1,5 @@
 import type { AppEntry } from '../../../shared/contracts';
-import { exec, spawn } from 'node:child_process';
+import { exec, execFile, spawn } from 'node:child_process';
 import fs from 'node:fs';
 import { shell } from 'electron';
 
@@ -85,8 +85,8 @@ Get-StartApps -EA SilentlyContinue | ForEach-Object {
   });
 }
 
-// Converts provider-specific shapes to { name, launch } and deduplicates.
-// win32: launch = exe path   |   uwp: launch = shell:AppsFolder\\appId
+// Converts provider-specific shapes to the shared launch-target contract.
+// win32: identifier = executable path | uwp: identifier = shell:AppsFolder\\appId
 export async function buildCache() {
   const [startMenu, uwp] = await Promise.all([discoverStartMenu(), discoverUWP()]);
   const seen = new Set();
@@ -97,7 +97,10 @@ export async function buildCache() {
     const key = launch!.toLowerCase();
     if (!seen.has(key)) {
       seen.add(key);
-      entries.push({ name: item.name, launch: launch! });
+      entries.push({
+        name: item.name,
+        target: { kind: 'platform-app', platform: 'win32', identifier: launch! },
+      });
     }
   }
   return entries.sort((a, b) => a.name.localeCompare(b.name));
@@ -178,4 +181,24 @@ export function launchWindows(input: string) {
   } else {
     exec(`start "" ${trimmed}`);
   }
+}
+
+export function launchWindowsEntry(identifier: string): Promise<void> {
+  if (identifier.startsWith('shell:')) {
+    return new Promise((resolve, reject) => {
+      execFile('explorer.exe', [identifier], (error) => {
+        if (error)
+          reject(new Error(`Could not launch application: ${error.message}`, { cause: error }));
+        else resolve();
+      });
+    });
+  }
+  return new Promise((resolve, reject) => {
+    const child = spawn(identifier, [], { detached: true, stdio: 'ignore', windowsHide: true });
+    child.once('error', reject);
+    child.once('spawn', () => {
+      child.unref();
+      resolve();
+    });
+  });
 }

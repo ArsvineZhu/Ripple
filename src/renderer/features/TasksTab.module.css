@@ -1,13 +1,8 @@
 .list {
   flex: 1;
-  overflow-y: auto;
+  overflow: hidden;
   margin-bottom: 15px;
   padding-right: 5px;
-}
-
-.list::-webkit-scrollbar-thumb {
-  background: color-mix(in srgb, var(--island-text-color), transparent 80%);
-  border-radius: 10px;
 }
 
 .row {
@@ -76,11 +71,6 @@
 
 .addButton:active {
   transform: scale(0.95);
-}
-
-.list::-webkit-scrollbar {
-  display: none;
-  width: 4px;
 }
 
 .container {

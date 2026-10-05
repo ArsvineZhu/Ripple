@@ -2,6 +2,8 @@ import styles from './TasksTab.module.css';
 import { useTranslation } from 'react-i18next';
 import { AnimatePresence } from 'motion/react';
 import { motion } from 'motion/react';
+import { InlineNotices } from '../components/InlineNotices';
+import { ElasticScrollArea } from '../components/ElasticScrollArea';
 import type { IslandController } from '../hooks/useIslandController';
 type Props = Pick<
   IslandController,
@@ -19,7 +21,8 @@ export function TasksTab({
   const { t } = useTranslation();
   return (
     <div className={styles.container} id="tasks-container">
-      <div className={styles.list} id="task-list">
+      <ElasticScrollArea className={styles.list} id="task-list">
+        <InlineNotices area="tasks" />
         <AnimatePresence propagate>
           {tasks.length === 0 ? (
             <motion.p
@@ -54,7 +57,7 @@ export function TasksTab({
             ))
           )}
         </AnimatePresence>
-      </div>
+      </ElasticScrollArea>
       <div className={styles.inputRow} id="task-input-container">
         <input
           type="text"

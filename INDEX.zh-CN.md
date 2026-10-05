@@ -1,4 +1,4 @@
-[English](INDEX.md) · 英文为规范来源。
+[English](INDEX.md)
 
 # 仓库地图
 

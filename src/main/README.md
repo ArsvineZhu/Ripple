@@ -1,9 +1,11 @@
-[简体中文](README.zh-CN.md) · English is canonical.
+[简体中文](README.zh-CN.md)
 
 # Main process
 
-Owns app lifecycle, tray, transparent display window, IPC registration and OS effects. Services dispatch to platform adapters; Linux input shaping is isolated in platform/linux/inputShape.ts. Start at index.ts and ipc.ts. Renderer APIs are defined in shared/contracts.ts.
+Main owns the app lifecycle, tray, transparent window, IPC validation and system effects. `index.ts` sets Ripple Next's user-data directory and loads typed state and secure credential storage before opening the renderer.
 
-The locale IPC returns Electron's system locale and validates the renderer's resolved language before rebuilding tray labels. Locale preferences remain renderer-owned. Missing media metadata stays empty so the view supplies its localized fallback.
+Services own atomic state persistence, encrypted API keys, notices, AI requests, app discovery and launch, and autostart. Platform adapters contain Linux, macOS and Windows behavior. `ipc.ts` validates sender identity and payloads against [shared contracts](../shared/README.md).
 
-See [development](../../docs/development.md) and [repository map](../../INDEX.md).
+On Linux, the window waits for renderer readiness and the first confirmed X11 `ShapeInput` region. Keep the X11 client statically bundled; input shaping uses `ShapeInput`.
+
+See the [developer guide](../../docs/development.md) and [repository map](../../INDEX.md).

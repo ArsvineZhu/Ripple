@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vitest';
 import { createInstance } from 'i18next';
 import { languagePreference, messages, resolveLocale } from '../src/shared/i18n';
 import { formatDateShort, formatTime } from '../src/renderer/lib/date';
-import { createStorage } from '../src/renderer/lib/storage';
+import { defaultAppState } from '../src/shared/appState';
 describe('language selection', () => {
   it('matches Chinese script before region and maps supported system languages', () => {
     for (const language of ['zh-CN', 'zh_SG', 'zh-Hans-TW', 'zh'])
@@ -14,21 +14,10 @@ describe('language selection', () => {
     expect(resolveLocale('system', 'de-DE')).toBe('en');
     expect(resolveLocale('en', 'zh-TW')).toBe('en');
   });
-  it('defaults missing/corrupt preferences to the system and persists choices without modifying existing data', () => {
-    const values = new Map([
-      ['tasks', '["keep me"]'],
-      ['api-key', 'existing-key'],
-    ]);
-    const store = createStorage({
-      getItem: (key) => values.get(key) ?? null,
-      setItem: (key, value) => values.set(key, value),
-    });
-    expect(languagePreference(store.getItem('language'))).toBe('system');
+  it('defaults to the system language and accepts only supported preferences', () => {
+    expect(languagePreference(defaultAppState.settings.language)).toBe('system');
     expect(languagePreference('unsupported')).toBe('system');
-    store.setItem('language', 'ja');
-    expect(resolveLocale(languagePreference(store.getItem('language')), 'en-US')).toBe('ja');
-    expect(store.read('tasks', [])).toEqual(['keep me']);
-    expect(store.getItem('api-key')).toBe('existing-key');
+    expect(resolveLocale(languagePreference('ja'), 'en-US')).toBe('ja');
   });
 });
 describe('bundled messages and formatting', () => {
@@ -72,5 +61,12 @@ describe('bundled messages and formatting', () => {
     expect(formatTime('en', true, date)).toBe('1:05');
     expect(formatTime('en', false, date)).toBe('13:05');
     expect(formatTime('ja', true, date)).not.toContain('午後');
+    const instant = new Date('2026-10-04T13:05:00.000Z');
+    expect(formatTime('en', false, instant, 'UTC')).toBe('13:05');
+    expect(formatTime('en', false, instant, 'Asia/Tokyo')).toBe('22:05');
+    const acrossDay = new Date('2026-10-04T23:30:00.000Z');
+    expect(formatDateShort('en', acrossDay, 'UTC')).not.toBe(
+      formatDateShort('en', acrossDay, 'Asia/Tokyo'),
+    );
   });
 });

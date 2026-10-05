@@ -1,17 +1,17 @@
-[English](release.md) · 英文为规范来源。
+[English](release.md)
 
-# 发布与运行验收
+# 打包与运行验收
 
-在目标平台运行 `npm run check`、`npm test` 和 `npm run make`。CI 矩阵包含 Windows x64 MSI、macOS x64/arm64 DMG、Linux x64 DEB/RPM/ZIP。安装包名为 `Ripple-<OS>-v<version>`，macOS 带架构标识；产物位于 `out/make`。
+在匹配的平台运行 `pnpm check`、`pnpm test` 和 `pnpm make`。CI 打包 macOS x64/arm64 DMG、Windows x64 MSI 和 Linux x64 DEB/RPM/ZIP。安装包和 Actions 产物使用 `RippleNext-<platform>` 标识。推送与 `package.json` 版本一致的 `v<版本号>` 标签后，GitHub Actions 会构建各平台安装包并创建 GitHub Release；分支和 PR 构建只生成可下载的 Actions 产物。
 
-应用身份继续为 `ripple` / `Ripple`，既有 userData 目录与 localStorage 键兼容 3.3.0。3.4.0 建立了 TypeScript 架构与项目治理；3.5.0 增加英语、简体中文、繁体中文、日语，并改进设置、剪贴板和布局。运行检查应保护真实用户数据，自动交互使用独立临时 profile；开发验证用的 sandbox 参数不进入发布启动器或 desktop 文件。
+当前 beta 版说明见[简体中文](releases/4.0.0-beta.1.zh-CN.md)和[English](releases/4.0.0-beta.1.en.md)。产品/软件包标识为 `ripple-next` / `Ripple Next`，macOS bundle ID 为 `com.arsvinezhu.ripple-next`。Ripple Next 将状态和已加密的 API key 密文保存在平台专属用户数据目录中的 `ripple-next.sqlite`。编号 schema migration 位于 `src/main/database/migrations/`，运行时 SQL 存放于 `.sql` 资源。旧 Ripple 数据目录不会读取或迁移。启用 Linux 开机启动时，Ripple Next 写入 `ripple-next.desktop` 并移除旧的 `ripple.desktop` 启动入口。
 
-Linux desktop 和自动启动使用 `--ozone-platform=x11`。DEB/RPM 暂存过程保留 root 所有的 SUID sandbox 权限。RPM 模板显式使用暂存路径和临时 RPM 数据库，兼容 RPM 4/6 且不修改本机数据库。
+Linux 应用通过 XDG 桌面入口发现并由 `gio launch` 启动；自定义命令的 argv 参数逐项传递，不使用 shell。X11 helper 静态打包。Linux 启动在 renderer ready 且通过查询确认 ShapeInput 区域后才显示窗口。Linux 自动启动入口保留 `--ozone-platform=x11`。RPM 暂存保留 root 所有的 SUID sandbox helper。
 
-## 验收
+## 运行验收
 
-检查托盘显示/隐藏/退出、启动、Island 透明显示、区域外点击、悬停/点击模式、反复展开/收起、箭头/滚轮/Ctrl 数字导航、可用 Tab、主题、显示器/位置、Tab 排序/隐藏/默认选择和重启后设置。检查任务、工作流、快捷应用、剪贴板复制、AI 配置、概览/天气/电量和媒体控制；媒体及硬件提醒需要相应媒体源或设备。
+检查托盘显示/隐藏/退出、启动、Island 透明显示、区域外点击、悬停/点击模式、反复展开/收起、方向键/滚轮/Ctrl 数字导航、全部 Tab、主题、显示器/位置、Tab 排序/隐藏/默认选择和重启后的状态。检查 Linux 已安装应用搜索/启动、自定义命令参数和工作目录、网址、工作流、剪贴板、AI Base URL/模型/API key/取消请求、概览/天气/电量、媒体控制和错误提示。硬件/媒体提醒需要对应设备或来源。
 
-macOS/Windows 原生媒体、设备和自动启动行为需要对应系统实测。打包与适配器契约通过表示构建兼容，不等于原生运行验证；记录时与 Linux 检查分开。AI 请求需要用户自己的 key，日志不包含 key 或剪贴板内容。
+鼠标离开行为需验证 0–2000 毫秒延迟、重新进入/菜单/焦点/拖动时取消收起，以及 Island 在指针下移动或缩小时的重入门控。检查 X11 输入形状和显示器边缘处的点击穿透。
 
-升级后若旧进程仍运行，界面可能仍为旧代码；先退出旧实例再启动新程序。见 [目录](INDEX.zh-CN.md)。
+macOS/Windows 原生媒体、设备和自动启动行为需要对应系统实测。原生运行结果应与安装包构建分开记录。日志不得包含 API key 或剪贴板内容。推送与 `package.json` 版本一致的 `v<版本号>` 标签会启动发布工作流；带有 `-beta.1` 等预发布后缀的版本会标记为 GitHub 预发布版本。若对应英文和简体中文说明文件都存在，工作流会将两者写入 Release；否则使用 GitHub 自动生成的说明。

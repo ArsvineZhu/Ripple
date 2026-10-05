@@ -3,4 +3,4 @@
 ../out/
 ../coverage/
 ../reports/
-../package-lock.json
+../pnpm-lock.yaml

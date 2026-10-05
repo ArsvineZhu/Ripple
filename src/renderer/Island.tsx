@@ -12,8 +12,11 @@ import { AssistantTab } from './features/AssistantTab';
 import { ClipboardTab } from './features/ClipboardTab';
 import { TasksTab } from './features/TasksTab';
 import { SettingsTab } from './features/SettingsTab';
+import { useCallback, useState } from 'react';
 export default function Island() {
   const controller = useIslandController();
+  const [assistantAnswerHeight, setAssistantAnswerHeight] = useState(0);
+  const resetAssistantAnswerHeight = useCallback(() => setAssistantAnswerHeight(0), []);
   const { setContainer, beginPointerGesture, consumeShellClick } = useOverlay();
   const {
     leave,
@@ -54,7 +57,12 @@ export default function Island() {
     direction,
     currentTabId,
     tabVariants,
+    trackPointerPosition,
   } = controller;
+  const animatedHeight =
+    mode === 'large' && currentTab === 4 && controller.asked
+      ? Math.min(Math.max(height, window.innerHeight - 80), Math.max(height, assistantAnswerHeight))
+      : height;
   return (
     <motion.div
       id="Island"
@@ -62,18 +70,17 @@ export default function Island() {
       data-island
       data-theme={theme}
       ref={islandElementRef}
-      onMouseEnter={() => {
+      onMouseEnter={(event) => {
+        trackPointerPosition(event);
         setIsHovered(true);
         if (mode === 'still' && showInfoWhenIdleEnabled && !isPlaying) {
           setMode('large');
         } else if (mode !== 'large') {
           setMode('quick');
         }
-        if (window.electronAPI) {
-          window.electronAPI.setIgnoreMouseEvents(false, false);
-        }
       }}
-      onMouseLeave={() => {
+      onMouseLeave={(event) => {
+        trackPointerPosition(event);
         clearClickSuppression();
         leave();
       }}
@@ -101,7 +108,10 @@ export default function Island() {
       onPointerDown={(event) => {
         if (!isOverlayOpen) handlePointerDown(event);
       }}
-      onPointerMove={handlePointerMove}
+      onPointerMove={(event) => {
+        trackPointerPosition(event);
+        handlePointerMove(event);
+      }}
       onPointerUp={(event) => {
         if (!isOverlayOpen) handlePointerUp(event);
       }}
@@ -113,7 +123,7 @@ export default function Island() {
       }}
       animate={{
         width: `${width}px`,
-        height: `${height}px`,
+        height: `${animatedHeight}px`,
         left: sideStyles.left,
         top: sideStyles.top || 'auto',
         bottom: sideStyles.bottom || 'auto',
@@ -209,7 +219,13 @@ export default function Island() {
             {currentTab === 3 && <NowPlayingTab {...controller} />}
 
             {/* AI tab container */}
-            {currentTab === 4 && <AssistantTab {...controller} />}
+            {currentTab === 4 && (
+              <AssistantTab
+                {...controller}
+                onAnswerContentSizeChange={setAssistantAnswerHeight}
+                resetAnswerContentSize={resetAssistantAnswerHeight}
+              />
+            )}
 
             {/*Clipboard*/}
             {currentTab === 5 && <ClipboardTab {...controller} />}

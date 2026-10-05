@@ -1,0 +1,62 @@
+.list {
+  display: flex;
+  flex-direction: column;
+  gap: 8px;
+  min-width: 0;
+}
+
+.notice {
+  display: flex;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 9px 11px;
+  color: var(--island-text-color);
+  background: color-mix(in srgb, var(--island-text-color), transparent 96%);
+  border: 1px solid color-mix(in srgb, var(--island-text-color), transparent 84%);
+  border-radius: 12px;
+  overflow: hidden;
+}
+
+.warning {
+  border-color: color-mix(in srgb, #f0bc55, transparent 48%);
+}
+
+.error {
+  border-color: color-mix(in srgb, #ff6969, transparent 45%);
+}
+
+.message {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 4px;
+  min-width: 0;
+  overflow-wrap: anywhere;
+  font-size: 13px;
+  line-height: 1.4;
+}
+
+.detail {
+  opacity: 0.7;
+  font-size: 11px;
+  line-height: 1.35;
+  user-select: text;
+}
+
+.dismiss {
+  flex: 0 0 auto;
+  padding: 2px 4px;
+  color: inherit;
+  background: transparent;
+  border: 0;
+  border-radius: 5px;
+  cursor: pointer;
+  font-size: 18px;
+  line-height: 1;
+}
+
+.dismiss:hover,
+.dismiss:focus-visible {
+  background: color-mix(in srgb, var(--island-text-color), transparent 88%);
+  outline: none;
+}
