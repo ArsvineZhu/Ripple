@@ -4,3 +4,5 @@ allowBuilds:
   '@bitdisaster/exe-icon-extractor@1.0.10': true
   core-js: true
   'esbuild@0.28.2': true
+  'fs-xattr@0.3.1': true
+  'macos-alias@0.2.12': true

@@ -1,7 +1,7 @@
 name: Ripple Next CI and Release
 on:
   push:
-    branches: [main, master]
+    branches: ['**']
     tags: ['v*']
   pull_request:
     branches: [main, master]
@@ -22,7 +22,7 @@ jobs:
           cache: true
       - run: pnpm install --frozen-lockfile
       - name: Verify release tag
-        if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+        if: startsWith(github.ref, 'refs/tags/v')
         run: |
           expected_tag="v$(node -p 'require("./package.json").version')"
           if [ "$GITHUB_REF_NAME" != "$expected_tag" ]; then
@@ -33,6 +33,7 @@ jobs:
       - run: pnpm test
   build:
     needs: check
+    if: startsWith(github.ref, 'refs/tags/v')
     name: Package ${{ matrix.name }}
     runs-on: ${{ matrix.os }}
     strategy:
@@ -75,7 +76,7 @@ jobs:
           if-no-files-found: error
   release:
     needs: build
-    if: github.event_name == 'push' && startsWith(github.ref, 'refs/tags/v')
+    if: startsWith(github.ref, 'refs/tags/v')
     runs-on: ubuntu-latest
     permissions:
       contents: write
