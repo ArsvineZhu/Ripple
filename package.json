@@ -1,8 +1,16 @@
 {
   "name": "ripple-next",
   "productName": "Ripple Next",
-  "version": "4.0.0-beta.1",
+  "version": "4.0.0-beta.2",
   "description": "A Dynamic Island for All Platforms",
+  "homepage": "https://github.com/ArsvineZhu/Ripple-Next",
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/ArsvineZhu/Ripple-Next.git"
+  },
+  "bugs": {
+    "url": "https://github.com/ArsvineZhu/Ripple-Next/issues"
+  },
   "main": ".vite/build/main.cjs",
   "scripts": {
     "start": "tsx scripts/start.ts",
@@ -56,9 +64,9 @@
     "cmdk": "1.1.1",
     "electron": "44.5.1",
     "happy-dom": "20.14.5",
+    "i18next": "26.4.2",
     "jscpd": "5.4.0",
     "knip": "6.39.0",
-    "i18next": "26.4.2",
     "lucide-react": "1.52.0",
     "motion": "14.0.0",
     "oxlint": "1.86.0",
@@ -77,7 +85,8 @@
     "zod": "4.6.5"
   },
   "dependencies": {
-    "better-sqlite3": "13.0.3"
+    "better-sqlite3": "13.0.3",
+    "electron-log": "5.4.4"
   },
   "engines": {
     "node": ">=22.13.0",

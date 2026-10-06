@@ -1,17 +1,58 @@
 import { createLinuxInputShape } from './platform/linux/inputShape';
 import { app, BrowserWindow, screen } from 'electron';
+import type { Display } from 'electron';
 import path from 'node:path';
 
 import { getIconPath } from './assets';
+import type { DiagnosticsService } from './services/diagnostics';
+import { attachWindowDiagnostics, recordRendererReady } from './services/windowDiagnostics';
 declare const MAIN_WINDOW_VITE_DEV_SERVER_URL: string | undefined;
 declare const MAIN_WINDOW_VITE_NAME: string;
 if (process.platform === 'linux') {
   app.commandLine.appendSwitch('enable-transparent-visuals');
 }
 let mainWindow: BrowserWindow | null = null;
+let activeDiagnostics: DiagnosticsService | null = null;
 let mainWindowReady = false;
 let rendererIsReady = false;
 let backgroundMode = false;
+let linuxDisplaySyncInstalled = false;
+export const getWindowBoundsForDisplay = (display: Display) => {
+  const workArea = display.workArea;
+  return process.platform === 'linux' && workArea.width > 0 && workArea.height > 0
+    ? workArea
+    : display.bounds;
+};
+const syncLinuxWindowToDisplay = () => {
+  if (process.platform !== 'linux' || !mainWindow || mainWindow.isDestroyed()) return;
+  const currentBounds = mainWindow.getBounds();
+  const displayBounds = getWindowBoundsForDisplay(screen.getDisplayMatching(currentBounds));
+  if (
+    currentBounds.x !== displayBounds.x ||
+    currentBounds.y !== displayBounds.y ||
+    currentBounds.width !== displayBounds.width ||
+    currentBounds.height !== displayBounds.height
+  ) {
+    mainWindow.setBounds(displayBounds);
+  }
+};
+const installLinuxDisplaySync = () => {
+  if (process.platform !== 'linux' || linuxDisplaySyncInstalled) return;
+  linuxDisplaySyncInstalled = true;
+  screen.on('display-metrics-changed', (_event, display, changedMetrics) => {
+    if (
+      !changedMetrics.includes('bounds') &&
+      !changedMetrics.includes('workArea') &&
+      !changedMetrics.includes('scaleFactor')
+    ) {
+      return;
+    }
+    if (mainWindow && screen.getDisplayMatching(mainWindow.getBounds()).id === display.id) {
+      syncLinuxWindowToDisplay();
+    }
+  });
+  screen.on('display-removed', () => syncLinuxWindowToDisplay());
+};
 const applySkipTaskbar = () => {
   if (!mainWindow) return;
   if (process.platform === 'linux') inputShape.setSkipTaskbar(backgroundMode);
@@ -21,6 +62,7 @@ export const showMainWindow = () => {
   if (!mainWindow || !mainWindowReady || !rendererIsReady) return;
   if (process.platform === 'linux' && !inputShape.isReady()) return;
 
+  syncLinuxWindowToDisplay();
   mainWindow.show();
   applySkipTaskbar();
   mainWindow.setAlwaysOnTop(true, process.platform === 'linux' ? 'screen-saver' : 'pop-up-menu');
@@ -29,25 +71,32 @@ export const showMainWindow = () => {
 
 export const markRendererReady = () => {
   rendererIsReady = true;
+  if (mainWindow && activeDiagnostics) recordRendererReady(mainWindow, activeDiagnostics);
   showMainWindow();
 };
 
-export const createWindow = (onLoadError: (error: unknown) => void = () => {}) => {
+export const createWindow = (
+  diagnostics: DiagnosticsService,
+  onLoadError: (error: unknown) => void = () => {},
+) => {
+  activeDiagnostics = diagnostics;
+  installLinuxDisplaySync();
   mainWindowReady = false;
   rendererIsReady = false;
   inputShape.reset();
-  const primaryDisplay = screen.getPrimaryDisplay();
-  const { x, y, width, height } = primaryDisplay.bounds;
   const isLinux = process.platform === 'linux';
   const isWindows = process.platform === 'win32';
   const isMac = process.platform === 'darwin';
+  const primaryDisplay = screen.getPrimaryDisplay();
+  const { x, y, width, height } = getWindowBoundsForDisplay(primaryDisplay);
 
   const winWidth = width;
   const winHeight = height;
   const winX = x;
   const winY = y;
 
-  const windowType = isWindows ? 'toolbar' : 'panel';
+  // Electron's panel window type is macOS-only; Linux uses a normal X11 window.
+  const windowType = isWindows ? 'toolbar' : isMac ? 'panel' : undefined;
 
   mainWindow = new BrowserWindow({
     width: winWidth,
@@ -76,15 +125,19 @@ export const createWindow = (onLoadError: (error: unknown) => void = () => {}) =
     },
     show: false,
   });
+  attachWindowDiagnostics(mainWindow, diagnostics);
 
   if (!isLinux) {
     mainWindow.setIgnoreMouseEvents(true, { forward: true });
   } else {
     mainWindow.setIgnoreMouseEvents(false);
+    mainWindow.on('move', syncLinuxWindowToDisplay);
+    mainWindow.on('resize', syncLinuxWindowToDisplay);
   }
 
   mainWindow.once('ready-to-show', () => {
     mainWindowReady = true;
+    syncLinuxWindowToDisplay();
     showMainWindow();
   });
 
@@ -110,7 +163,11 @@ export const setWindowBackgroundMode = (enabled: boolean) => {
   applySkipTaskbar();
 };
 const inputShape = createLinuxInputShape(() => mainWindow, showMainWindow);
-export const initializeLinuxInputShape = (onError?: (error: unknown) => void) => {
+export const initializeLinuxInputShape = (
+  diagnostics: DiagnosticsService,
+  onError?: (error: unknown) => void,
+) => {
+  inputShape.setDiagnostics(diagnostics);
   if (onError) inputShape.setErrorHandler(onError);
   inputShape.initialize();
 };

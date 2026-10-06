@@ -1,8 +1,22 @@
 import { createOpenAICompatible } from '@ai-sdk/openai-compatible';
 import { streamText } from 'ai';
+import { author, bugs, license, productName, repository } from '../../../package.json';
 import defaultAssistantPrompt from '../prompts/default-assistant.md?raw';
+import type { PromptInjectionContext } from '../prompts/injections';
+import { renderPromptTemplate, resolvePromptTimeContext } from '../prompts/injections';
 
-export interface CompatibleChatRequest {
+const promptMetadata: Omit<PromptInjectionContext, 'version' | 'timezone' | 'current_time'> = {
+  product: productName,
+  developer: author.name,
+  license,
+  repository: repository.url.replace(/\.git$/, ''),
+  issues: bugs.url,
+};
+
+export interface CompatibleChatRequest
+  extends
+    Pick<PromptInjectionContext, 'version'>,
+    Partial<Pick<PromptInjectionContext, 'timezone' | 'current_time'>> {
   baseUrl: string;
   apiKey: string;
   model: string;
@@ -37,10 +51,18 @@ export async function streamCompatibleChat(
     apiKey: request.apiKey,
     ...(fetchImpl ? { fetch: fetchImpl } : {}),
   });
+  const timeContext =
+    request.timezone && request.current_time
+      ? { timezone: request.timezone, current_time: request.current_time }
+      : resolvePromptTimeContext(request.timezone ?? 'system');
   let streamError: unknown;
   const result = streamText({
     model: provider(request.model.trim()),
-    system: defaultAssistantPrompt.trim(),
+    system: renderPromptTemplate(defaultAssistantPrompt, {
+      ...promptMetadata,
+      version: request.version,
+      ...timeContext,
+    }).trim(),
     prompt: request.prompt,
     abortSignal: request.signal,
     maxRetries: 0,

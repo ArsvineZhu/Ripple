@@ -12,7 +12,8 @@ import { AssistantTab } from './features/AssistantTab';
 import { ClipboardTab } from './features/ClipboardTab';
 import { TasksTab } from './features/TasksTab';
 import { SettingsTab } from './features/SettingsTab';
-import { useCallback, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
+import { recordIslandContext } from './lib/diagnostics';
 export default function Island() {
   const controller = useIslandController();
   const [assistantAnswerHeight, setAssistantAnswerHeight] = useState(0);
@@ -59,6 +60,23 @@ export default function Island() {
     tabVariants,
     trackPointerPosition,
   } = controller;
+  const reportIslandContext = useCallback(() => {
+    const bounds = islandElementRef.current?.getBoundingClientRect();
+    if (!bounds) return;
+    recordIslandContext({
+      tabId: currentTabId,
+      mode,
+      expanded: mode === 'large',
+      asked: controller.asked,
+      viewport: { width: window.innerWidth, height: window.innerHeight },
+      inputRegion: { width: bounds.width, height: bounds.height },
+    });
+  }, [controller.asked, currentTabId, islandElementRef, mode]);
+  useEffect(() => {
+    reportIslandContext();
+    window.addEventListener('resize', reportIslandContext);
+    return () => window.removeEventListener('resize', reportIslandContext);
+  }, [reportIslandContext]);
   const animatedHeight =
     mode === 'large' && currentTab === 4 && controller.asked
       ? Math.min(Math.max(height, window.innerHeight - 80), Math.max(height, assistantAnswerHeight))
@@ -145,6 +163,7 @@ export default function Island() {
       onUpdate={syncLinuxWindowShape}
       onAnimationComplete={() => {
         syncLinuxWindowShape();
+        reportIslandContext();
         finishPositionChange();
       }}
       transition={{

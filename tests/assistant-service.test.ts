@@ -9,7 +9,7 @@ describe('assistant service', () => {
     const service = createAssistantService(
       { load: async () => defaultAppState },
       { getApiKey: async () => null },
-      stream,
+      { getAppVersion: () => '4.0.0-beta.1', stream },
     );
 
     await service.start('request-1', 'Hello', send);
@@ -35,7 +35,7 @@ describe('assistant service', () => {
     const service = createAssistantService(
       { load: async () => state },
       { getApiKey: async () => 'test-key' },
-      stream,
+      { getAppVersion: () => '4.0.0-beta.1', stream },
     );
 
     await service.start('request-2', 'Hello', send);

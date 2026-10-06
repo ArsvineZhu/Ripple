@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import { updateClipboardHistory } from '../lib/clipboard';
+import { recordRendererError } from '../lib/diagnostics';
 
 export function useClipboard() {
   const [clipboard, setClipboard] = useState<string[]>([]);
@@ -8,7 +9,7 @@ export function useClipboard() {
       const text = await navigator.clipboard.readText();
       setClipboard((history) => updateClipboardHistory(history, text));
     } catch (error) {
-      console.log(`Error reading clipboard: ${String(error)}`);
+      recordRendererError('clipboard', error);
     }
   }
   useEffect(() => {

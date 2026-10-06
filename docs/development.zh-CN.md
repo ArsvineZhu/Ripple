@@ -34,12 +34,18 @@ Oxlint 关闭 `react/set-state-in-effect`，因为 OS 遥测和偏好 effect 会
 
 Main 拥有应用生命周期、托盘、透明窗口、系统能力和 typed IPC。服务拥有状态持久化、安全凭据、通知、AI 请求、应用发现/启动和自动启动；平台适配器封装系统差异。Preload 暴露 typed `electronAPI`，shared Zod schema 验证状态文件和启动目标。Renderer 拥有视图和交互；XState 管理鼠标离开、几何重入、焦点、菜单与拖动状态。
 
-状态服务使用新用户数据目录中的 `ripple-next.sqlite` 保存设置、任务、工作流、快捷应用和已加密的 API key。编号 schema migration 位于 `src/main/database/migrations/`，命名查询位于 `src/main/database/queries/`，全部使用 `.sql` 文件；TypeScript 只绑定参数并控制事务。Renderer 在显示界面前读取状态快照，再通过 typed patch 更新；设置和功能数据不使用 `localStorage`。API key 使用 Electron `safeStorage` 加密，且不会返回 renderer。Linux 缺少 OS 密钥存储时拒绝保存密钥。Ripple Next 不读取或迁移旧 Ripple 数据目录。启用 Linux 开机启动时写入 `ripple-next.desktop`，并只删除旧的 `ripple.desktop` 启动入口。
+状态服务使用新用户数据目录中的 `ripple-next.sqlite` 保存设置、任务、工作流、快捷应用和已加密的 API key。编号 schema migration 位于 `src/main/database/migrations/`，命名查询位于 `src/main/database/queries/`，全部使用 `.sql` 文件；TypeScript 只绑定参数并控制事务。Renderer 在显示界面前读取状态快照，再通过 typed patch 更新；设置和功能数据不使用 `localStorage`。API key 使用 Electron `safeStorage` 加密，且不会返回 renderer。Linux 缺少 OS 密钥存储时拒绝保存密钥。Ripple Next 不读取或迁移旧 Ripple 数据目录。Linux 自启动优先使用绝对路径 `XDG_CONFIG_HOME/autostart`，否则使用 `~/.config/autostart`。
 
 AI SDK 的 `streamText` 与 OpenAI 兼容 provider 在 main 实现流式对话。默认 system prompt 保存在 `src/main/prompts/default-assistant.md`，并随 main bundle 打包。`xstate` 和 `@xstate/react` 管理可取消的交互延迟与重入门控。Linux 快捷应用从 XDG 桌面入口发现并通过 `gio launch` 启动；自定义命令通过 `spawn` 接收参数数组，不经过 shell。
 
 浏览器搜索地址模板保存在设置中，必须包含 `{query}`；直接输入 HTTP(S) 地址仍会作为网址打开。时钟和日期使用当前语言，并可跟随系统时区或指定 IANA 时区。错误会路由到所属功能区行内展示；`InlineNotices` 沿用 Island 的 Motion 淡入与模糊过渡。长内容区使用 Smooth Scrollbar 的回弹效果；AI 回答会随内容增长，并限制在当前屏幕可用高度内。设置页滑块由对应 CSS Module 统一管理主题轨道、滑块和焦点样式。
 
-Linux 使用覆盖显示器的透明 XWayland 窗口，仅让 X11 `ShapeInput` 跟随动画中的 Island；修改 `ShapeBounding` 可能出现黑边。X11 客户端保持静态导入并打入安装包。后台模式通过同一 X11 客户端请求 `_NET_WM_STATE_SKIP_TASKBAR`。窗口需等 renderer ready 且首次输入区域得到确认后才显示。边界说明见[主进程](../src/main/README.zh-CN.md)、[preload](../src/preload/README.zh-CN.md)和[renderer](../src/renderer/README.zh-CN.md)。
+## 本地诊断
+
+Ripple Next 将 `ripple-next.log` 写入 `<userData>/diagnostics/`，Electron minidump 保存在其中的 `crashes/` 子目录。可在设置页的“诊断”区域选择“打开诊断文件夹”。日志传输大小上限为 5 MiB；每次启动时会清理超过 30 天的崩溃报告，并只保留最新的 10 份。
+
+崩溃报告不会上传。AI 日志记录请求 ID、阶段耗时、增量数量和回答字符数，不记录提示词或回答正文。错误记录包含错误类型和堆栈帧，不包含自由格式的错误消息。minidump 是二进制进程快照，应作为敏感的本机诊断数据处理。
+
+Linux 使用透明 XWayland 窗口，并限制在所选显示器的工作区内，以保留桌面面板。仅让 X11 `ShapeInput` 跟随动画中的 Island；修改 `ShapeBounding` 可能出现黑边。X11 客户端保持静态导入并打入安装包。后台模式通过同一 X11 客户端请求 `_NET_WM_STATE_SKIP_TASKBAR`。窗口需等 renderer ready 且首次输入区域得到确认后才显示。边界说明见[主进程](../src/main/README.zh-CN.md)、[preload](../src/preload/README.zh-CN.md)和[renderer](../src/renderer/README.zh-CN.md)。
 
 Forge 在启动和打包前清理 `.vite`；`.vite`、`out`、报告和 `node_modules` 不纳入 Git。各类读者的说明见[文档目录](INDEX.zh-CN.md)。

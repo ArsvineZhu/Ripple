@@ -1,5 +1,4 @@
 import { CopyButton } from '../components/CopyButton';
-import { InlineNotices } from '../components/InlineNotices';
 import { ElasticScrollArea } from '../components/ElasticScrollArea';
 import styles from './AssistantTab.module.css';
 import { useTranslation } from 'react-i18next';
@@ -93,17 +92,10 @@ export function AssistantTab({
               id="result"
               onContentSizeChange={onAnswerContentSizeChange}
             >
-              <InlineNotices area="assistant" />
               {assistantError ? (
-                <motion.span
-                  className={styles.assistantError}
-                  role="alert"
-                  initial={{ opacity: 0, filter: 'blur(10px)' }}
-                  animate={{ opacity: 1, filter: 'blur(0px)' }}
-                  transition={{ duration: 0.2 }}
-                >
+                <span role="status">
                   {t(assistantError.kind)} {assistantError.detail}
-                </motion.span>
+                </span>
               ) : aiAnswer ? (
                 <ReactMarkdown
                   components={{

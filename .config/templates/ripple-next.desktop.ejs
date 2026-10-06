@@ -4,6 +4,7 @@
 <% } %><% if (genericName) { %>GenericName=<%= genericName %>
 <% } %><% if (name) { %>Exec=<%= name %> --ozone-platform=x11 %U
 Icon=<%= name %>
+StartupWMClass=<%= name %>
 <% } %>Type=Application
 StartupNotify=true
 <% if (categories && categories.length) { %>Categories=<%= categories.join(';') %>;

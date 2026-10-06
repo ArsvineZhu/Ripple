@@ -3,6 +3,7 @@ import { formatTime } from '../lib/date';
 import { useState, useEffect } from 'react';
 import { fetchCurrentWeather } from '../lib/weather';
 import type { WeatherReading } from '../lib/weather';
+import { recordRendererError } from '../lib/diagnostics';
 
 export function useOverview(
   hourFormat: boolean,
@@ -33,7 +34,7 @@ export function useOverview(
         if (active) setWeather(currentWeather);
       } catch (error) {
         if (active) setWeather(null);
-        console.error('Weather fetch failed', error);
+        recordRendererError('overview', error);
       }
     };
     setWeather(null);

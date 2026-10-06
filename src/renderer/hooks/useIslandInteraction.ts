@@ -92,6 +92,10 @@ export function useIslandInteraction({ setMode, standby, largeStandby, leaveDela
     callbacksRef.current.setMode('large');
   };
   const finishPositionChange = () => publishBlockers({ positionChanging: false });
+  const setAssistantActive = useCallback(
+    (assistantActive: boolean) => publishBlockers({ assistantActive }),
+    [publishBlockers],
+  );
   const setIsHovered = (value: boolean) =>
     send({ type: value ? 'POINTER_ENTER' : 'POINTER_LEAVE' });
   const leave = () => send({ type: 'POINTER_LEAVE' });
@@ -104,6 +108,7 @@ export function useIslandInteraction({ setMode, standby, largeStandby, leaveDela
     updateDragging,
     beginPositionChange,
     finishPositionChange,
+    setAssistantActive,
     leave,
     geometryExited,
     isOverlayOpen: openId !== null,

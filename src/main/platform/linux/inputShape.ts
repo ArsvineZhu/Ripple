@@ -2,6 +2,7 @@ import type { BrowserWindow } from 'electron';
 import x11Module from 'x11';
 import type { InputRect } from '../../../shared/contracts';
 import { toDeviceRectangle } from '../../../shared/inputGeometry';
+import type { DiagnosticsService } from '../../services/diagnostics';
 interface Shape {
   Op: { Set: number };
   Kind: { Input: number };
@@ -45,7 +46,8 @@ interface XDisplay {
 }
 const EWMH_SUBSTRUCTURE_EVENT_MASK = 0x00080000 | 0x00100000;
 export function createLinuxInputShape(getWindow: () => BrowserWindow | null, onReady: () => void) {
-  let errorHandler = (error: unknown) => console.error('Linux input shape error:', error);
+  let errorHandler = (_error: unknown) => {};
+  let diagnostics: DiagnosticsService | undefined;
   let mainWindowInputShapeReady = false;
   let x11Display: XDisplay | null = null;
   let x11Shape: Shape | null = null;
@@ -53,6 +55,12 @@ export function createLinuxInputShape(getWindow: () => BrowserWindow | null, onR
   let inputShapeCheckPending = false;
   let skipTaskbar = false;
   let taskbarAtoms: Promise<[number, number]> | null = null;
+
+  const reportError = (error: unknown) => {
+    diagnostics?.record({ kind: 'linux-input-shape', state: 'failed' });
+    diagnostics?.recordError('linux-input', error);
+    errorHandler(error);
+  };
 
   const internAtom = (name: string) =>
     new Promise<number>((resolve, reject) => {
@@ -101,11 +109,11 @@ export function createLinuxInputShape(getWindow: () => BrowserWindow | null, onR
           [hidden ? 1 : 0, skipTaskbarAtom, 0, 1, 0],
           EWMH_SUBSTRUCTURE_EVENT_MASK,
           (error) => {
-            if (error) errorHandler(error);
+            if (error) reportError(error);
           },
         );
       })
-      .catch(errorHandler);
+      .catch(reportError);
   };
 
   const apply = (rect: InputRect) => {
@@ -136,7 +144,7 @@ export function createLinuxInputShape(getWindow: () => BrowserWindow | null, onR
     x11Shape.GetRectangles(windowId, x11Shape.Kind.Input, (error, result) => {
       inputShapeCheckPending = false;
       if (error) {
-        errorHandler(error);
+        reportError(error);
         return;
       }
 
@@ -150,30 +158,37 @@ export function createLinuxInputShape(getWindow: () => BrowserWindow | null, onR
         actual[2] >= bounds.width * scale ||
         actual[3] >= bounds.height * scale
       ) {
-        errorHandler(new Error('Linux window input shape still covers the full window'));
+        reportError(new Error('Linux window input shape still covers the full window'));
         return;
       }
 
       mainWindowInputShapeReady = true;
+      diagnostics?.record({
+        kind: 'linux-input-shape',
+        state: 'ready',
+        width: actual[2],
+        height: actual[3],
+      });
       onReady();
     });
   };
 
   const initialize = () => {
     if (process.platform !== 'linux') return;
+    diagnostics?.record({ kind: 'linux-input-shape', state: 'initialized' });
 
     x11Module.createClient((error, display) => {
       if (error) {
-        errorHandler(error);
+        reportError(error);
         return;
       }
 
       display.client.on('error', (clientError) => {
-        errorHandler(clientError);
+        reportError(clientError);
       });
       (display as unknown as XDisplay).client.require('shape', (shapeError, shape) => {
         if (shapeError) {
-          errorHandler(shapeError);
+          reportError(shapeError);
           display.client.terminate();
           return;
         }
@@ -187,6 +202,9 @@ export function createLinuxInputShape(getWindow: () => BrowserWindow | null, onR
 
   return {
     apply,
+    setDiagnostics: (service: DiagnosticsService) => {
+      diagnostics = service;
+    },
     setSkipTaskbar: (hidden: boolean) => {
       skipTaskbar = hidden;
       applyTaskbarState();

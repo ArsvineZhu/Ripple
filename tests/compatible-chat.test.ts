@@ -27,6 +27,7 @@ describe('OpenAI-compatible chat streaming through AI SDK', () => {
         baseUrl: 'https://api.example.test/v1/',
         apiKey: 'secret-test-key',
         model: 'example-model',
+        version: '4.0.0-beta.1',
         prompt: 'Say hello',
       },
       { fetchImpl, onDelta },
@@ -44,7 +45,13 @@ describe('OpenAI-compatible chat streaming through AI SDK', () => {
     const fetchImpl = vi.fn();
     await expect(
       streamCompatibleChat(
-        { baseUrl: 'file:///tmp', apiKey: 'secret', model: 'model', prompt: 'Hello' },
+        {
+          baseUrl: 'file:///tmp',
+          apiKey: 'secret',
+          model: 'model',
+          version: '4.0.0-beta.1',
+          prompt: 'Hello',
+        },
         { fetchImpl, onDelta: vi.fn() },
       ),
     ).rejects.toThrow('Base URL must use HTTP or HTTPS');

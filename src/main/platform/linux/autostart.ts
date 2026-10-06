@@ -9,9 +9,12 @@ function desktopExecArgument(value: string) {
 }
 
 export async function setAutoLaunch(enable: boolean): Promise<void> {
-  const autostartPath = path.join(app.getPath('home'), '.config', 'autostart');
+  const defaultConfigHome = path.join(app.getPath('home'), '.config');
+  const configuredHome = process.env.XDG_CONFIG_HOME;
+  const configHome =
+    configuredHome && path.isAbsolute(configuredHome) ? configuredHome : defaultConfigHome;
+  const autostartPath = path.join(configHome, 'autostart');
   const nextEntryPath = path.join(autostartPath, 'ripple-next.desktop');
-  const legacyEntryPath = path.join(autostartPath, 'ripple.desktop');
 
   if (!enable) {
     await fs.rm(nextEntryPath, { force: true });
@@ -24,6 +27,7 @@ export async function setAutoLaunch(enable: boolean): Promise<void> {
 Type=Application
 Version=1.0
 Name=Ripple Next
+StartupWMClass=ripple-next
 Comment=Ripple Next Desktop Island
 Exec=${desktopExecArgument(app.getPath('exe'))} --ozone-platform=x11
 Icon=${getIconPath()}
@@ -37,5 +41,4 @@ StartupNotify=false
     await fs.rm(temporaryPath, { force: true });
     throw error;
   }
-  await fs.rm(legacyEntryPath, { force: true });
 }
