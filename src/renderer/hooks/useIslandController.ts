@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import { useIslandInteraction } from './useIslandInteraction';
-import { useEffect, useReducer, useState } from 'react';
+import { useEffect, useLayoutEffect, useReducer, useState } from 'react';
 
 import { measureTextWidth } from '../lib/text';
 import { useAssistant } from './useAssistant';
@@ -94,6 +94,7 @@ export function useIslandController() {
     updateDragging,
     beginPositionChange,
     finishPositionChange,
+    setAssistantActive,
     leave,
     geometryExited,
     isOverlayOpen,
@@ -184,6 +185,9 @@ export function useIslandController() {
     handlePointerMove,
     handlePointerUp,
   } = useNavigation({ spotifyTrack, mode, isDragging, setMode });
+  useLayoutEffect(() => {
+    setAssistantActive(currentTab === 4 && asked);
+  }, [asked, currentTab, setAssistantActive]);
   const { islandElementRef, syncLinuxWindowShape, trackPointerPosition } =
     useWindowInput(geometryExited);
   let isPlaying = spotifyTrack?.state === 'playing';

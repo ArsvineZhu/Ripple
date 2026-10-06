@@ -1,5 +1,5 @@
 import type { HTMLAttributes, ReactNode, WheelEvent } from 'react';
-import { useEffect, useRef } from 'react';
+import { useEffect, useLayoutEffect, useRef } from 'react';
 import Scrollbar from 'smooth-scrollbar';
 import OverscrollPlugin, { OverscrollEffect } from 'smooth-scrollbar/plugins/overscroll';
 import styles from './ElasticScrollArea.module.css';
@@ -14,15 +14,16 @@ type Props = Omit<HTMLAttributes<HTMLDivElement>, 'onWheel'> & {
 
 export function ElasticScrollArea({ children, className, onContentSizeChange, ...props }: Props) {
   const viewportRef = useRef<HTMLDivElement>(null);
+  const contentRef = useRef<HTMLDivElement>(null);
   const onContentSizeChangeRef = useRef(onContentSizeChange);
 
   useEffect(() => {
     onContentSizeChangeRef.current = onContentSizeChange;
   }, [onContentSizeChange]);
 
-  useEffect(() => {
+  useLayoutEffect(() => {
     const viewport = viewportRef.current;
-    if (!viewport) return;
+    if (!viewport || !contentRef.current) return;
 
     const scrollbar = Scrollbar.init(viewport, {
       damping: 0.12,
@@ -105,7 +106,10 @@ export function ElasticScrollArea({ children, className, onContentSizeChange, ..
       onWheel={stopIslandWheel}
       ref={viewportRef}
     >
-      {children}
+      {/* Scrollbar moves this stable host; React reconciles changing content inside it. */}
+      <div className={styles.content} ref={contentRef}>
+        {children}
+      </div>
     </div>
   );
 }

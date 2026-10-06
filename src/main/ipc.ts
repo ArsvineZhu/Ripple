@@ -7,7 +7,14 @@ import { isAppStatePatch } from '../shared/appState';
 import type { InvokeMap, QuickAppTarget } from '../shared/contracts';
 import { QuickAppTargetSchema } from '../shared/contracts';
 import { setTrayLocale } from './tray';
-import { applyLinuxInputShape, getMainWindow, markRendererReady, showMainWindow } from './window';
+import type { DiagnosticsService } from './services/diagnostics';
+import {
+  applyLinuxInputShape,
+  getMainWindow,
+  getWindowBoundsForDisplay,
+  markRendererReady,
+  showMainWindow,
+} from './window';
 import { discoverApps, buildAppCache, launchApp, launchQuickApp } from './services/apps';
 import { setAutoLaunch } from './services/autostart';
 import { getSystemMedia } from './services/getSystemMedia';
@@ -28,7 +35,11 @@ interface SecretStore {
 }
 
 interface AssistantService {
-  start(requestId: string, prompt: string, send: (event: AssistantEvent) => void): Promise<void>;
+  start(
+    requestId: string,
+    prompt: string,
+    send: (event: AssistantEvent) => void,
+  ): Promise<string | null>;
   cancel(requestId: string): void;
 }
 
@@ -47,6 +58,7 @@ interface IPCServices {
   secretStore: SecretStore;
   assistant: AssistantService;
   notices: NoticeService;
+  diagnostics: Pick<DiagnosticsService, 'openFolder' | 'recordError'>;
   applyBackgroundMode(enabled: boolean): void;
 }
 
@@ -70,6 +82,8 @@ function channelErrorCode(channel: keyof InvokeMap): NoticeCode | null {
       return 'appLaunchFailed';
     case 'set-auto-launch':
       return 'autoLaunchFailed';
+    case 'open-diagnostics-folder':
+      return 'diagnosticsFolderOpenFailed';
     default:
       return null;
   }
@@ -87,6 +101,7 @@ function handle<K extends keyof InvokeMap>(
     try {
       return await listener(...(args as InvokeMap[K]['args']));
     } catch (error) {
+      services.diagnostics.recordError('application', error);
       const code = channelErrorCode(channel);
       if (code) {
         const detail = error instanceof Error ? error.message : String(error);
@@ -119,6 +134,7 @@ export function registerIPC(services: IPCServices) {
     state: await services.stateStore.load(),
     hasApiKey: await services.secretStore.hasApiKey(),
   }));
+  handle(services, 'open-diagnostics-folder', () => services.diagnostics.openFolder());
   handle(services, 'update-app-state', async (patch) => {
     if (!isAppStatePatch(patch)) throw new TypeError('Invalid app state update');
     const state = await services.stateStore.update(patch);
@@ -208,7 +224,7 @@ export function registerIPC(services: IPCServices) {
     const target =
       screen.getAllDisplays().find((display) => String(display.id) === String(id)) ||
       screen.getPrimaryDisplay();
-    getMainWindow()?.setBounds(target.bounds);
+    getMainWindow()?.setBounds(getWindowBoundsForDisplay(target));
     showMainWindow();
   });
   handle(services, 'set-auto-launch', async (enable) => {

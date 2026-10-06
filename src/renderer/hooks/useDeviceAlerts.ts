@@ -1,6 +1,10 @@
 import type { Dispatch, SetStateAction } from 'react';
 import type { IslandMode } from '../../shared/contracts';
 import { useState, useEffect, useRef } from 'react';
+import { recordRendererError } from '../lib/diagnostics';
+
+const BLUETOOTH_POLL_INTERVAL_MS = 15000;
+const CAPTURE_DEVICE_POLL_INTERVAL_MS = 5000;
 
 export function useDeviceAlerts(setMode: Dispatch<SetStateAction<IslandMode>>) {
   const [bluetooth, setBluetooth] = useState(false);
@@ -12,22 +16,6 @@ export function useDeviceAlerts(setMode: Dispatch<SetStateAction<IslandMode>>) {
   const captureAlertQueue = useRef<('camera' | 'microphone')[]>([]);
   const captureAlertTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
   const captureAlertDisplayed = useRef({ camera: false, microphone: false });
-  useEffect(() => {
-    const fetchBluetooth = async () => {
-      if (window.electronAPI?.getBluetoothStatus) {
-        try {
-          const isConnected = await window.electronAPI.getBluetoothStatus();
-          setBluetooth(isConnected);
-        } catch (e) {
-          console.error(e);
-        }
-      }
-    };
-
-    fetchBluetooth();
-    const interval = setInterval(fetchBluetooth, 5000); // Check every 5 seconds
-    return () => clearInterval(interval);
-  }, []);
   useEffect(() => {
     if (bluetooth === true) {
       setMode('quick');
@@ -42,36 +30,68 @@ export function useDeviceAlerts(setMode: Dispatch<SetStateAction<IslandMode>>) {
     }
   }, [bluetooth, setMode]);
   useEffect(() => {
-    const fetchCamera = async () => {
-      if (window.electronAPI?.getCameraStatus) {
-        try {
-          const inUse = await window.electronAPI.getCameraStatus();
-          setCameraInUse(inUse);
-        } catch (e) {
-          console.error(e);
+    let active = true;
+    let bluetoothTimer: ReturnType<typeof setTimeout> | undefined;
+    let captureTimer: ReturnType<typeof setTimeout> | undefined;
+    const pollBluetooth = async () => {
+      const api = window.electronAPI;
+      if (!api) {
+        if (active) {
+          bluetoothTimer = setTimeout(() => void pollBluetooth(), BLUETOOTH_POLL_INTERVAL_MS);
         }
+        return;
+      }
+      try {
+        const connected = await api.getBluetoothStatus();
+        if (active) setBluetooth(connected);
+      } catch (error) {
+        recordRendererError('device', error);
+      } finally {
+        if (active)
+          bluetoothTimer = setTimeout(() => void pollBluetooth(), BLUETOOTH_POLL_INTERVAL_MS);
+      }
+    };
+    const pollCaptureDevices = async () => {
+      const api = window.electronAPI;
+      if (!api) {
+        if (active) {
+          captureTimer = setTimeout(
+            () => void pollCaptureDevices(),
+            CAPTURE_DEVICE_POLL_INTERVAL_MS,
+          );
+        }
+        return;
+      }
+      try {
+        try {
+          const inUse = await api.getCameraStatus();
+          if (active) setCameraInUse(inUse);
+        } catch (error) {
+          recordRendererError('device', error);
+        }
+        if (!active) return;
+        try {
+          const inUse = await api.getMicrophoneStatus();
+          if (active) setMicrophoneInUse(inUse);
+        } catch (error) {
+          recordRendererError('device', error);
+        }
+      } finally {
+        if (active)
+          captureTimer = setTimeout(
+            () => void pollCaptureDevices(),
+            CAPTURE_DEVICE_POLL_INTERVAL_MS,
+          );
       }
     };
 
-    fetchCamera();
-    const interval = setInterval(fetchCamera, 3000); // Check every 3 seconds
-    return () => clearInterval(interval);
-  }, []);
-  useEffect(() => {
-    const fetchMicrophone = async () => {
-      if (window.electronAPI?.getMicrophoneStatus) {
-        try {
-          const inUse = await window.electronAPI.getMicrophoneStatus();
-          setMicrophoneInUse(inUse);
-        } catch (e) {
-          console.error(e);
-        }
-      }
+    void pollCaptureDevices();
+    bluetoothTimer = setTimeout(() => void pollBluetooth(), CAPTURE_DEVICE_POLL_INTERVAL_MS);
+    return () => {
+      active = false;
+      if (bluetoothTimer) clearTimeout(bluetoothTimer);
+      if (captureTimer) clearTimeout(captureTimer);
     };
-
-    fetchMicrophone();
-    const interval = setInterval(fetchMicrophone, 3000); // Check every 3 seconds
-    return () => clearInterval(interval);
   }, []);
   useEffect(() => {
     const processCaptureQueue = () => {
@@ -135,5 +155,11 @@ export function useDeviceAlerts(setMode: Dispatch<SetStateAction<IslandMode>>) {
       }
     };
   }, [cameraInUse, microphoneInUse, setMode]);
-  return { bluetoothAlert, cameraInUse, cameraAlert, microphoneInUse, microphoneAlert };
+  return {
+    bluetoothAlert,
+    cameraInUse,
+    cameraAlert,
+    microphoneInUse,
+    microphoneAlert,
+  };
 }

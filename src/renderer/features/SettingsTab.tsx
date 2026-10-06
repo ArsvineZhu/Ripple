@@ -9,7 +9,9 @@ import {
   Plus,
   Star,
   Trash2,
+  ExternalLink,
 } from 'lucide-react';
+import { author, bugs, license, productName, repository, version } from '../../../package.json';
 import type { CSSProperties, ReactNode } from 'react';
 import { useEffect, useState } from 'react';
 import { TABS } from '../lib/tabs';
@@ -25,6 +27,9 @@ import { isValidSearchUrlTemplate } from '../lib/search';
 import { measureTextWidth } from '../lib/text';
 import type { IslandController } from '../hooks/useIslandController';
 import styles from './SettingsTab.module.css';
+
+const repositoryUrl = repository.url.replace(/\.git$/, '');
+const licenseUrl = `${repositoryUrl}/blob/main/LICENSE`;
 interface SectionProps {
   title: string;
   children: ReactNode;
@@ -226,7 +231,11 @@ export function SettingsTab(p: Props) {
     };
 
     const mutationObserver = new MutationObserver(measureContentWidth);
-    mutationObserver.observe(container, { childList: true, characterData: true, subtree: true });
+    mutationObserver.observe(container, {
+      childList: true,
+      characterData: true,
+      subtree: true,
+    });
     const resizeObserver = new ResizeObserver(measureContentWidth);
     resizeObserver.observe(container);
     measureContentWidth();
@@ -907,6 +916,63 @@ export function SettingsTab(p: Props) {
               </motion.div>
             ))}
           </AnimatePresence>
+        </div>
+      </Section>
+      <Section title={t('aboutSystem')}>
+        <div className={styles.aboutRows}>
+          <Field label={t('applicationName')}>
+            <span className={styles.aboutValue}>{productName}</span>
+          </Field>
+          <Field label={t('appVersion')}>
+            <span className={styles.aboutValue}>{version}</span>
+          </Field>
+          <Field label={t('developer')}>
+            <span className={styles.aboutValue}>{author.name}</span>
+          </Field>
+          <Field label={t('license')}>
+            <button
+              type="button"
+              className={styles.aboutLink}
+              onClick={() => void window.electronAPI.openExternal(licenseUrl)}
+            >
+              {license}
+              <ExternalLink size={13} aria-hidden="true" />
+            </button>
+          </Field>
+          <Field label={t('repository')}>
+            <button
+              type="button"
+              className={styles.aboutLink}
+              onClick={() => void window.electronAPI.openExternal(repositoryUrl)}
+            >
+              {repositoryUrl.replace(/^https:\/\//, '')}
+              <ExternalLink size={13} aria-hidden="true" />
+            </button>
+          </Field>
+          <Field label={t('feedback')}>
+            <button
+              type="button"
+              className={styles.aboutLink}
+              onClick={() => void window.electronAPI.openExternal(bugs.url)}
+            >
+              {t('reportIssue')}
+              <ExternalLink size={13} aria-hidden="true" />
+            </button>
+          </Field>
+          <div className={styles.aboutDiagnostic}>
+            <Field label={t('diagnostics')}>
+              <button
+                type="button"
+                className={styles.primaryButton}
+                onClick={() => {
+                  void window.electronAPI.openDiagnosticsFolder().catch(() => {});
+                }}
+              >
+                {t('openDiagnosticsFolder')}
+              </button>
+            </Field>
+            <InlineNotices area="settings" codes={['diagnosticsFolderOpenFailed']} />
+          </div>
         </div>
       </Section>
     </ElasticScrollArea>

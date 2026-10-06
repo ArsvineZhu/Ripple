@@ -10,7 +10,12 @@ export interface MediaTrack {
   source: string;
 }
 export const QuickAppTargetSchema = z.discriminatedUnion('kind', [
-  z.object({ kind: z.literal('desktop-entry'), desktopFile: z.string().min(1) }).strict(),
+  z
+    .object({
+      kind: z.literal('desktop-entry'),
+      desktopFile: z.string().min(1),
+    })
+    .strict(),
   z
     .object({
       kind: z.literal('command'),
@@ -36,7 +41,11 @@ export const QuickAppTargetSchema = z.discriminatedUnion('kind', [
 export type QuickAppTarget = z.infer<typeof QuickAppTargetSchema>;
 
 export const QuickAppSchema = z
-  .object({ id: z.string().min(1), name: z.string().min(1), target: QuickAppTargetSchema })
+  .object({
+    id: z.string().min(1),
+    name: z.string().min(1),
+    target: QuickAppTargetSchema,
+  })
   .strict();
 export type QuickApp = z.infer<typeof QuickAppSchema>;
 
@@ -69,6 +78,7 @@ export type NoticeCode =
   | 'backgroundModeFailed'
   | 'stateSaveFailed'
   | 'stateLoadFailed'
+  | 'diagnosticsFolderOpenFailed'
   | 'inputShapeFailed'
   | 'windowLoadFailed'
   | 'missingApiKey'
@@ -103,6 +113,7 @@ export function noticeAreaForCode(code: NoticeCode): NoticeArea {
     case 'autoLaunchFailed':
     case 'backgroundModeFailed':
     case 'stateSaveFailed':
+    case 'diagnosticsFolderOpenFailed':
     case 'secretStorageUnavailable':
       return 'settings';
     case 'stateLoadFailed':
@@ -137,16 +148,23 @@ interface AppBootstrap {
 }
 export interface InvokeMap {
   'get-app-bootstrap': { args: []; result: AppBootstrap };
+  'open-diagnostics-folder': { args: []; result: void };
   'update-app-state': { args: [patch: AppStatePatch]; result: AppState };
   'save-api-key': { args: [key: string]; result: void };
   'launch-quick-app': { args: [id: string]; result: void };
   'discover-apps': { args: [query: string]; result: AppEntry[] };
   'renderer-ready': { args: []; result: void };
-  'start-assistant': { args: [requestId: string, prompt: string]; result: void };
+  'start-assistant': {
+    args: [requestId: string, prompt: string];
+    result: string | null;
+  };
   'cancel-assistant': { args: [requestId: string]; result: void };
   'get-system-locale': { args: []; result: string };
   'set-ui-locale': { args: [locale: Locale]; result: void };
-  'set-ignore-mouse-events': { args: [ignore: boolean, forward: boolean]; result: void };
+  'set-ignore-mouse-events': {
+    args: [ignore: boolean, forward: boolean];
+    result: void;
+  };
   'get-system-media': { args: []; result: MediaTrack | null };
   'get-bluetooth-status': { args: []; result: boolean };
   'get-camera-status': { args: []; result: boolean };
@@ -162,12 +180,13 @@ export interface InvokeMap {
 }
 export interface ElectronAPI {
   getAppBootstrap(): Promise<AppBootstrap>;
+  openDiagnosticsFolder(): Promise<void>;
   updateAppState(patch: AppStatePatch): Promise<AppState>;
   saveApiKey(key: string): Promise<void>;
   launchQuickApp(id: string): Promise<void>;
   discoverApps(query: string): Promise<AppEntry[]>;
   rendererReady(): Promise<void>;
-  startAssistant(requestId: string, prompt: string): Promise<void>;
+  startAssistant(requestId: string, prompt: string): Promise<string | null>;
   cancelAssistant(requestId: string): Promise<void>;
   onAppNotice(callback: (notice: AppNotice) => void): () => void;
   onAssistantEvent(callback: (event: AssistantEvent) => void): () => void;

@@ -5,6 +5,7 @@ export interface InteractionBlockers {
   positionChanging: boolean;
   menuOpen: boolean;
   inputFocused: boolean;
+  assistantActive?: boolean;
 }
 
 interface MachineContext {

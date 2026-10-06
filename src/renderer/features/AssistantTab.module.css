@@ -217,17 +217,6 @@
   font-style: italic;
 }
 
-.assistantError {
-  display: block;
-  width: 100%;
-  padding: 10px 12px;
-  border: 1px solid color-mix(in srgb, #ff6969, transparent 45%);
-  border-radius: 12px;
-  background: color-mix(in srgb, #ff6969, transparent 94%);
-  overflow-wrap: anywhere;
-  box-sizing: border-box;
-}
-
 .anotherButton {
   cursor: pointer;
   border: none;

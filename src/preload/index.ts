@@ -8,6 +8,7 @@ function invoke<K extends keyof InvokeMap>(
   return ipcRenderer.invoke(channel, ...args);
 }
 const api: ElectronAPI = {
+  openDiagnosticsFolder: () => invoke('open-diagnostics-folder'),
   getSystemLocale: () => invoke('get-system-locale'),
   setUILocale: (locale) => invoke('set-ui-locale', locale),
   getAppBootstrap: () => invoke('get-app-bootstrap'),

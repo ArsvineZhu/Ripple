@@ -1,6 +1,22 @@
 import { useState, useEffect, useRef } from 'react';
 
 import type { MediaTrack } from '../../shared/contracts';
+import { recordRendererError } from '../lib/diagnostics';
+
+const MEDIA_POLL_INTERVAL_MS = 5000;
+
+function hasSameVisibleTrack(current: MediaTrack | null, next: MediaTrack | null): boolean {
+  if (current === next) return true;
+  if (!current || !next) return current === next;
+  return (
+    current.name === next.name &&
+    current.artist === next.artist &&
+    current.album === next.album &&
+    current.state === next.state &&
+    current.source === next.source &&
+    Boolean(current.artwork_url) === Boolean(next.artwork_url)
+  );
+}
 
 export function useMedia() {
   const [spotifyTrack, setSpotifyTrack] = useState<MediaTrack | null>(null);
@@ -30,20 +46,28 @@ export function useMedia() {
     return () => window.removeEventListener('blur', resetArtworkHover);
   }, []);
   useEffect(() => {
-    const fetchMedia = async () => {
-      if (window.electronAPI?.getSystemMedia) {
-        try {
-          const track = await window.electronAPI.getSystemMedia();
-          setSpotifyTrack(track);
-        } catch (e) {
-          console.error(e);
+    let active = true;
+    let timer: ReturnType<typeof setTimeout> | undefined;
+    const pollMedia = async () => {
+      try {
+        const track = await window.electronAPI?.getSystemMedia();
+        if (active) {
+          setSpotifyTrack((current) =>
+            hasSameVisibleTrack(current, track ?? null) ? current : (track ?? null),
+          );
         }
+      } catch (error) {
+        recordRendererError('media', error);
+      } finally {
+        if (active) timer = setTimeout(() => void pollMedia(), MEDIA_POLL_INTERVAL_MS);
       }
     };
 
-    fetchMedia();
-    const interval = setInterval(fetchMedia, 2000);
-    return () => clearInterval(interval);
+    void pollMedia();
+    return () => {
+      active = false;
+      if (timer) clearTimeout(timer);
+    };
   }, []);
   return {
     spotifyTrack,
