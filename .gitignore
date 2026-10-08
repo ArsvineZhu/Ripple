@@ -28,3 +28,6 @@ out/
 coverage/
 reports/
 *.tsbuildinfo
+
+# Repo-local pnpm store
+.pnpm-store/
