@@ -337,5 +337,14 @@ describe('Page swipe gestures', () => {
     await act(async () => navigation.finishTrackAnimation());
     expect(navigation.currentTabId).toBe(3);
     expect(navigation.trackX.get()).toBe(0);
+    // A ramping second swipe still counts as a new gesture after that tail.
+    const resumeStart = 1000 + (ramp.length + tail.length) * 16 + 150;
+    await feed(
+      [6, 14, 24, 34, 40, 40, 40, 40].map((deltaX) => [deltaX, 0] as [number, number]),
+      resumeStart,
+    );
+    await act(async () => vi.advanceTimersByTimeAsync(300));
+    await act(async () => navigation.finishTrackAnimation());
+    expect(navigation.currentTabId).toBe(4);
   });
 });
