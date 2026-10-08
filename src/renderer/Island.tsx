@@ -1,8 +1,10 @@
 import styles from './styles/Island.module.css';
 import { useOverlay } from './components/OverlayProvider';
-import { motion } from 'motion/react';
+import { motion, useTransform } from 'motion/react';
 import { AnimatePresence } from 'motion/react';
 import { useIslandController } from './hooks/useIslandController';
+import { useIslandSize } from './hooks/useIslandSize';
+import { largeTabHeight } from './lib/navigation';
 import { QuickView } from './components/QuickView';
 import { BrowserSearchTab } from './features/BrowserSearchTab';
 import { WorkflowsTab } from './features/WorkflowsTab';
@@ -13,6 +15,8 @@ import { ClipboardTab } from './features/ClipboardTab';
 import { TasksTab } from './features/TasksTab';
 import { SettingsTab } from './features/SettingsTab';
 import { useCallback, useEffect, useState } from 'react';
+import type { ReactNode } from 'react';
+import { SETTINGS_TAB_ID } from '../shared/appState';
 import { recordIslandContext } from './lib/diagnostics';
 export default function Island() {
   const controller = useIslandController();
@@ -55,11 +59,50 @@ export default function Island() {
     percent,
     alert,
     bluetoothAlert,
-    direction,
     currentTabId,
-    tabVariants,
+    previousTabId,
+    followingTabId,
+    previousTabWidth,
+    followingTabWidth,
+    pageTargets,
+    trackX,
+    pagingCommitRef,
+    positionMode,
     trackPointerPosition,
   } = controller;
+  const renderTab = (tabId: number, isCurrent: boolean): ReactNode => {
+    switch (tabId) {
+      case 0:
+        return <BrowserSearchTab {...controller} />;
+      case 1:
+        return <WorkflowsTab {...controller} />;
+      case 2:
+        return <OverviewTab {...controller} />;
+      case 3:
+        return <NowPlayingTab {...controller} />;
+      case 4:
+        return (
+          <AssistantTab
+            {...controller}
+            onAnswerContentSizeChange={setAssistantAnswerHeight}
+            resetAnswerContentSize={resetAssistantAnswerHeight}
+          />
+        );
+      case 5:
+        return <ClipboardTab {...controller} />;
+      case 6:
+        return <TasksTab {...controller} />;
+      case SETTINGS_TAB_ID:
+        // Settings measures and writes the shell width on mount, so it only mounts once current.
+        return isCurrent ? (
+          <SettingsTab {...controller} />
+        ) : (
+          <div className={styles.settingsPlaceholder} />
+        );
+      default:
+        return null;
+    }
+  };
   const reportIslandContext = useCallback(() => {
     const bounds = islandElementRef.current?.getBoundingClientRect();
     if (!bounds) return;
@@ -77,10 +120,69 @@ export default function Island() {
     window.addEventListener('resize', reportIslandContext);
     return () => window.removeEventListener('resize', reportIslandContext);
   }, [reportIslandContext]);
-  const animatedHeight =
-    mode === 'large' && currentTab === 4 && controller.asked
-      ? Math.min(Math.max(height, window.innerHeight - 80), Math.max(height, assistantAnswerHeight))
-      : height;
+  // Page heights match what the shell uses once that page is current (assistant grows with answers).
+  const pageHeight = (tabId: number) => {
+    const base = largeTabHeight(tabId, positionMode);
+    return tabId === 4 && controller.asked
+      ? Math.min(Math.max(base, window.innerHeight - 80), Math.max(base, assistantAnswerHeight))
+      : base;
+  };
+  const animatedHeight = mode === 'large' ? pageHeight(currentTab) : height;
+  const shell = useIslandSize({
+    resting: { width, height: animatedHeight },
+    currentTabId,
+    pagingCommitRef,
+    trackX,
+    pageTargets,
+    previous:
+      previousTabId === null
+        ? null
+        : { width: previousTabWidth, height: pageHeight(previousTabId) },
+    following:
+      followingTabId === null
+        ? null
+        : { width: followingTabWidth, height: pageHeight(followingTabId) },
+    onSettled: () => {
+      syncLinuxWindowShape();
+      reportIslandContext();
+    },
+  });
+  const pageSlots: {
+    tabId: number;
+    slot: 'previous' | 'current' | 'following' | 'shared';
+    width: number;
+    height: number;
+  }[] = [];
+  if (previousTabId !== null && previousTabId === followingTabId) {
+    pageSlots.push({
+      tabId: previousTabId,
+      slot: 'shared',
+      width: previousTabWidth,
+      height: pageHeight(previousTabId),
+    });
+  } else {
+    if (previousTabId !== null) {
+      pageSlots.push({
+        tabId: previousTabId,
+        slot: 'previous',
+        width: previousTabWidth,
+        height: pageHeight(previousTabId),
+      });
+    }
+    if (followingTabId !== null) {
+      pageSlots.push({
+        tabId: followingTabId,
+        slot: 'following',
+        width: followingTabWidth,
+        height: pageHeight(followingTabId),
+      });
+    }
+  }
+  pageSlots.push({ tabId: currentTabId, slot: 'current', width, height: animatedHeight });
+  // With only two visible pages the single neighbour sits on whichever side the rail is moving.
+  const sharedNeighbourLeft = useTransform(trackX, (x) => (x > 0 ? -previousTabWidth : width));
+  // Pages hang from the shell edge that stays put while it resizes.
+  const alignBottom = !!sideStyles.bottom && sideStyles.bottom !== 'auto';
   return (
     <motion.div
       id="Island"
@@ -140,8 +242,6 @@ export default function Island() {
         bottom: sideStyles.bottom || 'auto',
       }}
       animate={{
-        width: `${width}px`,
-        height: `${animatedHeight}px`,
         left: sideStyles.left,
         top: sideStyles.top || 'auto',
         bottom: sideStyles.bottom || 'auto',
@@ -174,6 +274,8 @@ export default function Island() {
         x: { duration: 0.15 },
       }}
       style={{
+        width: shell.width,
+        height: shell.height,
         backgroundImage: `url('${bgImage}')`,
         justifyContent: mode === 'large' && currentTab === 3 ? 'flex-start' : 'center',
         border:
@@ -211,49 +313,44 @@ export default function Island() {
       {/*Quickview*/}
       <QuickView {...controller} />
 
-      <AnimatePresence custom={direction} mode="popLayout">
+      <AnimatePresence>
         {mode === 'large' && (
           <motion.div
-            key={currentTabId}
-            custom={direction}
-            variants={tabVariants}
-            initial="enter"
-            animate="center"
-            exit="exit"
-            transition={{
-              x: { type: 'spring', stiffness: 400, damping: 40 },
-              opacity: { duration: 0.15 },
-            }}
-            className={styles.tabPanel}
+            key="pages"
+            className={styles.pageViewport}
+            initial={{ opacity: 0 }}
+            animate={{ opacity: 1 }}
+            exit={{ opacity: 0 }}
+            transition={{ duration: 0.15 }}
           >
-            {/*Browser Search*/}
-            {currentTab === 0 && <BrowserSearchTab {...controller} />}
-            {/* Workflows & Quick Apps */}
-            {currentTab === 1 && <WorkflowsTab {...controller} />}
-
-            {/*Overview tab*/}
-            {currentTab === 2 && <OverviewTab {...controller} />}
-
-            {/* Now Playing*/}
-            {currentTab === 3 && <NowPlayingTab {...controller} />}
-
-            {/* AI tab container */}
-            {currentTab === 4 && (
-              <AssistantTab
-                {...controller}
-                onAnswerContentSizeChange={setAssistantAnswerHeight}
-                resetAnswerContentSize={resetAssistantAnswerHeight}
-              />
-            )}
-
-            {/*Clipboard*/}
-            {currentTab === 5 && <ClipboardTab {...controller} />}
-
-            {/*Tasks*/}
-            {currentTab === 6 && <TasksTab {...controller} />}
-
-            {/*Settings Overhaul*/}
-            {currentTab === 7 && <SettingsTab {...controller} />}
+            <motion.div className={styles.pageRail} style={{ x: trackX }}>
+              {pageSlots.map(({ tabId, slot, width: slotWidth, height: slotHeight }) => (
+                // Keyed by tab id in one list, so a committed neighbour moves into place without remounting.
+                // Every page keeps its own size; only the shell around them resizes.
+                <motion.div
+                  key={tabId}
+                  className={styles.tabPanel}
+                  style={{
+                    width: slotWidth,
+                    height: slotHeight,
+                    left:
+                      slot === 'current'
+                        ? 0
+                        : slot === 'previous'
+                          ? -slotWidth
+                          : slot === 'following'
+                            ? width
+                            : sharedNeighbourLeft,
+                    top: alignBottom ? 'auto' : 0,
+                    bottom: alignBottom ? 0 : 'auto',
+                  }}
+                  aria-hidden={slot === 'current' ? undefined : true}
+                  inert={slot !== 'current'}
+                >
+                  {renderTab(tabId, slot === 'current')}
+                </motion.div>
+              ))}
+            </motion.div>
           </motion.div>
         )}
       </AnimatePresence>

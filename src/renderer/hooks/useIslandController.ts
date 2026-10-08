@@ -17,6 +17,7 @@ import { useMedia } from './useMedia';
 import { useSettingsContext } from '../components/SettingsProvider';
 import { modeReducer, resolveMode } from '../lib/modes';
 import { useNavigation } from './useNavigation';
+import { largeTabHeight, largeTabWidth } from '../lib/navigation';
 import { useWindowInput } from './useWindowInput';
 import { useAppState } from '../components/AppStateProvider';
 export function useIslandController() {
@@ -174,9 +175,14 @@ export function useIslandController() {
     moveTabOrder,
     toggleTabVisibility,
     currentTabId,
-    direction,
     currentTab,
-    tabVariants,
+    previousTabId,
+    followingTabId,
+    previousTabWidth,
+    followingTabWidth,
+    pageTargets,
+    trackX,
+    pagingCommitRef,
     clearClickSuppression,
     consumeClickSuppression,
     handleWheelSwipe,
@@ -184,7 +190,13 @@ export function useIslandController() {
     handlePointerDown,
     handlePointerMove,
     handlePointerUp,
-  } = useNavigation({ spotifyTrack, mode, isDragging, setMode });
+  } = useNavigation({
+    spotifyTrack,
+    mode,
+    isDragging,
+    setMode,
+    settingsContentWidth,
+  });
   useLayoutEffect(() => {
     setAssistantActive(currentTab === 4 && asked);
   }, [asked, currentTab, setAssistantActive]);
@@ -196,17 +208,10 @@ export function useIslandController() {
   const nowPlayingText = spotifyTrack ? `${trackTitle} • ${trackArtist}` : '';
   const textWidth = measureTextWidth(nowPlayingText) || nowPlayingText.length * 7;
   const nowPlayingWidth = Math.min(300, Math.max(122, Math.ceil(textWidth + 24 + 6 + 20)));
+  // Resting size of the current page; while paging the shell interpolates towards a neighbour.
   let width =
     mode === 'large'
-      ? currentTab === 7
-        ? (settingsContentWidth ?? 495)
-        : currentTab === 1
-          ? 480
-          : currentTab === 3
-            ? 330
-            : currentTab === 0
-              ? 405
-              : 380
+      ? largeTabWidth(currentTab, settingsContentWidth)
       : mode === 'quick' &&
           isPlaying &&
           !alert &&
@@ -225,22 +230,7 @@ export function useIslandController() {
           : isPlaying
             ? nowPlayingWidth
             : 170;
-  let height =
-    mode === 'large'
-      ? currentTab === 7
-        ? positionMode === 'free'
-          ? 425
-          : 345
-        : currentTab === 6
-          ? 250
-          : currentTab === 3
-            ? 150
-            : currentTab === 0
-              ? 120
-              : currentTab === 1
-                ? 210
-                : 190
-      : 40;
+  let height = mode === 'large' ? largeTabHeight(currentTab, positionMode) : 40;
   useEffect(() => {
     const savedDisplayId = appState.settings.displayId;
     if (savedDisplayId && window.electronAPI?.setDisplay) {
@@ -341,9 +331,14 @@ export function useIslandController() {
     nowPlayingWidth,
     time,
     weather,
-    direction,
     currentTabId,
-    tabVariants,
+    previousTabId,
+    followingTabId,
+    previousTabWidth,
+    followingTabWidth,
+    pageTargets,
+    trackX,
+    pagingCommitRef,
     browserSearch,
     setBrowserSearch,
     searchBrowser,

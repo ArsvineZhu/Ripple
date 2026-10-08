@@ -1,22 +1,44 @@
-import { isInteractiveTarget } from '../lib/interactions';
-import type { PointerEvent, WheelEvent, Dispatch, SetStateAction } from 'react';
+import type {
+  PointerEvent as ReactPointerEvent,
+  WheelEvent,
+  Dispatch,
+  SetStateAction,
+} from 'react';
+import { useState, useEffect, useLayoutEffect, useRef, useCallback, useMemo } from 'react';
+import { flushSync } from 'react-dom';
+import { animate, useMotionValue } from 'motion/react';
 import type { MediaTrack, IslandMode } from '../../shared/contracts';
 import { normalizeHiddenTabs, SETTINGS_TAB_ID } from '../../shared/appState';
-import { visibleTabIds, nextTabId } from '../lib/navigation';
-import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
-
+import { visibleTabIds, nextTabId, largeTabWidth } from '../lib/navigation';
+import {
+  advanceWheelStream,
+  clampTrack,
+  classifyWheel,
+  pageTargets as computePageTargets,
+  settleTrack,
+  wheelContentDelta,
+  TRACK_SPRING,
+  WHEEL_SETTLE_MS,
+} from '../lib/pageSwipe';
+import type { PageTargets, WheelStream } from '../lib/pageSwipe';
+import { isInteractiveTarget } from '../lib/interactions';
 import { TABS } from '../lib/tabs';
 import { useAppState } from '../components/AppStateProvider';
+
+type TrackAnimation = { stop: () => void };
+
 export function useNavigation({
   spotifyTrack,
   mode,
   isDragging,
   setMode,
+  settingsContentWidth = null,
 }: {
   spotifyTrack: MediaTrack | null;
   mode: IslandMode;
   isDragging: boolean;
   setMode: Dispatch<SetStateAction<IslandMode>>;
+  settingsContentWidth?: number | null;
 }) {
   const { state, updateState } = useAppState();
   const { tabOrder, hiddenTabs, defaultTabId } = state.settings;
@@ -41,56 +63,191 @@ export function useNavigation({
     () => visibleTabIds(tabOrder, hiddenTabs, isMusicActive),
     [tabOrder, hiddenTabs, isMusicActive],
   );
-  const [[currentTabId, direction], setTabState] = useState<[number, number]>(() => {
-    const id = visibleTabs.includes(defaultTabId) ? defaultTabId : (visibleTabs[0] ?? 0);
-    return [id, 0];
-  });
+  const [currentTabId, setCurrentTabId] = useState(() =>
+    visibleTabs.includes(defaultTabId) ? defaultTabId : (visibleTabs[0] ?? 0),
+  );
   const currentTab = currentTabId;
 
-  useEffect(() => {
-    if (visibleTabs.length > 0 && !visibleTabs.includes(currentTabId)) {
-      setTabState([visibleTabs[0], 0]);
-    }
-  }, [hiddenTabs, visibleTabs, currentTabId]);
-  const tabVariants = {
-    enter: (direction: number) => ({
-      x: direction > 0 ? 300 : direction < 0 ? -300 : 0,
-      opacity: 0,
-      scale: 0.95,
-      filter: 'blur(10px)',
-    }),
-    center: {
-      x: 0,
-      opacity: 1,
-      scale: 1,
-      filter: 'blur(0px)',
-    },
-    exit: (direction: number) => ({
-      x: direction < 0 ? 300 : direction > 0 ? -300 : 0,
-      opacity: 0,
-      scale: 0.95,
-      filter: 'blur(10px)',
-    }),
-  };
-  const wheelSwipeThreshold = 60;
-  const wheelLockout = useRef(false);
-  const wheelAccumulator = useRef(0);
-  const wheelResetTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
-  const swipeStartX = useRef<number | null>(0);
+  const previousTabId = visibleTabs.length > 1 ? nextTabId(visibleTabs, currentTabId, -1) : null;
+  const followingTabId = visibleTabs.length > 1 ? nextTabId(visibleTabs, currentTabId, 1) : null;
+  const previousTabWidth =
+    previousTabId === null ? 0 : largeTabWidth(previousTabId, settingsContentWidth);
+  const followingTabWidth =
+    followingTabId === null ? 0 : largeTabWidth(followingTabId, settingsContentWidth);
+  const pageTargets: PageTargets = computePageTargets({
+    previous: previousTabId === null ? null : previousTabWidth,
+    current: largeTabWidth(currentTabId, settingsContentWidth),
+    following: followingTabId === null ? null : followingTabWidth,
+  });
+
+  // Rail offset in the current page's coordinates; 0 shows it, positive moves content right.
+  const trackX = useMotionValue(0);
+  // Tab id most recently reached by paging, so the shell can hand its size over without a spring.
+  const pagingCommitRef = useRef<number | null>(null);
+  const animationRef = useRef<TrackAnimation | null>(null);
+  const pendingDirection = useRef<-1 | 0 | 1>(0);
+  const wheelStream = useRef<WheelStream | null>(null);
+  const wheelTimer = useRef<ReturnType<typeof setTimeout> | null>(null);
+  const wheelVelocity = useRef(0);
+  const activePointer = useRef<number | null>(null);
+  const pointerOriginX = useRef(0);
+  const swipeStartX = useRef(0);
   const swipeStartY = useRef(0);
   const swipeMoved = useRef(false);
   const suppressClick = useRef(false);
-  const swipeThreshold = 60;
+  const pointerListeners = useRef<{
+    move: (event: PointerEvent) => void;
+    up: (event: PointerEvent) => void;
+  } | null>(null);
+  const latest = useRef({ mode, isDragging, visibleTabs, currentTabId, pageTargets });
+  useLayoutEffect(() => {
+    latest.current = { mode, isDragging, visibleTabs, currentTabId, pageTargets };
+  });
+
+  const cancelWheelTimer = () => {
+    if (wheelTimer.current) clearTimeout(wheelTimer.current);
+    wheelTimer.current = null;
+  };
+  const detachPointerListeners = () => {
+    const listeners = pointerListeners.current;
+    if (!listeners) return;
+    window.removeEventListener('pointermove', listeners.move);
+    window.removeEventListener('pointerup', listeners.up);
+    window.removeEventListener('pointercancel', listeners.up);
+    pointerListeners.current = null;
+  };
+  // A stopped spring never resolves, so its pending page commit is dropped with it.
+  const stopSpring = () => {
+    pendingDirection.current = 0;
+    const controls = animationRef.current;
+    animationRef.current = null;
+    controls?.stop();
+    trackX.stop();
+  };
+  const resetTrack = () => {
+    cancelWheelTimer();
+    detachPointerListeners();
+    activePointer.current = null;
+    wheelStream.current = null;
+    stopSpring();
+    trackX.jump(0);
+  };
+
+  // Swaps the page synchronously; the layout effect below recentres the rail in the same pass.
+  const commitPage = (direction: 1 | -1) => {
+    const { mode: currentMode, visibleTabs: tabs, currentTabId: current } = latest.current;
+    if (currentMode !== 'large' || tabs.length < 2) return;
+    const next = nextTabId(tabs, current, direction);
+    if (next === current) return;
+    pagingCommitRef.current = next;
+    flushSync(() => setCurrentTabId(next));
+  };
+  const springTo = (target: number, direction: -1 | 0 | 1) => {
+    stopSpring();
+    if (latest.current.mode !== 'large') {
+      trackX.jump(0);
+      return;
+    }
+    pendingDirection.current = direction;
+    animationRef.current = animate(trackX, target, {
+      ...TRACK_SPRING,
+      onComplete: () => {
+        const pending = pendingDirection.current;
+        pendingDirection.current = 0;
+        animationRef.current = null;
+        if (pending !== 0) commitPage(pending);
+      },
+    });
+  };
+  /**
+   * A new gesture takes over the rail. If a commit spring is still running, its page change is
+   * applied first and the rail offset is re-expressed relative to the new page, so the next
+   * gesture moves on from there instead of pushing the same commit a second page.
+   */
+  const takeOverTrack = () => {
+    const direction = pendingDirection.current;
+    if (direction === 0) {
+      stopSpring();
+      return;
+    }
+    const { pageTargets: targets } = latest.current;
+    const x = trackX.get();
+    const rebased = direction > 0 ? x + targets.following : x - targets.previous;
+    stopSpring();
+    commitPage(direction);
+    trackX.jump(rebased);
+  };
+  const settle = (velocity: number) => {
+    cancelWheelTimer();
+    if (wheelStream.current) wheelStream.current.settled = true;
+    if (latest.current.mode !== 'large' || latest.current.isDragging) {
+      resetTrack();
+      return;
+    }
+    const decision = settleTrack({
+      x: trackX.get(),
+      velocity,
+      targets: latest.current.pageTargets,
+    });
+    springTo(decision.target, decision.direction);
+  };
+
+  useEffect(() => {
+    if (visibleTabs.length > 0 && !visibleTabs.includes(currentTabId)) {
+      pagingCommitRef.current = null;
+      setCurrentTabId(visibleTabs[0]);
+    }
+  }, [hiddenTabs, visibleTabs, currentTabId]);
+
+  // Swap pages and recentre in the same layout pass so the new page never flashes offset.
+  useLayoutEffect(() => {
+    trackX.jump(0);
+  }, [currentTabId, trackX]);
+
+  useEffect(() => {
+    if (mode !== 'large') resetTrack();
+    // resetTrack only touches refs and the stable motion value.
+    // oxlint-disable-next-line react-hooks/exhaustive-deps
+  }, [mode]);
+
+  useEffect(
+    () => () => {
+      cancelWheelTimer();
+      detachPointerListeners();
+      pendingDirection.current = 0;
+      animationRef.current?.stop();
+    },
+    // oxlint-disable-next-line react-hooks/exhaustive-deps
+    [],
+  );
+
   const moveTab = useCallback(
     (direction: number) => {
       if (mode !== 'large') {
         setMode('large');
         return;
       }
-      setTabState([nextTabId(visibleTabs, currentTabId, direction), direction]);
+      if (visibleTabs.length < 2) return;
+      cancelWheelTimer();
+      wheelStream.current = null;
+      takeOverTrack();
+      const step = direction > 0 ? 1 : -1;
+      const targets = latest.current.pageTargets;
+      springTo(step > 0 ? -targets.following : targets.previous, step);
     },
-    [mode, setMode, visibleTabs, currentTabId],
+    // oxlint-disable-next-line react-hooks/exhaustive-deps
+    [mode, setMode, visibleTabs],
   );
+
+  // Test seam: run the commit a naturally finished spring would perform.
+  const finishTrackAnimation = () => {
+    const pending = pendingDirection.current;
+    pendingDirection.current = 0;
+    animationRef.current?.stop();
+    animationRef.current = null;
+    if (pending !== 0) commitPage(pending);
+  };
+
   const clearClickSuppression = () => {
     suppressClick.current = false;
   };
@@ -99,34 +256,80 @@ export function useNavigation({
     suppressClick.current = false;
     return suppressed;
   };
-  const handleWheelSwipe = (e: WheelEvent<HTMLDivElement>) => {
-    if (wheelLockout.current || mode !== 'large' || isDragging) return;
-    if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) return;
-    let delta = e.deltaX;
-    if (e.deltaMode === 1) delta *= 40;
-    if (e.deltaMode === 2) delta *= 800;
-    wheelAccumulator.current += delta;
-    if (wheelResetTimeout.current) clearTimeout(wheelResetTimeout.current);
-    wheelResetTimeout.current = setTimeout(() => {
-      wheelAccumulator.current = 0;
-    }, 150);
 
-    if (Math.abs(wheelAccumulator.current) >= wheelSwipeThreshold) {
-      const isNext = wheelAccumulator.current > 0;
-      wheelLockout.current = true;
-      wheelAccumulator.current = 0;
-
-      moveTab(isNext ? 1 : -1);
-      setTimeout(() => {
-        wheelLockout.current = false;
-      }, 800);
+  const updatePointer = (clientX: number, clientY: number) => {
+    if (activePointer.current === null) return;
+    if (latest.current.mode !== 'large' || latest.current.isDragging) return;
+    const dx = clientX - swipeStartX.current;
+    const dy = clientY - swipeStartY.current;
+    if (Math.abs(dx) > 8 || Math.abs(dy) > 8) {
+      swipeMoved.current = true;
+      suppressClick.current = true;
     }
+    if (Math.abs(dy) > Math.abs(dx)) return;
+    trackX.set(clampTrack(pointerOriginX.current + dx, latest.current.pageTargets));
   };
-  const handlePointerDown = (e: PointerEvent<HTMLDivElement>) => {
+  const endPointer = (clientX: number, clientY: number) => {
+    if (activePointer.current === null) return;
+    activePointer.current = null;
+    detachPointerListeners();
+    setTimeout(() => {
+      suppressClick.current = false;
+    }, 100);
+    if (latest.current.mode !== 'large' || latest.current.isDragging) {
+      resetTrack();
+      return;
+    }
+    const dx = clientX - swipeStartX.current;
+    const dy = clientY - swipeStartY.current;
+    if (!swipeMoved.current || Math.abs(dx) <= Math.abs(dy)) {
+      settle(0);
+      return;
+    }
+    settle(trackX.getVelocity());
+  };
+
+  const handleWheelSwipe = (e: WheelEvent<HTMLDivElement>) => {
+    if (mode !== 'large' || isDragging || activePointer.current !== null) return;
+    if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) return;
+    const time = e.timeStamp || performance.now();
+    const delta = wheelContentDelta(e.deltaX, e.deltaMode);
+    const kind = classifyWheel(wheelStream.current, time, delta);
+    if (kind === 'new') {
+      cancelWheelTimer();
+      takeOverTrack();
+      wheelVelocity.current = 0;
+    }
+    wheelStream.current = advanceWheelStream(wheelStream.current, kind, time, delta);
+    // The rest of a settled stream (usually its momentum tail) belongs to the finished gesture.
+    if (kind === 'ignore') return;
+    const targets = latest.current.pageTargets;
+    const x = clampTrack(trackX.get() + delta, targets);
+    trackX.set(x);
+    const velocity = trackX.getVelocity();
+    if (velocity !== 0) wheelVelocity.current = velocity;
+    cancelWheelTimer();
+    // Reaching the neighbour commits at once; one stream can never page twice.
+    if (
+      (delta > 0 && targets.previous > 0 && x >= targets.previous) ||
+      (delta < 0 && targets.following > 0 && x <= -targets.following)
+    ) {
+      wheelStream.current.settled = true;
+      stopSpring();
+      commitPage(delta > 0 ? -1 : 1);
+      return;
+    }
+    wheelTimer.current = setTimeout(() => {
+      wheelTimer.current = null;
+      settle(wheelVelocity.current);
+    }, WHEEL_SETTLE_MS);
+  };
+
+  const handlePointerDown = (e: ReactPointerEvent<HTMLDivElement>) => {
     if (e.pointerType === 'mouse' && e.button !== 0) return;
     const target = e.target;
     if (!(target instanceof Element)) {
-      swipeStartX.current = null;
+      activePointer.current = null;
       return;
     }
     if (
@@ -136,45 +339,37 @@ export function useNavigation({
       target?.closest('#userinput') ||
       target?.id === 'userinput'
     ) {
-      swipeStartX.current = null;
+      activePointer.current = null;
       return;
     }
+    cancelWheelTimer();
+    wheelStream.current = null;
+    takeOverTrack();
+    activePointer.current = e.pointerId;
+    pointerOriginX.current = trackX.get();
     swipeStartX.current = e.clientX;
     swipeStartY.current = e.clientY;
     swipeMoved.current = false;
+    // Keep following the finger after it leaves the Island bounds.
+    detachPointerListeners();
+    const move = (event: PointerEvent) => {
+      if (event.pointerId === activePointer.current) updatePointer(event.clientX, event.clientY);
+    };
+    const up = (event: PointerEvent) => {
+      if (event.pointerId === activePointer.current) endPointer(event.clientX, event.clientY);
+    };
+    pointerListeners.current = { move, up };
+    window.addEventListener('pointermove', move);
+    window.addEventListener('pointerup', up);
+    window.addEventListener('pointercancel', up);
   };
-  const handlePointerMove = (e: PointerEvent<HTMLDivElement>) => {
-    if (swipeStartX.current === null || mode !== 'large') return;
-    const dx = Math.abs(e.clientX - swipeStartX.current);
-    const dy = Math.abs(e.clientY - swipeStartY.current);
-    if (dx > 8 || dy > 8) {
-      swipeMoved.current = true;
-      suppressClick.current = true;
-    }
+  const handlePointerMove = (e: ReactPointerEvent<HTMLDivElement>) => {
+    if (e.pointerId === activePointer.current) updatePointer(e.clientX, e.clientY);
   };
-  const handlePointerUp = (e: PointerEvent<HTMLDivElement>) => {
-    setTimeout(() => {
-      suppressClick.current = false;
-    }, 100);
-
-    if (swipeStartX.current === null) return;
-    const startX = swipeStartX.current;
-    const startY = swipeStartY.current;
-    swipeStartX.current = null;
-
-    if (mode !== 'large' || isDragging || wheelLockout.current) return;
-    if (!swipeMoved.current) return;
-
-    const dx = e.clientX - startX;
-    const dy = e.clientY - startY;
-    if (Math.abs(dx) < swipeThreshold || Math.abs(dx) <= Math.abs(dy)) return;
-
-    wheelLockout.current = true;
-    moveTab(dx > 0 ? -1 : 1);
-    setTimeout(() => {
-      wheelLockout.current = false;
-    }, 800);
+  const handlePointerUp = (e: ReactPointerEvent<HTMLDivElement>) => {
+    if (e.pointerId === activePointer.current) endPointer(e.clientX, e.clientY);
   };
+
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (
@@ -190,10 +385,13 @@ export function useNavigation({
         moveTab(-1);
       } else if (e.ctrlKey && e.key >= '1' && e.key <= '8') {
         const idx = parseInt(e.key) - 1;
-        if (visibleTabs[idx] !== undefined) {
-          const targetId = visibleTabs[idx];
+        const targetId = visibleTabs[idx];
+        if (targetId !== undefined) {
+          // Direct jumps skip the rail and let the shell spring to the new size.
+          resetTrack();
+          pagingCommitRef.current = null;
           setMode('large');
-          setTabState([targetId, targetId > currentTabId ? 1 : -1]);
+          setCurrentTabId(targetId);
         }
       }
     };
@@ -201,7 +399,9 @@ export function useNavigation({
     return () => {
       document.removeEventListener('keydown', handleKeyDown);
     };
-  }, [moveTab, currentTabId, visibleTabs, setMode]);
+    // oxlint-disable-next-line react-hooks/exhaustive-deps
+  }, [moveTab, visibleTabs, setMode]);
+
   return {
     tabOrder,
     hiddenTabs,
@@ -210,9 +410,15 @@ export function useNavigation({
     moveTabOrder,
     toggleTabVisibility,
     currentTabId,
-    direction,
     currentTab,
-    tabVariants,
+    previousTabId,
+    followingTabId,
+    previousTabWidth,
+    followingTabWidth,
+    pageTargets,
+    trackX,
+    pagingCommitRef,
+    finishTrackAnimation,
     clearClickSuppression,
     consumeClickSuppression,
     handleWheelSwipe,

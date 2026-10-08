@@ -148,7 +148,11 @@ describe('Island position and overlay lifecycle', () => {
         new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }),
       ),
     );
+    // Adjacent arrow keys spring the page rail first; the page commits only when the spring completes.
+    expect(navigation!.currentTabId).toBe(2);
+    await act(async () => navigation!.finishTrackAnimation());
     expect(navigation!.currentTabId).toBe(3);
+    expect(navigation!.trackX.get()).toBe(0);
     const overlay = document.createElement('div');
     overlay.setAttribute('data-island-overlay', '');
     overlay.innerHTML = '<div role="menu"></div>';
@@ -165,7 +169,105 @@ describe('Island position and overlay lifecycle', () => {
         new KeyboardEvent('keydown', { key: '8', ctrlKey: true, bubbles: true }),
       ),
     );
+    // Ctrl+number jumps straight to a non-adjacent page without animating the rail.
     expect(navigation!.currentTabId).toBe(7);
+    expect(navigation!.trackX.get()).toBe(0);
     expect(setMode).toHaveBeenLastCalledWith('large');
+  });
+});
+describe('Page swipe gestures', () => {
+  let navigation: ReturnType<typeof useNavigation>;
+  function NavigationHarness() {
+    const current = useNavigation({
+      mode: 'large',
+      isDragging: false,
+      setMode,
+      spotifyTrack: { name: 'Fixture', artist: 'Fixture', state: 'playing', source: 'fixture' },
+    });
+    useEffect(() => {
+      navigation = current;
+    });
+    return createElement('div', { id: 'pages' });
+  }
+  async function renderNavigation() {
+    await act(async () =>
+      root.render(
+        createElement(
+          NotificationProvider,
+          null,
+          createElement(
+            AppStateProvider,
+            { initialState: defaultAppState },
+            createElement(NavigationHarness),
+          ),
+        ),
+      ),
+    );
+  }
+  // Positive deltaX moves the content left, towards the following page.
+  async function wheel(deltas: number[], start: number, step = 16) {
+    await act(async () => {
+      deltas.forEach((deltaX, index) =>
+        navigation.handleWheelSwipe({
+          deltaX,
+          deltaY: 0,
+          deltaMode: 0,
+          timeStamp: start + index * step,
+        } as unknown as Parameters<typeof navigation.handleWheelSwipe>[0]),
+      );
+    });
+  }
+  const swipe = [40, 40, 40, 40, 40, 40, 40, 40, 40, 40, 40];
+  const momentumTail = [40, 36, 30, 22, 15, 10, 6, 4, 2, 1, 1];
+  it('turns one page for a wheel stream that ends in a momentum tail', async () => {
+    await renderNavigation();
+    expect(navigation.currentTabId).toBe(2);
+    await wheel([...swipe, ...momentumTail], 1000);
+    expect(navigation.currentTabId).toBe(3);
+    expect(navigation.trackX.get()).toBe(0);
+    await act(async () => vi.advanceTimersByTimeAsync(400));
+    expect(navigation.currentTabId).toBe(3);
+  });
+  it('turns two pages for two independent gestures', async () => {
+    await renderNavigation();
+    await wheel([...swipe, ...momentumTail], 1000);
+    expect(navigation.currentTabId).toBe(3);
+    await wheel(swipe, 2000);
+    expect(navigation.currentTabId).toBe(4);
+  });
+  it('turns back when the fingers reverse straight after a page turn', async () => {
+    await renderNavigation();
+    await wheel(swipe, 1000);
+    expect(navigation.currentTabId).toBe(3);
+    await wheel(
+      swipe.map((delta) => -delta),
+      1000 + swipe.length * 16,
+    );
+    expect(navigation.currentTabId).toBe(2);
+  });
+  it('snaps back when a short swipe is released below half a page', async () => {
+    await renderNavigation();
+    await wheel([4, 4, 4], 1000, 100);
+    await act(async () => vi.advanceTimersByTimeAsync(200));
+    expect(navigation.trackX.isAnimating() || navigation.trackX.get() === 0).toBe(true);
+    await act(async () => navigation.finishTrackAnimation());
+    expect(navigation.currentTabId).toBe(2);
+  });
+  it('turns one page per arrow key when pressed twice quickly', async () => {
+    await renderNavigation();
+    const press = () =>
+      act(async () =>
+        document.body.dispatchEvent(
+          new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }),
+        ),
+      );
+    await press();
+    expect(navigation.currentTabId).toBe(2);
+    // The second press lands the first page at once and springs on from the rebased rail.
+    await press();
+    expect(navigation.currentTabId).toBe(3);
+    await act(async () => navigation.finishTrackAnimation());
+    expect(navigation.currentTabId).toBe(4);
+    expect(navigation.trackX.get()).toBe(0);
   });
 });

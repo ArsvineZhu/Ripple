@@ -34,14 +34,29 @@
   transition: box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   pointer-events: auto;
 }
+/* Clips the page rail to the shell; the shell's own x is its screen position. */
+.pageViewport {
+  position: absolute;
+  inset: 0;
+  overflow: hidden;
+}
+/* Moved by the rail motion value; 0 shows the current page. */
+.pageRail {
+  position: absolute;
+  inset: 0;
+  will-change: transform;
+}
+/* Each page keeps its own fixed size and is placed inline beside the current one. */
 .tabPanel {
-  width: 100%;
-  height: 100%;
+  position: absolute;
   display: flex;
   flex-direction: column;
   align-items: center;
   justify-content: center;
-  position: absolute;
+}
+.settingsPlaceholder {
+  width: 100%;
+  height: 100%;
 }
 .overlay {
   position: absolute;

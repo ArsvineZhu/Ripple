@@ -1,6 +1,20 @@
 import { describe, expect, it } from 'vitest';
 import { parseCommand, tokenizeArgs } from '../src/main/platform/windows/commands';
-import { visibleTabIds, nextTabId } from '../src/renderer/lib/navigation';
+import {
+  visibleTabIds,
+  nextTabId,
+  largeTabWidth,
+  largeTabHeight,
+} from '../src/renderer/lib/navigation';
+import {
+  advanceWheelStream,
+  clampTrack,
+  classifyWheel,
+  interpolatePageSize,
+  pageTargets,
+  settleTrack,
+  wheelContentDelta,
+} from '../src/renderer/lib/pageSwipe';
 import { modeReducer, resolveMode } from '../src/renderer/lib/modes';
 import { islandInputRectangle, toDeviceRectangle } from '../src/shared/inputGeometry';
 import { noticeAreaForCode, noticeAreaForPatch } from '../src/shared/contracts';
@@ -38,6 +52,74 @@ describe('Island navigation and modes', () => {
     expect(visibleTabIds([3, 0], [], true)).toEqual([3, 0]);
     expect(visibleTabIds([7, 3, 0], [7], false)).toEqual([7, 0]);
     expect(nextTabId([], 2, 1)).toBe(2);
+  });
+  it('settles the follow swipe rail by projected distance or fling velocity', () => {
+    const targets = { previous: 405, following: 380 };
+    expect(settleTrack({ targets, x: 100, velocity: 0 })).toEqual({ target: 0, direction: 0 });
+    expect(settleTrack({ targets, x: 210, velocity: 0 })).toEqual({ target: 405, direction: -1 });
+    expect(settleTrack({ targets, x: -150, velocity: -300 })).toEqual({
+      target: -380,
+      direction: 1,
+    });
+    expect(settleTrack({ targets, x: 150, velocity: -900 })).toEqual({
+      target: -380,
+      direction: 1,
+    });
+    expect(
+      settleTrack({ targets: { previous: 405, following: 0 }, x: -300, velocity: 0 }).direction,
+    ).toBe(0);
+  });
+  it('moves wheel content with the fingers and keeps one gesture within one page', () => {
+    const targets = { previous: 405, following: 380 };
+    expect(wheelContentDelta(-12, 0)).toBe(12);
+    expect(wheelContentDelta(2, 1)).toBe(-80);
+    expect(clampTrack(900, targets)).toBe(405);
+    expect(clampTrack(-900, targets)).toBe(-380);
+    expect(largeTabWidth(7, null)).toBe(495);
+    expect(largeTabWidth(7, 610)).toBe(610);
+    expect(largeTabHeight(7, 'free')).toBe(425);
+    expect(largeTabHeight(7, 'top-center')).toBe(345);
+  });
+  it('pages by the previous width to the left and the current width to the right', () => {
+    expect(pageTargets({ previous: 405, current: 380, following: 330 })).toEqual({
+      previous: 405,
+      following: 380,
+    });
+    expect(pageTargets({ previous: null, current: 380, following: null })).toEqual({
+      previous: 0,
+      following: 0,
+    });
+  });
+  it('interpolates the shell size from the rail progress at p = 0, 0.5 and 1', () => {
+    const size = {
+      targets: { previous: 405, following: 380 },
+      base: { width: 380, height: 190 },
+      current: { width: 380, height: 190 },
+      previous: { width: 405, height: 120 },
+      following: { width: 480, height: 210 },
+    };
+    expect(interpolatePageSize({ ...size, x: 0 })).toEqual({ width: 380, height: 190 });
+    expect(interpolatePageSize({ ...size, x: -190 })).toEqual({ width: 430, height: 200 });
+    expect(interpolatePageSize({ ...size, x: -380 })).toEqual({ width: 480, height: 210 });
+    expect(interpolatePageSize({ ...size, x: 202.5 })).toEqual({ width: 392.5, height: 155 });
+    expect(interpolatePageSize({ ...size, x: 405 })).toEqual({ width: 405, height: 120 });
+    // A shell still springing elsewhere keeps its offset while paging.
+    expect(interpolatePageSize({ ...size, base: { width: 300, height: 100 }, x: -380 })).toEqual({
+      width: 400,
+      height: 120,
+    });
+  });
+  it('treats a momentum tail as part of its settled gesture', () => {
+    let stream = advanceWheelStream(null, 'new', 0, -40);
+    expect(classifyWheel(stream, 16, -40)).toBe('continue');
+    stream = { ...advanceWheelStream(stream, 'continue', 16, -40), settled: true };
+    expect(classifyWheel(stream, 32, -30)).toBe('ignore');
+    stream = advanceWheelStream(stream, 'ignore', 32, -30);
+    stream = advanceWheelStream(stream, 'ignore', 48, -12);
+    expect(classifyWheel(stream, 64, -8)).toBe('ignore');
+    expect(classifyWheel(stream, 64, -40)).toBe('new');
+    expect(classifyWheel(stream, 64, 6)).toBe('new');
+    expect(classifyWheel(stream, 300, -8)).toBe('new');
   });
   it('preserves standby precedence and explicit expansion', () => {
     expect(resolveMode('still', true, true)).toBe('quick');
