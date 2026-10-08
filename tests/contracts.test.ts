@@ -13,6 +13,7 @@ import {
   interpolatePageSize,
   pageTargets,
   settleTrack,
+  settleWheelStream,
   updateWheelGesture,
   wheelContentDelta,
 } from '../src/renderer/lib/pageSwipe';
@@ -155,6 +156,26 @@ describe('Island navigation and modes', () => {
       time += 16;
       expect(classifyWheel(decaying, time, -abs)).toBe('ignore');
       decaying = advanceWheelStream(decaying, 'ignore', time, -abs);
+    }
+  });
+  it('measures a settled tail from the event that settled it', () => {
+    // A fast swipe peaks long after its first, smallest event.
+    let stream = advanceWheelStream(null, 'new', 0, -8);
+    let time = 0;
+    for (const abs of [20, 34, 50, 70, 92, 110, 120]) {
+      time += 16;
+      stream = advanceWheelStream(stream, 'continue', time, -abs);
+    }
+    const settled = settleWheelStream(stream);
+    expect(settled.settled).toBe(true);
+    expect(settled.tailAbs).toBe(120);
+    expect(settled.resume).toBe(0);
+    // A tail below the settling event never resumes, however long it decays for.
+    let tail = settled;
+    for (const abs of [115, 105, 95, 85, 75, 66, 58, 50, 43, 36, 30, 24, 19, 14, 10, 6, 3]) {
+      time += 16;
+      expect(classifyWheel(tail, time, -abs)).toBe('ignore');
+      tail = advanceWheelStream(tail, 'ignore', time, -abs);
     }
   });
   it('preserves standby precedence and explicit expansion', () => {

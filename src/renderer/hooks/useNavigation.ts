@@ -14,6 +14,7 @@ import {
   clampTrack,
   pageTargets as computePageTargets,
   settleTrack,
+  settleWheelStream,
   updateWheelGesture,
   wheelContentDelta,
   TRACK_SPRING,
@@ -178,7 +179,7 @@ export function useNavigation({
   };
   const settle = (velocity: number) => {
     cancelWheelTimer();
-    if (wheelStream.current) wheelStream.current.settled = true;
+    if (wheelStream.current) wheelStream.current = settleWheelStream(wheelStream.current);
     if (latest.current.mode !== 'large' || latest.current.isDragging) {
       resetTrack();
       return;
@@ -315,7 +316,7 @@ export function useNavigation({
       (update.movement > 0 && targets.previous > 0 && x >= targets.previous) ||
       (update.movement < 0 && targets.following > 0 && x <= -targets.following)
     ) {
-      wheelStream.current.settled = true;
+      wheelStream.current = settleWheelStream(wheelStream.current);
       stopSpring();
       commitPage(update.movement > 0 ? -1 : 1);
       return;

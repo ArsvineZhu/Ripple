@@ -111,6 +111,15 @@ function lockWheelAxis(stream: WheelStream): WheelStream {
   return { ...stream, axis: horizontal ? 'horizontal' : 'vertical' };
 }
 
+/**
+ * Marks a stream settled and measures its tail from the event that settled it. A fast swipe peaks
+ * long after its first (smallest) event, so starting the baseline there would make every later
+ * tail event look like a re-acceleration and page again.
+ */
+export function settleWheelStream(stream: WheelStream): WheelStream {
+  return { ...stream, settled: true, tailAbs: stream.lastAbs, resume: 0 };
+}
+
 export function classifyWheel(
   stream: WheelStream | null,
   time: number,

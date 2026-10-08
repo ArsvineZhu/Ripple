@@ -324,4 +324,18 @@ describe('Page swipe gestures', () => {
     await act(async () => navigation.finishTrackAnimation());
     expect(navigation.currentTabId).toBe(3);
   });
+  it('turns one page for a long fast swipe with a long momentum tail', async () => {
+    await renderNavigation();
+    // A fast swipe ramps to a high peak, so its momentum tail stays large for a long time.
+    const ramp = [8, 20, 34, 50, 70, 92, 110, 120];
+    const tail = [120, 110, 100, 90, 80, 70, 60, 55, 50, 45, 40, 35, 30, 25, 20, 15, 10];
+    await feed(
+      [...ramp, ...tail].map((deltaX) => [deltaX, 0] as [number, number]),
+      1000,
+    );
+    await act(async () => vi.advanceTimersByTimeAsync(400));
+    await act(async () => navigation.finishTrackAnimation());
+    expect(navigation.currentTabId).toBe(3);
+    expect(navigation.trackX.get()).toBe(0);
+  });
 });
