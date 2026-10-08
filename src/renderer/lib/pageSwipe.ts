@@ -5,6 +5,12 @@ export const SHELL_SPRING = { type: 'spring' as const, stiffness: 400, damping: 
 export const WHEEL_SETTLE_MS = 120;
 /** A gap this long between wheel events always starts a new gesture. */
 const WHEEL_GAP_MS = 180;
+/** Movement needed before a wheel gesture commits to the rail or to vertical scrolling. */
+const AXIS_LOCK_DISTANCE = 10;
+/** 30px across with 32px down is still a swipe on the rail, not a scroll. */
+const AXIS_HORIZONTAL_RATIO = 0.6;
+/** Same-direction distance after a settled stream that can qualify as a new swipe. */
+const RESUME_DISTANCE = 16;
 const FLING_VELOCITY = 800;
 const PROJECT_SECONDS = 0.18;
 
@@ -84,7 +90,26 @@ export type WheelStream = {
   peakAbs: number;
   sign: number;
   settled: boolean;
+  /** Decided once from the first movement so a drifting swipe stays on a single axis. */
+  axis: 'horizontal' | 'vertical' | null;
+  /** Signed movement accumulated before the axis was decided. */
+  axisX: number;
+  axisY: number;
+  /** Same-direction distance accumulated after the stream settled. */
+  resume: number;
+  /** Smallest magnitude seen since the stream settled; a resume must rise clearly above it. */
+  tailAbs: number;
+  /** Set once the tail decays below 60% of its peak; a later re-acceleration is a new gesture. */
+  faded: boolean;
 };
+
+/** Decides the gesture axis as soon as there is enough movement to tell the axes apart. */
+function lockWheelAxis(stream: WheelStream): WheelStream {
+  if (stream.axis !== null) return stream;
+  if (Math.abs(stream.axisX) + Math.abs(stream.axisY) < AXIS_LOCK_DISTANCE) return stream;
+  const horizontal = Math.abs(stream.axisX) >= Math.abs(stream.axisY) * AXIS_HORIZONTAL_RATIO;
+  return { ...stream, axis: horizontal ? 'horizontal' : 'vertical' };
+}
 
 export function classifyWheel(
   stream: WheelStream | null,
@@ -97,9 +122,11 @@ export function classifyWheel(
   const sign = Math.sign(delta);
   // Momentum never reverses, so a reversal is a new finger movement.
   if (sign !== 0 && sign !== stream.sign && abs >= 1) return 'new';
-  // Momentum only decays; a sharp rise after the tail has faded is a new swipe.
-  const faded = stream.lastAbs < stream.peakAbs * 0.6;
-  if (faded && abs > Math.max(stream.lastAbs * 2, stream.lastAbs + 6)) return 'new';
+  // A settled stream only resumes once its tail has decayed and the fingers re-accelerate clearly
+  // above that tail, so a decaying momentum tail can never turn a second page.
+  const faded = stream.faded || stream.lastAbs < stream.peakAbs * 0.6;
+  const rising = abs >= Math.max(stream.tailAbs * 1.5, stream.tailAbs + 8);
+  if (faded && rising && stream.resume + abs >= RESUME_DISTANCE) return 'new';
   return 'ignore';
 }
 
@@ -108,17 +135,66 @@ export function advanceWheelStream(
   kind: 'new' | 'continue' | 'ignore',
   time: number,
   delta: number,
+  verticalDelta = 0,
 ): WheelStream {
   const abs = Math.abs(delta);
   const sign = Math.sign(delta);
   if (kind === 'new' || !stream) {
-    return { lastTime: time, lastAbs: abs, peakAbs: abs, sign, settled: false };
+    return lockWheelAxis({
+      lastTime: time,
+      lastAbs: abs,
+      peakAbs: abs,
+      sign,
+      settled: false,
+      axis: null,
+      axisX: delta,
+      axisY: verticalDelta,
+      resume: 0,
+      tailAbs: abs,
+      faded: false,
+    });
   }
-  return {
+  const axisLocked = stream.axis !== null;
+  const sameSign = sign === 0 || sign === stream.sign;
+  return lockWheelAxis({
     lastTime: time,
     lastAbs: abs,
     peakAbs: Math.max(stream.peakAbs, abs),
     sign: kind === 'continue' && sign !== 0 ? sign : stream.sign,
     settled: stream.settled,
+    axis: stream.axis,
+    axisX: axisLocked ? stream.axisX : stream.axisX + delta,
+    axisY: axisLocked ? stream.axisY : stream.axisY + verticalDelta,
+    resume: stream.settled && kind === 'ignore' && sameSign ? stream.resume + abs : stream.resume,
+    tailAbs: stream.settled ? Math.min(stream.tailAbs, abs) : stream.tailAbs,
+    faded: stream.faded || stream.lastAbs < stream.peakAbs * 0.6,
+  });
+}
+
+export type WheelGestureUpdate = {
+  stream: WheelStream;
+  kind: 'new' | 'continue' | 'ignore';
+  /** Rail movement for this event; the pre-lock accumulation lands on the deciding event. */
+  movement: number;
+  /** Whether a new horizontal gesture must take the rail over from any running spring. */
+  startsGesture: boolean;
+};
+
+/** Classifies one wheel event, decides the gesture axis and reports the movement it carries. */
+export function updateWheelGesture(
+  stream: WheelStream | null,
+  time: number,
+  deltaX: number,
+  deltaY: number,
+): WheelGestureUpdate {
+  const kind = classifyWheel(stream, time, deltaX);
+  const next = advanceWheelStream(stream, kind, time, deltaX, deltaY);
+  const horizontal = next.axis === 'horizontal';
+  const decidedNow = horizontal && stream?.axis !== 'horizontal';
+  return {
+    stream: next,
+    kind,
+    movement: horizontal && kind !== 'ignore' ? (decidedNow ? next.axisX : deltaX) : 0,
+    startsGesture: horizontal && kind === 'new',
   };
 }

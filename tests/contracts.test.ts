@@ -13,6 +13,7 @@ import {
   interpolatePageSize,
   pageTargets,
   settleTrack,
+  updateWheelGesture,
   wheelContentDelta,
 } from '../src/renderer/lib/pageSwipe';
 import { modeReducer, resolveMode } from '../src/renderer/lib/modes';
@@ -120,6 +121,41 @@ describe('Island navigation and modes', () => {
     expect(classifyWheel(stream, 64, -40)).toBe('new');
     expect(classifyWheel(stream, 64, 6)).toBe('new');
     expect(classifyWheel(stream, 300, -8)).toBe('new');
+  });
+  it('keeps a drifting swipe on the rail and leaves a vertical scroll alone', () => {
+    // 30px across with 32px down is a swipe on the rail, not a scroll.
+    const drifting = updateWheelGesture(null, 0, -30, -32);
+    expect(drifting.stream.axis).toBe('horizontal');
+    expect(drifting.movement).toBe(-30);
+    // A mostly vertical two-finger scroll never moves the rail.
+    const scrolling = updateWheelGesture(null, 0, -2, -32);
+    expect(scrolling.stream.axis).toBe('vertical');
+    expect(scrolling.movement).toBe(0);
+    // Movement gathered before the axis is decided lands on the event that decides it.
+    const undecided = updateWheelGesture(null, 0, -3, -3);
+    expect(undecided.stream.axis).toBeNull();
+    expect(undecided.movement).toBe(0);
+    const decided = updateWheelGesture(undecided.stream, 16, -9, -1);
+    expect(decided.stream.axis).toBe('horizontal');
+    expect(decided.movement).toBe(-12);
+  });
+  it('resumes a settled stream only for a clear re-acceleration above its tail', () => {
+    let stream = advanceWheelStream(null, 'new', 0, -40);
+    stream = { ...stream, settled: true };
+    stream = advanceWheelStream(stream, 'ignore', 16, -30);
+    stream = advanceWheelStream(stream, 'ignore', 32, -12);
+    // Coming back up to the current tail is still momentum.
+    expect(classifyWheel(stream, 48, -8)).toBe('ignore');
+    // Rising clearly above the decayed tail is a new swipe.
+    expect(classifyWheel(stream, 48, -24)).toBe('new');
+    // A tail that only decays never resumes, however long it lasts.
+    let decaying = { ...advanceWheelStream(null, 'new', 0, -40), settled: true };
+    let time = 0;
+    for (const abs of [36, 32, 28, 24, 20, 16, 12, 8, 4, 2, 1]) {
+      time += 16;
+      expect(classifyWheel(decaying, time, -abs)).toBe('ignore');
+      decaying = advanceWheelStream(decaying, 'ignore', time, -abs);
+    }
   });
   it('preserves standby precedence and explicit expansion', () => {
     expect(resolveMode('still', true, true)).toBe('quick');

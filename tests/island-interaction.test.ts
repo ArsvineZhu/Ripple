@@ -205,18 +205,26 @@ describe('Page swipe gestures', () => {
     );
   }
   // Positive deltaX moves the content left, towards the following page.
-  async function wheel(deltas: number[], start: number, step = 16) {
+  async function feed(frames: [number, number][], start: number, step = 16) {
     await act(async () => {
-      deltas.forEach((deltaX, index) =>
+      frames.forEach(([deltaX, deltaY], index) =>
         navigation.handleWheelSwipe({
           deltaX,
-          deltaY: 0,
+          deltaY,
           deltaMode: 0,
           timeStamp: start + index * step,
         } as unknown as Parameters<typeof navigation.handleWheelSwipe>[0]),
       );
     });
   }
+  const frames = (count: number, deltaX: number, deltaY: number): [number, number][] =>
+    Array.from({ length: count }, () => [deltaX, deltaY]);
+  const wheel = (deltas: number[], start: number, step = 16) =>
+    feed(
+      deltas.map((deltaX) => [deltaX, 0] as [number, number]),
+      start,
+      step,
+    );
   const swipe = [40, 40, 40, 40, 40, 40, 40, 40, 40, 40, 40];
   const momentumTail = [40, 36, 30, 22, 15, 10, 6, 4, 2, 1, 1];
   it('turns one page for a wheel stream that ends in a momentum tail', async () => {
@@ -269,5 +277,51 @@ describe('Page swipe gestures', () => {
     await act(async () => navigation.finishTrackAnimation());
     expect(navigation.currentTabId).toBe(4);
     expect(navigation.trackX.get()).toBe(0);
+  });
+  it('keeps paging when the two-finger swipe drifts diagonally', async () => {
+    await renderNavigation();
+    // 30px across with 32px down is still a swipe on the rail.
+    await feed(frames(12, 30, 32), 1000);
+    expect(navigation.trackX.get()).toBeCloseTo(-360, 5);
+    await act(async () => vi.advanceTimersByTimeAsync(200));
+    await act(async () => navigation.finishTrackAnimation());
+    expect(navigation.currentTabId).toBe(3);
+  });
+  it('leaves the rail alone for a two-finger vertical scroll', async () => {
+    await renderNavigation();
+    await feed(frames(12, 2, 32), 1000);
+    await act(async () => vi.advanceTimersByTimeAsync(400));
+    expect(navigation.trackX.get()).toBe(0);
+    expect(navigation.currentTabId).toBe(2);
+  });
+  it('turns a second page when the fingers resume inside the gesture gap', async () => {
+    await renderNavigation();
+    const tail = [36, 30, 22, 15, 10, 6, 3];
+    // A full swipe commits at the clamp; its tail decays before the fingers come back.
+    await feed(
+      [...frames(12, 40, 0), ...tail.map((deltaX) => [deltaX, 0] as [number, number])],
+      1000,
+    );
+    expect(navigation.currentTabId).toBe(3);
+    // 150ms later a ramping second swipe rises clearly above that decayed tail.
+    const resumeStart = 1000 + (12 + tail.length) * 16 + 150;
+    await feed(
+      [6, 14, 24, 34, 40, 40, 40, 40].map((deltaX) => [deltaX, 0] as [number, number]),
+      resumeStart,
+    );
+    await act(async () => vi.advanceTimersByTimeAsync(300));
+    await act(async () => navigation.finishTrackAnimation());
+    expect(navigation.currentTabId).toBe(4);
+  });
+  it('never turns a second page from a decaying momentum tail', async () => {
+    await renderNavigation();
+    const tail = [36, 32, 28, 24, 20, 16, 12, 8, 4, 2, 1];
+    await feed(
+      [...frames(12, 40, 0), ...tail.map((deltaX) => [deltaX, 0] as [number, number])],
+      1000,
+    );
+    await act(async () => vi.advanceTimersByTimeAsync(400));
+    await act(async () => navigation.finishTrackAnimation());
+    expect(navigation.currentTabId).toBe(3);
   });
 });

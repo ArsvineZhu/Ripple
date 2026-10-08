@@ -11,11 +11,10 @@ import type { MediaTrack, IslandMode } from '../../shared/contracts';
 import { normalizeHiddenTabs, SETTINGS_TAB_ID } from '../../shared/appState';
 import { visibleTabIds, nextTabId, largeTabWidth } from '../lib/navigation';
 import {
-  advanceWheelStream,
   clampTrack,
-  classifyWheel,
   pageTargets as computePageTargets,
   settleTrack,
+  updateWheelGesture,
   wheelContentDelta,
   TRACK_SPRING,
   WHEEL_SETTLE_MS,
@@ -291,32 +290,34 @@ export function useNavigation({
 
   const handleWheelSwipe = (e: WheelEvent<HTMLDivElement>) => {
     if (mode !== 'large' || isDragging || activePointer.current !== null) return;
-    if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) return;
     const time = e.timeStamp || performance.now();
-    const delta = wheelContentDelta(e.deltaX, e.deltaMode);
-    const kind = classifyWheel(wheelStream.current, time, delta);
-    if (kind === 'new') {
+    // Both axes are scaled the same way so a diagonal trackpad swipe keeps its intent.
+    const deltaX = wheelContentDelta(e.deltaX, e.deltaMode);
+    const deltaY = wheelContentDelta(e.deltaY, e.deltaMode);
+    const update = updateWheelGesture(wheelStream.current, time, deltaX, deltaY);
+    wheelStream.current = update.stream;
+    if (update.startsGesture) {
       cancelWheelTimer();
       takeOverTrack();
       wheelVelocity.current = 0;
     }
-    wheelStream.current = advanceWheelStream(wheelStream.current, kind, time, delta);
-    // The rest of a settled stream (usually its momentum tail) belongs to the finished gesture.
-    if (kind === 'ignore') return;
+    // A settled tail, an undecided axis or a vertical gesture never moves the rail. Events that
+    // stay on the rail keep the gesture alive even when they carry no horizontal movement.
+    if (update.stream.axis !== 'horizontal' || update.kind === 'ignore') return;
     const targets = latest.current.pageTargets;
-    const x = clampTrack(trackX.get() + delta, targets);
+    const x = clampTrack(trackX.get() + update.movement, targets);
     trackX.set(x);
     const velocity = trackX.getVelocity();
     if (velocity !== 0) wheelVelocity.current = velocity;
     cancelWheelTimer();
     // Reaching the neighbour commits at once; one stream can never page twice.
     if (
-      (delta > 0 && targets.previous > 0 && x >= targets.previous) ||
-      (delta < 0 && targets.following > 0 && x <= -targets.following)
+      (update.movement > 0 && targets.previous > 0 && x >= targets.previous) ||
+      (update.movement < 0 && targets.following > 0 && x <= -targets.following)
     ) {
       wheelStream.current.settled = true;
       stopSpring();
-      commitPage(delta > 0 ? -1 : 1);
+      commitPage(update.movement > 0 ? -1 : 1);
       return;
     }
     wheelTimer.current = setTimeout(() => {
