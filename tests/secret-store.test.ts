@@ -39,12 +39,11 @@ describe('encrypted API key storage', () => {
     }
   });
 
-  it('refuses weak or unavailable encryption without persisting a secret', async () => {
+  it('refuses unavailable encryption without persisting a secret', async () => {
     const userDataPath = await mkdtemp(path.join(tmpdir(), 'ripple-next-secret-'));
     const database = createAppStateStore(userDataPath);
     const crypto = {
-      isAsyncEncryptionAvailable: async () => true,
-      getSelectedStorageBackend: () => 'basic_text',
+      isAsyncEncryptionAvailable: async () => false,
       encryptStringAsync: vi.fn(async (value: string) => Buffer.from(value)),
       decryptStringAsync: vi.fn(),
     };
@@ -59,4 +58,30 @@ describe('encrypted API key storage', () => {
       await rm(userDataPath, { recursive: true, force: true });
     }
   });
+
+  // Rejecting the weak backend is Linux-only; macOS and Windows never report
+  // 'basic_text' and Electron exposes the backend query for Linux.
+  it.runIf(process.platform === 'linux')(
+    'refuses a weak Linux storage backend without persisting a secret',
+    async () => {
+      const userDataPath = await mkdtemp(path.join(tmpdir(), 'ripple-next-secret-'));
+      const database = createAppStateStore(userDataPath);
+      const crypto = {
+        isAsyncEncryptionAvailable: async () => true,
+        getSelectedStorageBackend: () => 'basic_text',
+        encryptStringAsync: vi.fn(async (value: string) => Buffer.from(value)),
+        decryptStringAsync: vi.fn(),
+      };
+      try {
+        await expect(createSecretStore(database, crypto).setApiKey('sk-secret')).rejects.toThrow(
+          'OS-backed secure storage is unavailable',
+        );
+        expect(database.hasSecret('api-key')).toBe(false);
+        expect(existsSync(path.join(userDataPath, 'credentials.bin'))).toBe(false);
+      } finally {
+        database.close();
+        await rm(userDataPath, { recursive: true, force: true });
+      }
+    },
+  );
 });
