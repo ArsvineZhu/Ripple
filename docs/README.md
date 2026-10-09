@@ -1,7 +1,9 @@
 [简体中文](README.zh-CN.md)
 
-# Documentation
+# Ripple Next documentation
 
-Start with the [catalog](INDEX.md). Users read the usage guide; contributors read development and the relevant source-scope README; maintainers read release validation.
+The [catalog](INDEX.md) leads to usage, development, platform support and release guidance. For a feature tour with screenshots, read the product README in [English](../README.md), [简体中文](../README.zh-CN.md), [繁體中文](../README.zh-TW.md) or [日本語](../README.ja.md).
 
-English and Simplified Chinese guides serve their respective readers. Update both when a change affects both audiences, and shape each guide for its reader rather than translating line by line. `AGENTS.md` files are technical English instructions and have no translations. Commands and identifiers remain unchanged across languages.
+User and contributor guides are maintained in English and Simplified Chinese. All four product READMEs share feature coverage, screenshots and getting-started information; localized guides can organize detail around their readers. Commands, filenames and identifiers stay unchanged. `AGENTS.md` files contain technical English instructions.
+
+Current behavior is documented in the guides and [4.0.0 release notes](releases/4.0.0.en.md). Versioned release notes describe published packages. Design proposals and implementation plans record decisions at the time they were written. Source types, package scripts and platform adapters own the implementation facts.

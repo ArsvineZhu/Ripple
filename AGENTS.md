@@ -5,6 +5,7 @@
 - Read the nearest source-scope README and AGENTS before changing its boundary.
 - Keep generated `.vite`, `out`, dependencies and reports out of Git.
 - Run `pnpm check` and `pnpm test` before integration; package after changing startup, IPC or build paths.
-- Update language-specific human documents for the readers affected by a change. Their structure and level of detail may differ; keep agent instructions in technical English.
+- Synchronize product READMEs in en, zh-CN, zh-TW and ja; maintain affected detailed guides in en/zh-CN. Keep agent instructions in technical English.
+- Write human documentation in direct, concrete language. Do not use defensive justification, apologetic positioning or boundary-seeking filler. Preserve user prose edits.
 - Use one agent unless the user explicitly requests delegation.
 - Track Objective, Decisions and Current Work; return to the authorized objective after investigation.
