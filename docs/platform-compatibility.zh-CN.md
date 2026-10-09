@@ -1,72 +1,88 @@
 [English](platform-compatibility.md)
 
-# Windows 深入适配与跨平台诊断
+# 平台支持与排障
 
-## 目标与决定
+Ripple Next 在 Windows、macOS、Linux 上共用界面和数据格式，通过各平台适配器接入媒体、已安装应用、设备和登录启动服务。
 
-Ripple Next 本来就是跨平台应用。本次工作深入适配 Windows、修正 macOS 功能缺口、扩大本地诊断范围，并由发生问题的控件承担反馈。现有 SQLite 状态和系统加密密钥的持久化约定继续适用。
+## 原生功能对照
 
-Windows Shell 接受激活请求后，就视为启动请求成功；Explorer 的退出码不能说明目标应用是否打开。普通可执行文件需等到进程成功创建。这些结果表示操作系统已接手，目标应用之后的健康状态由目标应用负责。
+| 功能           | Windows                              | macOS                                                 | Linux                                                  |
+| -------------- | ------------------------------------ | ----------------------------------------------------- | ------------------------------------------------------ |
+| 音乐           | GSMTC 会话、控制能力与封面           | AppleScript 读取运行中的 Spotify、Music；Spotify 封面 | 会话 D-Bus 上的 MPRIS、控制能力与封面                  |
+| 唤起播放器     | 缓存的应用标识／路径                 | 激活正在运行的应用                                    | 支持时使用 MPRIS Raise                                 |
+| 已安装快捷应用 | 开始菜单 `.lnk` 与 Store 标识        | 系统、共享、用户 Applications，含 Utilities           | XDG 桌面条目，经 `gio launch` 启动                     |
+| 登录启动       | 系统登录设置                         | 打包应用的原生登录项                                  | 当前 XDG 自启动目录中的 `ripple-next.desktop`          |
+| 透明窗口输入   | 按原生光标／岛边界切换穿透           | Electron 岛外点击穿透                                 | XWayland 上的 X11 `ShapeInput`                         |
+| 设备状态       | WinRT 蓝牙；摄像头／麦克风注册表探测 | 蓝牙与采集设备注册表探测                              | `bluetoothctl`、`fuser`、`pactl` 或 PipeWire `pw-dump` |
 
-快捷应用在自己的应用项下显示启动错误，工作流在自己的行下显示，媒体操作在媒体区域显示，设置错误紧邻对应设置。通用提示只提供所属界面中的文字反馈，不再绘制独立的暗红色圆角矩形。重试会清除旧启动错误，等待期间禁用重复点击。
+播放器发布受支持的媒体会话后才会出现；控制可用性由其能力决定。macOS 当前接入 Spotify／Music，Music 适配器读取元数据和控制，但尚未读取封面。摄像头／麦克风提示依据系统和驱动提供的探测信息。
 
-## 截图问题与平台检查
+## 封面与多播放器
 
-原实现用 `execFile('explorer.exe', [identifier])` 激活 Store 应用，并把 Explorer 的非零退出状态当作启动失败，所以 ChatGPT 已经打开，Ripple 仍然报错。本机 `Get-StartApps` 确认，截图中的 `OpenAI.Codex_2p2nqsd0c76g0!App` 是 Windows 注册给 ChatGPT 的启动标识。修复使用 `Start-Process` 的原生 Shell 激活结果，本机有效标识成功，不存在的标识失败。
+Linux 从 `mpris:artUrl` 获取封面，本地读取上限为 5 MiB。保留已有扩展名格式支持；扩展名无法识别时，根据 PNG／JPEG／GIF／WebP 文件签名决定 data URL 的 MIME。文件缺失、过大或无法读取时，歌曲和控制仍保持可用。图片解码失败显示音乐占位图，切换会话或封面 URL 后重试。
 
-| 范围         | 修复结果                                                                                                                                     |
-| ------------ | -------------------------------------------------------------------------------------------------------------------------------------------- |
-| 应用发现     | 修正脚本反斜杠转义，使用 Windows 已知文件夹，保留 `.lnk` 参数和工作目录。发现失败不再伪装成空列表；缓存原子写入，并合并并发重建。            |
-| 命令与工作流 | 只规范化可执行文件路径，保留 URL 和 `/` 开关；等待各目标的启动结果，一个失败后仍继续后续目标。                                               |
-| Windows 媒体 | 本机日志确认 WinRT COM 对象没有 `GetAwaiter` 方法；改为共享的 `AsTask` 转换，媒体读取与控制共同使用。                                        |
-| 蓝牙         | 原 PnP 枚举在本机超时，且设备存在不代表已连接；改为查询经典蓝牙和低功耗蓝牙的实际连接状态。                                                  |
-| 剪贴板       | 原浏览器权限路径在失焦时持续失败；改为经过校验的 Electron 原生文本读写。历史仍仅存在于当前会话，跳过空文本和纯图片。复制失败由复制按钮显示。 |
-| Linux/macOS  | 消除系统命令失败被吞掉的问题，统一参数数组、执行超时和异步失败传播；Linux 无播放器是正常状态，macOS 播放/暂停使用正确的 AppleScript 指令。   |
-| 启动与窗口   | 保留 Windows 鼠标穿透和 Linux X11 ShapeInput 各自的实现，补充启动能力、显示器缩放、休眠/恢复及显示器变化记录。                               |
-| 测试         | 修正密钥存储测试的 Linux 假设，CI 检查与测试扩展到 Ubuntu、Windows 和 macOS。                                                                |
+Windows 通过共用的类型化 CLR 桥接读取 GSMTC 元数据、封面和控制，将 WinRT `IAsyncOperation<T>` 经 `AsTask` 转换后等待。macOS 分别查询运行中的 Spotify／Music 字典，避免请求查找未安装的播放器。
 
-## 新诊断范围
+媒体服务负责选择：自动模式优先活动播放器并保留合适会话；手动选择在本次运行中保持，直到会话消失。Linux 会话标识包含唯一 D-Bus owner，因此重新启动的播放器是新会话。播放命令携带当前卡片的会话 ID，旧会话关闭后不会把旧命令转交其他播放器。
 
-开发启动通过原生 ESM 导入调用 Forge 启动 API，避免 CLI 每次都额外执行 pnpm 配置查询。Vite 只优化 `index.html` 入口，忽略 `.codegraph` 和 `out`；此前 `.codegraph` 内的依赖备份拖慢了 renderer 启动。Windows 输入由主进程以 DIP 比较原生鼠标位置与 Island 区域，拖动时保持捕获，移出后穿透，不再依赖透明窗口先收到 hover 才能恢复输入。
+音乐页以 A 加稳定排序的圆点表示来源。连续纵向手势最多换一张卡片，横向手势切换功能页。选择请求串行执行，快速输入保留最新目标。键盘操作与单播放器行为见[使用指南](../instructions.zh-CN.md)。
 
-Windows/macOS 使用工作区，置顶层级低于任务栏/Dock。Windows 额外留出 2 DIP 边缘，应对自动隐藏和缩放取整。启动不激活窗口，明确的聚焦操作仍生效；各平台同步显示器变化。
+## Linux 配置与恢复
 
-Windows 输入清理保存初始化时的 WebContents 引用，并保证只执行一次。应用退出和窗口关闭都会停止轮询、移除输入监听，不再从已销毁的 BrowserWindow 获取 WebContents。
+透明窗口使用 X11／XWayland，占据所选显示器的工作区；只有 `ShapeInput` 随 Island 动画变化。保持 X11 客户端静态打包，自启动入口保留 `--ozone-platform=x11`。用 `ShapeBounding` 做动画会导致黑色闪烁。启动先等待 renderer 就绪并确认首次输入区域，再显示窗口。
 
-macOS 搜索系统、共享及用户 Applications 文件夹和 Utilities 子目录，跳过应用内部的辅助程序。登录项设置恢复为调用原生 API 并核对系统结果。媒体查询先确认正在运行的播放器，只编译对应应用的 AppleScript，避免额外的 System Events 授权及缺少 Spotify 时查找应用的弹窗。
+| 现象                            | 检查或处理                                                                                                                            |
+| ------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------- |
+| 旧构建报告 `spawn pactl ENOENT` | 使用更新构建。当前代码在 `pactl` 缺失时改用 `pw-dump --no-colors`；PipeWire 系统若两个命令都没有，安装发行版提供 `pw-dump` 的工具包。 |
+| 麦克风状态不可用                | 确认音频后端能连接当前用户会话。PipeWire 检测运行中的 `Stream/Input/Audio` 节点；后端选择保持到 Ripple 重启。                         |
+| 蓝牙／摄像头探测失败            | 检查 `bluetoothctl`／`fuser` 是否存在，以及相应设备的访问权限；连接和权限错误可在诊断中查看。                                         |
+| 已安装应用无法启动              | 检查桌面条目与 `gio launch`；移动或移除应用后重新选择入口。                                                                           |
+| 无法保存 AI 密钥                | 解锁／配置系统凭据服务并重启 Ripple；Linux 拒绝使用明文加密后端。                                                                     |
+| 开发时 sandbox 报错             | 使用版本匹配、root 所有且权限为 `4755` 的 Chromium sandbox helper，见[开发指南](development.zh-CN.md)。                               |
+| 岛外点击被拦截                  | 检查 XWayland 与诊断中的首次 ShapeInput 确认；修改主进程／preload 输入代码后重启。                                                    |
 
-界面不再显示编码脚本和原始命令输出，诊断保留安全错误码与 cause。Windows 子进程使用 `windowsHide`；本机原生探测发现 `-WindowStyle Hidden` 会异常退出或丢失输出，因此已撤回这个参数。
+自定义命令由可执行文件和独立 argv 启动。工作流中的 `localhost:3000/` 在文件路径判断之前识别为 URL，交给默认浏览器；浏览器已打开但页面失败时，检查浏览器关联和端口 3000 上的服务。
 
-Windows 安装包工具链中，可选 EXE 图标提取器在指定 Node 版本下编译失败。MSI 已显式指定仓库提供的 `.ico`，无需调用该 addon，因此禁用其构建。本次验证到打包应用，MSI 编译仍需构建机提供 WiX。
+## Windows 与 macOS
 
-设置页“诊断 → 打开诊断文件夹”会打开 `<userData>/diagnostics/`，Windows 上通常是 `%APPDATA%\Ripple Next\diagnostics`。主进程与 renderer 共享会话 ID，可串联一次运行。
+Windows 保留原 `.lnk` 启动，延续快捷方式参数和工作目录。Store 目标通过 PowerShell `Start-Process` 原生 Shell 激活；可执行文件等待 spawn 事件。应用发现共享并发重建操作，缓存原子写入。启动反馈显示在被点击的快捷应用或工作流旁。
 
-日志覆盖运行版本、系统与架构、显示器数量与缩放、输入/媒体后端、安全存储可用性、窗口与子进程生命周期、休眠/恢复、显示器变化、AI 请求阶段，以及 IPC 操作名、状态与耗时。启动、发现、媒体、设备、剪贴板、持久化和设置操作可以定位到具体通道。
+Windows 按 DIP 比较光标和 Island 边界，拖动时保留输入捕获，岛外释放。窗口位于工作区内，并为自动隐藏边缘和分数缩放额外留出 2 DIP。首次显示不激活窗口，明确请求焦点时才激活；关闭时统一清理输入监听和轮询。Windows 保持其他应用获得焦点时的可见动画；macOS／Linux 保留隐藏窗口节流。
 
-健康轮询记录首次结果；相同失败每分钟最多记录一次，累计被抑制的重复次数，恢复时记录恢复事件。错误保留系统错误码、信号、真实栈帧和有限 cause 链；Windows 命令失败保留原生 HRESULT。原序列化误收录的多行 PowerShell stderr 已排除。
+macOS 发现应用程序包时不遍历包内部；AppleScript 媒体控制可能需要自动化权限。登录项注册检查原生结果，可靠注册要求已打包、签名并公证的应用。当前打包使用 ad-hoc 签名，开发构建会提示登录项注册不可用。
 
-日志不记录命令输出、IPC 参数与返回内容、剪贴板内容、应用名称与目标、AI 正文、密钥或配置的服务地址。文本日志在 5 MiB 时轮转；启动时跨 Crashpad 子目录清理 `.dmp`，删除超过 30 天的报告并保留最新 10 份，同时保留元数据。minidump 关闭上传，保存在本机，可能包含内存中的用户数据。
+切换开发系统后从锁文件重新安装依赖。已安装应用的标识依赖平台，迁移配置后重新选择这些快捷应用；系统加密的 API 密钥也可能需要重新填写。
 
-## 当前工作与验证边界
+## 手势与反馈
 
-Windows 触控板采集复现了惯性尾部持续顶住边缘、新手势早于 150 毫秒空隙到达的问题。主进程现在转发 `gestureScrollBegin` 与 `gestureFlingCancel` 开始边界并去重成对信号，preload 仅传递经过校验的时间戳。输入减弱时弹性推力衰减，持续的弹簧运动保留回弹及再次输入时的位置与速度；标签切换使用连续环形位置，同向新请求从正在进入的页面接着走，不在半途替换内容。主进程或 preload 改动后必须完整重启才能验收桥接，单独的页面热更新不会安装主进程监听器。
+较长面板使用原生纵向滚动。连续横向输入最多前进一个循环相邻页，保留稳定页面标识、连续动画、模糊和尺寸插值，额外位移产生有界弹性。允许少量横向手势漂移；明显的纵向输入由内容持有。
 
-macOS 截图暴露出共享的交互问题。纵向滚动已改用原生 overflow，移除 smooth-scrollbar 的二次惯性与回弹。横向按方向触发切换，一段连续输入最多切相邻一页，首尾循环，保留模糊；窗口尺寸与切换进度同步，动画完成前可以反向。大幅滑动最多产生 28 像素弹性位移，不露出第三页。页面键保持稳定，方向键重复输入使用最新状态。原生开始信号区分新触控板手势；其他来源以 150 毫秒空隙作为后备，不设距离触发阈值或动画锁。
+主进程合并 Chromium `gestureScrollBegin`／`gestureFlingCancel` 后，以仅含时间戳的事件传给 preload。没有原生边界的设备使用 150 ms 静默间隔，以及持续衰减尾部／重新上升输入规则。主进程和 preload 的修改需要重启应用才能验证。
 
-运行验证还复现了启动时的充电提示在 1.5 秒后收起用户刚打开的页面。电池与设备提醒现在保留展开状态，出现和结束时都不打断展开页面。Electron 自动验证覆盖原生纵向滚动范围、轻微横向输入、首尾循环、大幅滑动限制、模糊与大小进度、途中反向、滚动位置保留和正常退出；macOS 的实际手势及能耗仍在 Mac 上验收。
+启动、媒体、设置和剪贴板复制错误显示在对应功能旁。电池／设备提醒保留用户已展开的页面。分钟时钟按分钟边界更新，原生滚动避免持续动画循环；剪贴板与设备轮询在岛折叠后继续运行。
 
-能耗修正移除了滚动库的永久动画循环，将只显示分钟的时钟改为分钟边界更新，并让 macOS 摄像头与麦克风共享一次注册表查询。macOS/Linux 保留隐藏窗口节流，收起时仍保留设备提醒和剪贴板历史。透明窗口目前仍占用工作区，macOS 蓝牙和媒体仍使用有界轮询；本次减少了已确认的重复工作，高能耗提示是否消失仍需 Mac 实机测量。
+## 本地诊断
 
-新启动实测 Island 在数秒内出现。用户确认自动隐藏任务栏已恢复，当前运行暂未再出现终端闪出和焦点抢占；35 秒原生窗口观察也记录到 Ripple 查询子进程正常运行，未出现可见控制台或前台激活。
+进入**设置 → 诊断 → 打开诊断文件夹**。位置为 `<userData>/diagnostics/`，Windows 通常是 `%APPDATA%\Ripple Next\diagnostics`。
 
-本机 WebGL 实际使用 Intel Iris Xe 的 ANGLE/D3D11，GPU 合成和光栅化已启用。165 Hz 屏幕上可见窗口的帧回调约为 164–165 FPS；这表示帧调度结果，不能据此保证所有动画性能。Windows 常驻窗口关闭后台节流，让其他应用获得焦点时仍能正常更新可见动画；macOS 和 Linux 保留隐藏窗口节流。诊断新增硬件加速、合成、光栅化、WebGL 状态，以及 Windows 捕获/穿透转换，不记录鼠标坐标。
+主进程与 renderer 共享 session ID。记录包括运行版本、显示器缩放、原生后端与安全存储可用性、窗口／进程生命周期、睡眠恢复、显示器变化、GPU 状态，以及 IPC 通道、结果和耗时。健康轮询记录首次结果；重复相同失败计数，每分钟最多记一次，恢复后另记。
 
-主要修复已实现。Windows 验证使用 Node `22.23.3` 和 pnpm `12.9.1`，执行完整检查、单元测试和生产打包，并通过原生 PowerShell/WinRT 探测及打包 renderer 的启动验证。运行验证覆盖应用发现、剪贴板访问、成功的 Shell 激活和真实的可执行文件不存在错误。
+错误保留堆栈、代码、信号和有限层级的原因；Windows 原生错误可包含 HRESULT。AI 记录请求 ID、时间、分片数量与回答长度。命令和输出、IPC 参数和结果、应用目标、端点 URL、密钥、剪贴板、提问和回答均排除在日志之外。主日志达到 5 MiB 时轮转。
 
-本机不能替代 Linux/macOS 的硬件和安装包验收；两端的调整经过源码检查与跨平台单元测试，原生验收在各自系统执行。Windows 摄像头/麦克风指示读取系统使用记录，macOS 读取驱动属性，均是尽力而为的探测，不能保证覆盖所有驱动与应用。
+崩溃转储不上传。启动时跨 Crashpad 子目录清理超过 30 天的转储，只保留最新 10 个 `.dmp`，保留元数据。Minidump 包含进程快照，分享前检查。反馈问题时请提供版本、系统／桌面、失败操作、复现步骤和经过检查的相关日志。
 
-macOS 登录项可靠生效需要正式打包、签名和公证，当前打包只提供临时签名。开发版本明确报告登录项设置不可用。
+## 验证记录
 
-更换开发环境时保留锁文件并重新执行 `pnpm install --frozen-lockfile`，不要搬运另一系统的 `node_modules`。Linux 桌面入口和 Windows/macOS 应用标识均与各自平台绑定，需要在目标系统重新选择已安装应用。数据库与状态格式继续沿用现有约定。
+CI 在 Ubuntu、Windows、macOS 上执行静态检查和测试；发布打包覆盖 Linux x64、Windows x64、macOS x64／arm64。打包验证构建集成，各主机原生行为按[发布验收](release.zh-CN.md)逐项检查。
 
-实现依据见英文版的 Microsoft API 链接。
+2026 年 10 月的 Linux 更新完成完整检查、测试、Linux 打包，并验证无扩展名封面、默认浏览器的实际工作流启动，以及 PipeWire 采集活动回到空闲。宣传截图取自真实 Linux renderer 的独立演示配置。此前 Windows 适配验证过原生 Shell／WinRT，以及打包应用的启动和剪贴板；新 Windows／macOS 版本继续在对应主机执行验收。
+
+## 协议与 API 参考
+
+- [MPRIS 元数据与封面](https://specifications.freedesktop.org/mpris/latest/Track_List_Interface.html#Mapping:Metadata_Map)
+- [Microsoft ShellExecuteEx](https://learn.microsoft.com/en-us/windows/win32/api/shellapi/nf-shellapi-shellexecuteexa)
+- [PowerShell Start-Process](https://learn.microsoft.com/en-us/powershell/module/microsoft.powershell.management/start-process)
+- [WinRT AsTask](https://learn.microsoft.com/en-us/dotnet/api/system.windowsruntimesystemextensions.astask)
+- [蓝牙连接选择器](https://learn.microsoft.com/en-us/uwp/api/windows.devices.bluetooth.bluetoothdevice.getdeviceselectorfromconnectionstatus)
+- [Electron BrowserWindow](https://www.electronjs.org/docs/latest/api/browser-window)
+- [Electron app、GPU 与登录项](https://www.electronjs.org/docs/latest/api/app)

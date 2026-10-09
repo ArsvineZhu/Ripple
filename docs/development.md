@@ -2,13 +2,14 @@
 
 # Development
 
-Use Node `22.23.3` from [.node-version](../.node-version) and pnpm `12.9.1` from `package.json`. The current toolchain requires Node 22.13 or newer. Linux packaging needs `dpkg`, `fakeroot`, `rpm` and build tools. Optional system features use `bluetoothctl`, `fuser` and `pactl`. Windows MSI creation needs WiX Toolset; macOS packaging needs Xcode Command Line Tools. Run native makers on their matching host.
+Use Node `22.23.3` from [.node-version](../.node-version) and pnpm `12.9.1` from `package.json`. The current toolchain requires Node 22.13 or newer. Linux packaging needs `dpkg`, `fakeroot`, `rpm` and build tools. Optional system features use `bluetoothctl` and `fuser`. Microphone detection uses `pactl`; when it is missing, Ripple switches to `pw-dump` on PipeWire systems and reads active audio capture streams. The chosen backend is retained until restart. Command/connection failures remain diagnostic errors. Windows MSI creation needs WiX Toolset; macOS packaging needs Xcode Command Line Tools. Run native makers on their matching host.
 
 ```sh
 pnpm install --frozen-lockfile
 pnpm start
 pnpm check
 pnpm test
+pnpm package
 pnpm make
 ```
 
@@ -51,3 +52,9 @@ Crash-report uploads are disabled. Assistant logs record request IDs, lifecycle 
 Linux uses a transparent XWayland window sized to the selected display's work area so desktop panels remain visible. Only X11 `ShapeInput` follows the animated Island rectangle; changing `ShapeBounding` can introduce black flashes. The X11 client remains statically imported and bundled. Background mode requests `_NET_WM_STATE_SKIP_TASKBAR` through the existing X11 client. The window is shown only after renderer readiness and confirmation of the first input region. See [main](../src/main/README.md), [preload](../src/preload/README.md) and [renderer](../src/renderer/README.md).
 
 Forge cleans `.vite` before starting and packaging. Generated `.vite`, `out`, reports and `node_modules` are excluded from Git. The [documentation catalog](INDEX.md) links guides for each audience.
+
+## Working on a release
+
+`pnpm package` produces a runnable directory; `pnpm make` also runs the configured native installer/archive makers. The [release guide](release.md) owns the version/tag process and runtime acceptance. Restart the full application after main or preload changes; renderer hot updates only replace renderer code. Use a separate profile for capture fixtures and disruptive runtime checks.
+
+The [four product READMEs](INDEX.md) introduce features; this guide owns toolchain commands. Update paired technical guides and visible screenshots when behavior changes. [Capture notes](assets/screenshots/README.md) describe the demo-data policy.

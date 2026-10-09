@@ -96,3 +96,71 @@ it('ignores an old pending poll after manual selection and refreshes control res
   expect(control).toHaveBeenCalledWith('playpause', 'one');
   expect(hook.mediaTrack?.state).toBe('paused');
 });
+it('serializes selection and retains the latest target while a previous selection is pending', async () => {
+  let complete!: (result: { snapshot: MediaSnapshot; error: null }) => void;
+  const select = vi
+    .fn()
+    .mockImplementationOnce(
+      () =>
+        new Promise((resolve) => {
+          complete = resolve;
+        }),
+    )
+    .mockResolvedValue({ snapshot: snapshot('automatic'), error: null });
+  await mount({
+    getSystemMedia: vi.fn().mockResolvedValue(snapshot('old')),
+    selectMediaSession: select,
+  });
+  let operation!: Promise<void>;
+  await act(async () => {
+    operation = hook.selectMediaSession('one');
+  });
+  await act(async () => {
+    void hook.selectMediaSession('two');
+    void hook.selectMediaSession(null);
+  });
+  expect(select.mock.calls).toEqual([['one']]);
+  expect(hook.mediaBusy).toBe(true);
+  expect(hook.mediaPageId).toBeNull();
+  await act(async () => {
+    complete({ snapshot: { ...snapshot('manual'), manualSessionId: 'one' }, error: null });
+    await operation;
+  });
+  expect(select.mock.calls).toEqual([['one'], [null]]);
+  expect(hook.mediaPageId).toBeNull();
+  expect(hook.mediaBusy).toBe(false);
+  expect(hook.mediaTrack?.artwork_url).toBe('automatic');
+});
+it('queues selection during a command and restores the confirmed page when selection fails', async () => {
+  let complete!: (result: { snapshot: MediaSnapshot; error: null }) => void;
+  const select = vi
+    .fn()
+    .mockResolvedValue({ snapshot: snapshot('current'), error: 'mediaSessionGone' });
+  const control = vi.fn(
+    () =>
+      new Promise((resolve) => {
+        complete = resolve;
+      }),
+  );
+  await mount({
+    getSystemMedia: vi.fn().mockResolvedValue(snapshot('current')),
+    selectMediaSession: select,
+    controlSystemMedia: control,
+  });
+  let operation!: Promise<void>;
+  await act(async () => {
+    operation = hook.controlMedia('playpause', 'one');
+  });
+  await act(async () => {
+    void hook.selectMediaSession('gone');
+  });
+  expect(hook.mediaPageId).toBe('gone');
+  expect(select).not.toHaveBeenCalled();
+  await act(async () => {
+    complete({ snapshot: snapshot('current'), error: null });
+    await operation;
+  });
+  expect(select).toHaveBeenCalledWith('gone');
+  expect(hook.mediaPageId).toBeNull();
+  expect(hook.mediaActionError).toBe('mediaSessionGone');
+});

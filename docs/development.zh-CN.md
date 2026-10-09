@@ -2,13 +2,14 @@
 
 # 开发指南
 
-使用 [.node-version](../.node-version) 中的 Node `22.23.3`，并使用 `package.json` 固定的 pnpm `12.9.1`。当前工具链要求 Node 22.13 或更新版本。Linux 打包需要 `dpkg`、`fakeroot`、`rpm` 和构建工具；可选系统功能使用 `bluetoothctl`、`fuser`、`pactl`。Windows MSI 需要 WiX Toolset，macOS 打包需要 Xcode Command Line Tools。在对应系统运行原生 maker。
+使用 [.node-version](../.node-version) 中的 Node `22.23.3`，并使用 `package.json` 固定的 pnpm `12.9.1`。当前工具链要求 Node 22.13 或更新版本。Linux 打包需要 `dpkg`、`fakeroot`、`rpm` 和构建工具；可选系统功能使用 `bluetoothctl` 与 `fuser`。麦克风检测使用 `pactl`；缺少此工具时，在 PipeWire 系统上切换到 `pw-dump`，读取正在运行的音频采集流。选中的检测后端保持到应用重启，命令或连接失败仍记录为诊断错误。Windows MSI 需要 WiX Toolset，macOS 打包需要 Xcode Command Line Tools。在对应系统运行原生 maker。
 
 ```sh
 pnpm install --frozen-lockfile
 pnpm start
 pnpm check
 pnpm test
+pnpm package
 pnpm make
 ```
 
@@ -51,3 +52,9 @@ Ripple Next 将 `ripple-next.log` 写入 `<userData>/diagnostics/`，Electron mi
 Linux 使用透明 XWayland 窗口，并限制在所选显示器的工作区内，以保留桌面面板。仅让 X11 `ShapeInput` 跟随动画中的 Island；修改 `ShapeBounding` 可能出现黑边。X11 客户端保持静态导入并打入安装包。后台模式通过同一 X11 客户端请求 `_NET_WM_STATE_SKIP_TASKBAR`。窗口需等 renderer ready 且首次输入区域得到确认后才显示。边界说明见[主进程](../src/main/README.zh-CN.md)、[preload](../src/preload/README.zh-CN.md)和[renderer](../src/renderer/README.zh-CN.md)。
 
 Forge 在启动和打包前清理 `.vite`；`.vite`、`out`、报告和 `node_modules` 不纳入 Git。各类读者的说明见[文档目录](INDEX.zh-CN.md)。
+
+## 正式版工作
+
+`pnpm package` 生成可运行目录，`pnpm make` 同时执行配置的原生安装包／归档 maker。[发布指南](release.zh-CN.md)维护版本／标签流程和运行验收。修改主进程或 preload 后重启整个应用，renderer 热更新只替换界面代码。截图数据与会改变状态的运行验证使用独立配置。
+
+[四语产品 README](INDEX.zh-CN.md)介绍功能，本指南维护工具链命令。行为变化时同步双语技术指南与界面截图；演示数据规则见[拍摄说明（英语）](assets/screenshots/README.md)。

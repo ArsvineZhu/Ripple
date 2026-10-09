@@ -1,5 +1,19 @@
 import { readdir } from 'node:fs/promises';
+import { z } from 'zod';
 import { runCommand } from '../../services/processes';
+
+let microphoneBackend: 'pactl' | 'pw-dump' = 'pactl';
+const pipeWireObjects = z.array(
+  z.object({
+    type: z.string(),
+    info: z
+      .object({
+        state: z.string().optional(),
+        props: z.record(z.string(), z.unknown()).optional(),
+      })
+      .nullish(),
+  }),
+);
 
 export async function getBluetoothStatus(): Promise<boolean> {
   return (await runCommand('bluetoothctl', ['devices', 'Connected'])).trim().length > 0;
@@ -21,5 +35,19 @@ export async function getCameraStatus(): Promise<boolean> {
 }
 
 export async function getMicrophoneStatus(): Promise<boolean> {
-  return /Source #/.test(await runCommand('pactl', ['list', 'source-outputs']));
+  if (microphoneBackend === 'pactl') {
+    try {
+      return /Source #/.test(await runCommand('pactl', ['list', 'source-outputs']));
+    } catch (error) {
+      if ((error as { code?: unknown })?.code !== 'ENOENT') throw error;
+      microphoneBackend = 'pw-dump';
+    }
+  }
+  const objects = pipeWireObjects.parse(JSON.parse(await runCommand('pw-dump', ['--no-colors'])));
+  return objects.some(
+    (object) =>
+      object.type === 'PipeWire:Interface:Node' &&
+      object.info?.state === 'running' &&
+      object.info.props?.['media.class'] === 'Stream/Input/Audio',
+  );
 }

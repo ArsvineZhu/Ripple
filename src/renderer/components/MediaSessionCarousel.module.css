@@ -1,0 +1,67 @@
+.carousel {
+  position: relative;
+  display: flex;
+  width: 100%;
+  flex: 1;
+  min-height: 0;
+  outline: none;
+}
+.viewport {
+  position: relative;
+  flex: 1;
+  min-width: 0;
+  overflow: hidden;
+}
+.page {
+  position: absolute;
+  inset: 0;
+  display: flex;
+  align-items: center;
+}
+.indicators {
+  width: 26px;
+  flex-shrink: 0;
+  margin-right: 8px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: safe center;
+  overflow-y: auto;
+  scrollbar-width: none;
+}
+.indicator {
+  width: 24px;
+  min-height: 22px;
+  padding: 0;
+  border: 0;
+  border-radius: 6px;
+  background: none;
+  color: inherit;
+  opacity: 0.35;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: opacity 0.15s ease;
+}
+.indicator:hover {
+  opacity: 0.7;
+}
+.indicator[aria-checked='true'] {
+  opacity: 1;
+}
+.indicator:focus-visible,
+.carousel:focus-visible {
+  outline: 1px solid var(--control-focus);
+  outline-offset: -2px;
+}
+.auto {
+  font-size: 11px;
+  font-weight: 600;
+}
+.dot {
+  width: 5px;
+  height: 5px;
+  border-radius: 50%;
+  background: currentColor;
+}

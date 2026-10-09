@@ -45,6 +45,7 @@ export const en = {
   backgroundImageFailed: 'Could not load the background image. Check the address and file.',
   mediaPlayer: 'Player',
   mediaAutomatic: 'Automatic',
+  mediaOpenPlayer: 'Open {{player}}',
   mediaReadFailed: 'Playback information is temporarily unavailable.',
   mediaSessionGone: 'The selected player is no longer available.',
   mediaCommandUnsupported: 'This player does not support this control right now.',

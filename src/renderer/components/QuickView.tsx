@@ -3,7 +3,7 @@ import typography from '../styles/typography.module.css';
 import { useTranslation } from 'react-i18next';
 import { AnimatePresence } from 'motion/react';
 import { motion } from 'motion/react';
-import { Music } from 'lucide-react';
+import { MediaArtwork } from './MediaArtwork';
 import { Pause } from 'lucide-react';
 import { Play } from 'lucide-react';
 import { Zap } from 'lucide-react';
@@ -33,10 +33,6 @@ type Props = Pick<
   | 'controlMedia'
   | 'openMediaSession'
   | 'hideNotActiveIslandEnabled'
-  | 'setAlbumHovered'
-  | 'setAlbumRotation'
-  | 'albumRotation'
-  | 'albumHovered'
   | 'textColor'
   | 'textWidth'
   | 'nowPlayingWidth'
@@ -65,10 +61,6 @@ export function QuickView({
   trackTitle,
   trackArtist,
   hideNotActiveIslandEnabled,
-  setAlbumHovered,
-  setAlbumRotation,
-  albumRotation,
-  albumHovered,
   textColor,
   textWidth,
   nowPlayingWidth,
@@ -103,7 +95,7 @@ export function QuickView({
           !microphoneAlert ? (
             <motion.div
               className={styles['playing']}
-              key={mediaTrack?.name ? `playing-${mediaTrack.name}-${mediaTrack.artist}` : 'playing'}
+              key={mediaTrack?.id ?? 'playing'}
               initial={{ opacity: 0, filter: 'blur(4px)', scale: 0.98 }}
               animate={{ opacity: 1, filter: 'blur(0px)', scale: 1 }}
               exit={{ opacity: 0, filter: 'blur(4px)', scale: 0.98 }}
@@ -114,42 +106,13 @@ export function QuickView({
               }}
             >
               <div className={styles['trackRow']}>
-                {mediaTrack?.artwork_url ? (
-                  <div className={styles['artworkFrame']}>
-                    <img
-                      className={styles['artwork']}
-                      src={mediaTrack.artwork_url}
-                      onClick={() => void openMediaSession(mediaTrack.id)}
-                      onMouseEnter={() => setAlbumHovered(true)}
-                      onMouseLeave={() => {
-                        setAlbumHovered(false);
-                        setAlbumRotation({ x: 0, y: 0 });
-                      }}
-                      onMouseMove={(e) => {
-                        const rect = e.currentTarget.getBoundingClientRect();
-                        const centerX = rect.left + rect.width / 2;
-                        const centerY = rect.top + rect.height / 2;
-                        const deltaX = e.clientX - centerX;
-                        const deltaY = e.clientY - centerY;
-                        const maxDistance =
-                          Math.sqrt(rect.width * rect.width + rect.height * rect.height) / 2;
-                        const angleX = (deltaY / maxDistance) * 35;
-                        const angleY = (deltaX / maxDistance) * -35;
-                        setAlbumRotation({ x: angleX, y: angleY });
-                      }}
-                      style={{
-                        transform: `rotateX(${albumRotation.x}deg) rotateY(${albumRotation.y}deg) scale(${albumHovered ? 1.25 : 1}) translateZ(0)`,
-                        filter: albumHovered
-                          ? 'drop-shadow(0 10px 20px rgba(0,0,0,0.4))'
-                          : 'drop-shadow(0 2px 4px rgba(0,0,0,0.1))',
-                      }}
-                    />
-                  </div>
-                ) : (
-                  <div className={styles['artworkPlaceholder']}>
-                    <Music size={14} color={textColor} />
-                  </div>
-                )}
+                <MediaArtwork
+                  session={mediaTrack}
+                  compact
+                  disabled={mediaBusy}
+                  textColor={textColor}
+                  onOpen={(id) => void openMediaSession(id)}
+                />
                 <div
                   className={styles['trackClip']}
                   style={{

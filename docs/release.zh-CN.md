@@ -1,17 +1,68 @@
 [English](release.md)
 
-# 打包与运行验收
+# 打包与发布验收
 
-在匹配的平台运行 `pnpm check`、`pnpm test` 和 `pnpm make`。目标分支为 `main` 或 `master` 的 PR 会运行 CI 检查，不会打包。推送与 `package.json` 版本一致的 `v<版本号>` 标签后，GitHub Actions 会构建 macOS x64/arm64、Windows x64 和 Linux x64 安装包，并创建包含 DEB/RPM/ZIP、MSI 和 DMG 的 GitHub Release。安装包和 Actions 产物使用 `RippleNext-<platform>` 标识。发布工作流失败后，也可以在对应版本标签上手动运行，以重新验证并发布。
+产品名为 **Ripple Next**，包名为 `ripple-next`，macOS bundle ID 为 `com.arsvinezhu.ripple-next`。使用[开发指南](development.zh-CN.md)规定的 Node／pnpm 工具链。
 
-当前 beta 版说明见[简体中文](releases/4.0.0-beta.2.zh-CN.md)和[English](releases/4.0.0-beta.2.en.md)。产品/软件包标识为 `ripple-next` / `Ripple Next`，macOS bundle ID 为 `com.arsvinezhu.ripple-next`。Ripple Next 将状态和已加密的 API key 密文保存在平台专属用户数据目录中的 `ripple-next.sqlite`。编号 schema migration 位于 `src/main/database/migrations/`，运行时 SQL 存放于 `.sql` 资源。旧 Ripple 数据目录不会读取或迁移。Linux 自启动只会在当前 XDG 自启动目录中创建和删除 Ripple Next 自己的 `ripple-next.desktop`。
+## 构建软件包
 
-Linux 应用通过 XDG 桌面入口发现并由 `gio launch` 启动；自定义命令的 argv 参数逐项传递，不使用 shell。X11 helper 静态打包。Linux 启动在 renderer ready 且通过查询确认 ShapeInput 区域后才显示窗口。Linux 自动启动入口保留 `--ozone-platform=x11`。RPM 暂存保留 root 所有的 SUID sandbox helper。
+```sh
+pnpm check
+pnpm test
+pnpm package
+pnpm make
+```
+
+`package` 在 `out` 生成可运行的应用目录，`make` 在 `out/make` 生成安装包／归档。原生 maker 在对应主机执行：Linux 需要 DEB／RPM 工具，Windows MSI 需要 WiX，macOS 需要 Xcode Command Line Tools。具体依赖由开发指南维护。
+
+| 构建目标         | 分发形式           |
+| ---------------- | ------------------ |
+| Linux x64        | DEB、RPM、便携 ZIP |
+| Windows x64      | MSI、便携 ZIP      |
+| macOS x64／arm64 | DMG、便携 ZIP      |
+
+安装包与 Actions 构件使用 `RippleNext-<platform>` 命名，生成输出不纳入 Git。
+
+## 准备与发布版本
+
+1. 从已集成变更整理 `docs/releases/<version>.en.md` 与 `.zh-CN.md`，可参考 [4.0.0 说明](releases/4.0.0.zh-CN.md)。已发布说明保持与当时软件包对应。
+2. 设置目标版本，核对依赖与锁文件，同步四语 README、截图和受影响指南。
+3. 完成检查、测试，以及以下打包／运行验收。
+4. 确定发布后推送 `v<version>`，标签必须与 `package.json` 一致。
+
+指向 `main`／`master` 的 PR 在 Ubuntu、Windows、macOS 执行检查和测试；匹配的 `v*` 标签触发 Linux x64、Windows x64、macOS x64／arm64 打包，再创建 GitHub Release。`-beta.2` 等版本后缀生成预发布版。可以在匹配版本标签上手动触发工作流重试。
+
+两个语言说明文件齐全时，CI 合并使用；两者均不存在时使用 GitHub 自动生成说明；只有一个文件时发布失败。beta.1／beta.2 双语说明列于[文档目录](INDEX.zh-CN.md)。下载入口指向 Ripple Next 发布列表或具体标签，GitHub Latest 可能仍指向旧版 Ripple。
 
 ## 运行验收
 
-检查托盘显示/隐藏/退出、启动、Island 透明显示、区域外点击、悬停/点击模式、反复展开/收起、方向键/滚轮/Ctrl 数字导航、全部 Tab、主题、显示器/位置、Tab 排序/隐藏/默认选择和重启后的状态。检查 Linux 已安装应用搜索/启动、自定义命令参数和工作目录、网址、工作流、剪贴板、AI Base URL/模型/API key/取消请求、概览/天气/电量、媒体控制和错误提示。硬件/媒体提醒需要对应设备或来源。
+在可运行的软件包中检查以下行为；涉及删除数据／凭据的操作使用独立测试配置：
 
-鼠标离开行为需验证 0–2000 毫秒延迟、重新进入/菜单/焦点/拖动时取消收起，以及 Island 在指针下移动或缩小时的重入门控。检查 X11 输入形状和显示器边缘处的点击穿透。
+| 范围           | 验收内容                                                                                                                     |
+| -------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| 启动与窗口     | 托盘显示／隐藏／退出、登录启动、透明岛、工作区位置、岛外点击、正常退出                                                       |
+| 模式与输入     | 悬停／点击、反复展开折叠、0–2000 ms 离开延迟、重新进入／菜单／焦点／拖动取消，以及移动／收缩后的几何重入                     |
+| 导航           | 左右键、Ctrl 数字与可见顺序、横向连续手势最多一页、惯性尾部、反向操作、原生纵向滚动与位置保留                                |
+| 个性化         | 四语界面与托盘、主题／背景解码失败、显示器、吸附／自由位置、页面排序／隐藏／默认、重启后的设置                               |
+| 启动目标       | 已安装应用、独立 argv／cwd 命令、HTTP(S) 快捷应用、含失败目标的顺序工作流；`localhost:3000/` 带查询／片段在默认浏览器打开    |
+| 音乐选择       | 自动 A／手动圆点、单播放器规则、稳定顺序、会话新增／退出、不同播放器同名歌曲、快速最新选择与控制会话 ID 对应                 |
+| 音乐手势与封面 | 横纵归属、一段手势一张卡片、键盘焦点／Up／Down／Home／End、减少动态效果、展开与 QuickView 封面、失败恢复、Linux 无扩展名图片 |
+| AI             | Base URL／模型／密钥、系统安全存储、流式 Markdown／代码复制、取消／重置、错误与密钥移除                                      |
+| 日常工具       | 时钟／时区、天气／地点／单位、展开状态下的电池／设备提示、会话剪贴板读取／复制、任务添加／完成与持久化                       |
+| 诊断           | 共用 session、失败／恢复、打开目录、日志轮转／转储保留，日志排除内容／密钥／端点                                             |
 
-macOS/Windows 原生媒体、设备和自动启动行为需要对应系统实测。原生运行结果应与安装包构建分开记录。日志不得包含 API key 或剪贴板内容。推送匹配版本标签或在该标签上手动运行工作流，都会启动完整的检查、打包和发布；带有 `-beta.2` 等预发布后缀的版本会标记为 GitHub 预发布版本。若对应英文和简体中文说明文件都存在，工作流会将两者写入 Release；否则使用 GitHub 自动生成的说明。
+选择确认后，控制应恢复并对应选中的播放器；来源退出时移除圆点并恢复有效选择。Linux 无 `pactl` 时验证 PipeWire 采集开始与停止，连续轮询使用回退后端，无缺失命令刷屏。
+
+## 各平台检查
+
+Linux 在 renderer 就绪与 ShapeInput 查询确认前保持隐藏。检查视口边缘点击穿透和反复动画；保持 X11 静态打包、自启动中的 `--ozone-platform=x11`，桌面入口经 `gio launch` 启动。RPM 暂存保留 root 所有的 SUID sandbox helper。
+
+Windows 检查原快捷方式参数／工作目录、Store Shell 激活、可执行文件失败反馈、GSMTC 封面／控制与自动隐藏任务栏边缘。macOS 检查自动化权限、运行中的 Spotify／Music、显示器／Dock 与登录项。可靠登录项要求签名／公证，当前打包使用 ad-hoc 签名。
+
+分别记录打包、自动测试、原生运行观察，注明系统、架构与操作。硬件／媒体提示使用真实来源验证；演示截图展示界面，运行验收验证实际适配器。
+
+## 更新时的数据
+
+设置、任务、工作流、快捷应用和系统加密的 API-key 密文保存在用户数据目录的 `ripple-next.sqlite`。编号迁移位于 `src/main/database/migrations/`，运行 SQL 为 `.sql` 资源。验证升级后状态保留与密钥可用性，旧 Ripple 配置使用独立目录。Linux 仅修改当前 XDG 自启动目录中自己的 `ripple-next.desktop`。
+
+原生集成和诊断细节见[平台支持](platform-compatibility.zh-CN.md)；更新宣传素材时参照[截图拍摄说明（英语）](assets/screenshots/README.md)。

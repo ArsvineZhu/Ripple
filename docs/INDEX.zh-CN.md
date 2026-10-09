@@ -2,12 +2,30 @@
 
 # 文档目录
 
-- [使用指南](../instructions.zh-CN.md)：模式、Tab 与交互。
-- [设计理念](design-principles.zh-CN.md)：交互原则与视觉方向。
-- [开发指南](development.zh-CN.md)：环境、工具职责、检查与依赖升级。
-- [Windows 适配与诊断](platform-compatibility.zh-CN.md)：平台检查结果、原生错误反馈与诊断范围。
-- [发布指南](release.zh-CN.md)：安装包、运行验收与验证边界。
-- [本地诊断系统设计](superpowers/specs/2026-10-06-local-diagnostics-design.zh-CN.md)：供评审的本地日志与崩溃转储方案。
-- [本地诊断系统实施计划](superpowers/plans/2026-10-06-local-diagnostics.zh-CN.md)：已确认诊断设计的任务安排与验证范围。
-- [仓库地图](../INDEX.zh-CN.md)：源码所有者和构建范围。
-- [贡献规范](../CONTRIBUTING.zh-CN.md)：变更流程与语言同步。
+## 使用 Ripple Next
+
+- 产品介绍：[简体中文](../README.zh-CN.md)、[繁體中文](../README.zh-TW.md)、[English](../README.md)、[日本語](../README.ja.md)。
+- [使用指南](../instructions.zh-CN.md)：导航、八个页面、设置与数据。
+- [平台支持与排障](platform-compatibility.zh-CN.md)：原生集成、恢复方法与本地诊断。
+- [4.0.0 正式版说明](releases/4.0.0.zh-CN.md)：正式版完整功能与历史。
+- [截图画廊与拍摄说明（英语）](assets/screenshots/README.md)：真实界面、演示数据与更新方法。
+
+## 开发与发布
+
+- [设计原则](design-principles.zh-CN.md)：交互与视觉方向。
+- [开发指南](development.zh-CN.md)：运行环境、架构、命令与工具归属。
+- [发布验收](release.zh-CN.md)：软件包、发布流程与原生运行检查。
+- [仓库地图](../INDEX.zh-CN.md)：源码归属与构建区域。
+- [贡献规范](../CONTRIBUTING.zh-CN.md)：检查、文档与语言同步。
+
+## 已发布版本
+
+- 4.0.0-beta.2：[简体中文](releases/4.0.0-beta.2.zh-CN.md)、[English](releases/4.0.0-beta.2.en.md)。
+- 4.0.0-beta.1：[简体中文](releases/4.0.0-beta.1.zh-CN.md)、[English](releases/4.0.0-beta.1.en.md)。
+
+## 设计记录
+
+- [本地诊断设计](superpowers/specs/2026-10-06-local-diagnostics-design.zh-CN.md)：原始提案与决策。
+- [本地诊断实施计划](superpowers/plans/2026-10-06-local-diagnostics.zh-CN.md)：该提案的实施顺序。
+
+设计记录保留当时的背景；维护中的指南说明当前行为和验证方法。

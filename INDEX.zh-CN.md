@@ -11,3 +11,5 @@
 - [贡献规范](CONTRIBUTING.zh-CN.md)：开发流程及文档同步。
 
 `src/assets` 保存字体和图标；`scripts` 保存开发启动器；`.config` 保存 Forge/Vite 和安装包模板。`.vite`、`out`、报告和依赖均是生成物，不纳入 Git。
+
+产品入口：[简体中文](README.zh-CN.md)、[繁體中文](README.zh-TW.md)、[English](README.md)、[日本語](README.ja.md)。[发布说明](docs/releases/4.0.0.zh-CN.md)汇集 4.0.0 更新；[截图说明（英语）](docs/assets/screenshots/README.md)记录界面素材与更新方法。
