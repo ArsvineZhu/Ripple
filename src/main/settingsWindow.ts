@@ -1,5 +1,5 @@
 import path from 'node:path';
-import { app, BrowserWindow } from 'electron';
+import { app, BrowserWindow, nativeTheme } from 'electron';
 import { getIconPath } from './assets';
 import type { DiagnosticsService } from './services/diagnostics';
 import { attachWindowDiagnostics } from './services/windowDiagnostics';
@@ -13,6 +13,11 @@ let configured: {
   diagnostics: DiagnosticsService;
   onLoadError: (error: unknown) => void;
 } | null = null;
+
+/** Match the settings shell OS light/dark tokens (not island themes). */
+function settingsWindowBackgroundColor(): string {
+  return nativeTheme.shouldUseDarkColors ? '#1c1c1e' : '#f2f2f7';
+}
 
 export function configureSettingsWindow(options: {
   diagnostics: DiagnosticsService;
@@ -45,17 +50,29 @@ function onSettingsWindowClosed(): void {
   if (process.platform === 'darwin') app.setActivationPolicy('accessory');
 }
 
+/** Own the singleton pointer, role, OS chrome sync, and close cleanup. */
+function wireSettingsWindow(window: BrowserWindow): void {
+  settingsWindow = window;
+  registerWindowRole(window.webContents, 'settings');
+  const syncBackground = () => {
+    if (!window.isDestroyed()) {
+      window.setBackgroundColor(settingsWindowBackgroundColor());
+    }
+  };
+  nativeTheme.on('updated', syncBackground);
+  window.on('closed', () => {
+    nativeTheme.off('updated', syncBackground);
+    if (settingsWindow === window) settingsWindow = null;
+    onSettingsWindowClosed();
+  });
+}
+
 /**
  * Attach an existing BrowserWindow as the settings window (tests and step-1 seam).
  * Production code should call openSettingsWindow() instead.
  */
 export function attachSettingsWindow(window: BrowserWindow): void {
-  settingsWindow = window;
-  registerWindowRole(window.webContents, 'settings');
-  window.on('closed', () => {
-    if (settingsWindow === window) settingsWindow = null;
-    onSettingsWindowClosed();
-  });
+  wireSettingsWindow(window);
 }
 
 /** Test seam: drop the attached settings window without destroying it. */
@@ -81,7 +98,7 @@ export function openSettingsWindow(): BrowserWindow {
     show: false,
     autoHideMenuBar: true,
     title: 'Ripple Next',
-    backgroundColor: '#f2f2f7',
+    backgroundColor: settingsWindowBackgroundColor(),
     // Settings is a normal window: on the taskbar while open, never click-through.
     skipTaskbar: false,
     icon: getIconPath(),
@@ -94,8 +111,7 @@ export function openSettingsWindow(): BrowserWindow {
       backgroundThrottling: true,
     },
   });
-  settingsWindow = window;
-  registerWindowRole(window.webContents, 'settings');
+  wireSettingsWindow(window);
   attachWindowDiagnostics(window, diagnostics);
   diagnostics.record({
     kind: 'window-lifecycle',
@@ -106,10 +122,6 @@ export function openSettingsWindow(): BrowserWindow {
 
   window.once('ready-to-show', () => {
     if (!window.isDestroyed()) presentSettingsWindow(window);
-  });
-  window.on('closed', () => {
-    if (settingsWindow === window) settingsWindow = null;
-    onSettingsWindowClosed();
   });
 
   const devServerUrl =

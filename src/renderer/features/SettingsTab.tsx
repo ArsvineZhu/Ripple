@@ -58,6 +58,38 @@ function Field({
     </div>
   );
 }
+
+/** Continuous preference card: rows share one surface with hairline dividers. */
+function PrefGroup({ caption, children }: { caption?: string; children: ReactNode }) {
+  return (
+    <div className={styles.prefGroupBlock}>
+      {caption ? <h3 className={styles.prefGroupCaption}>{caption}</h3> : null}
+      <div className={styles.prefGroup}>{children}</div>
+    </div>
+  );
+}
+
+function PrefRow({
+  label,
+  hint,
+  children,
+  stacked = false,
+}: {
+  label: string;
+  hint?: string;
+  children: ReactNode;
+  stacked?: boolean;
+}) {
+  return (
+    <div className={`${styles.prefRow} ${stacked ? styles.prefRowStacked : ''}`}>
+      <div className={styles.prefRowText}>
+        <span className={styles.prefRowLabel}>{label}</span>
+        {hint ? <p className={styles.prefRowHint}>{hint}</p> : null}
+      </div>
+      <div className={styles.prefRowControl}>{children}</div>
+    </div>
+  );
+}
 type Props = Pick<
   IslandController,
   | 'addQuickApp'
@@ -188,8 +220,8 @@ export function SettingsTab(p: Props & { category: SettingsCategoryId }) {
     <ElasticScrollArea id="settings-container" className={styles.container}>
       {p.category === 'general' && (
         <>
-          <Section title={t('general')}>
-            <Field label={t('language')}>
+          <PrefGroup>
+            <PrefRow label={t('language')}>
               <Select
                 label={t('language')}
                 value={language}
@@ -202,8 +234,8 @@ export function SettingsTab(p: Props & { category: SettingsCategoryId }) {
                   { value: 'ja', label: '日本語' },
                 ]}
               />
-            </Field>
-            <Field label={t('hourFormat')}>
+            </PrefRow>
+            <PrefRow label={t('hourFormat')}>
               <Select
                 label={t('hourFormat')}
                 value={p.hourFormat ? '12-hr' : '24-hr'}
@@ -213,8 +245,8 @@ export function SettingsTab(p: Props & { category: SettingsCategoryId }) {
                   { value: '24-hr', label: t('hour24') },
                 ]}
               />
-            </Field>
-            <Field label={t('timeZone')}>
+            </PrefRow>
+            <PrefRow label={t('timeZone')}>
               <SearchableSelect
                 label={t('timeZone')}
                 value={p.timeZone}
@@ -223,36 +255,37 @@ export function SettingsTab(p: Props & { category: SettingsCategoryId }) {
                 searchPlaceholder={t('searchTimeZones')}
                 emptyLabel={t('noTimeZoneMatches')}
               />
-            </Field>
-            <div>
-              <Field label={t('autoLaunch')}>
+            </PrefRow>
+          </PrefGroup>
+          <PrefGroup>
+            <PrefRow label={t('autoLaunch')}>
+              <Select
+                label={t('autoLaunch')}
+                value={String(p.autoLaunchEnabled)}
+                onValueChange={p.handleAutoLaunchChange}
+                options={boolOptions}
+              />
+            </PrefRow>
+            {window.electronAPI?.platform === 'darwin' && (
+              <PrefRow label={t('showTray')} hint={t('showTrayHint')}>
                 <Select
-                  label={t('autoLaunch')}
-                  value={String(p.autoLaunchEnabled)}
-                  onValueChange={p.handleAutoLaunchChange}
+                  label={t('showTray')}
+                  value={String(showTrayEnabled)}
+                  onValueChange={handleShowTrayChange}
                   options={boolOptions}
                 />
-              </Field>
-              <InlineNotices area="settings" codes={['autoLaunchFailed']} />
-            </div>
-            {window.electronAPI?.platform === 'darwin' && (
-              <div>
-                <Field label={t('showTray')}>
-                  <Select
-                    label={t('showTray')}
-                    value={String(showTrayEnabled)}
-                    onValueChange={handleShowTrayChange}
-                    options={boolOptions}
-                  />
-                </Field>
-                <p className={styles.hint}>{t('showTrayHint')}</p>
-                <InlineNotices area="settings" codes={['showTrayFailed']} />
-              </div>
+              </PrefRow>
             )}
-            <InlineNotices area="system" />
-            <InlineNotices area="settings" codes={['stateSaveFailed']} />
-            {p.displays.length > 0 && (
-              <Field label={t('display')}>
+          </PrefGroup>
+          <InlineNotices area="settings" codes={['autoLaunchFailed']} />
+          {window.electronAPI?.platform === 'darwin' && (
+            <InlineNotices area="settings" codes={['showTrayFailed']} />
+          )}
+          <InlineNotices area="system" />
+          <InlineNotices area="settings" codes={['stateSaveFailed']} />
+          {p.displays.length > 0 && (
+            <PrefGroup>
+              <PrefRow label={t('display')}>
                 <Select
                   label={t('display')}
                   value={p.currentDisplayId || String(p.displays[0].id)}
@@ -265,9 +298,9 @@ export function SettingsTab(p: Props & { category: SettingsCategoryId }) {
                         : display.label,
                   }))}
                 />
-              </Field>
-            )}
-          </Section>
+              </PrefRow>
+            </PrefGroup>
+          )}
         </>
       )}
       {p.category === 'appearance' && (

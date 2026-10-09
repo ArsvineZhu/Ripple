@@ -8,6 +8,11 @@ vi.mock('../src/main/window', () => ({
   showMainWindow: mock.showMainWindow,
   getMainWindow: () => null,
 }));
+vi.mock('electron', () => ({
+  app: { setActivationPolicy: vi.fn(), focus: vi.fn() },
+  nativeTheme: { shouldUseDarkColors: false, on: vi.fn(), off: vi.fn() },
+  BrowserWindow: class {},
+}));
 import { createNoticeBus } from '../src/main/services/noticeBus';
 import {
   attachSettingsWindow,

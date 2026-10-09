@@ -14,7 +14,7 @@ export default function SettingsApp() {
   const active = SETTINGS_CATEGORIES.find((item) => item.id === category) ?? SETTINGS_CATEGORIES[0];
 
   return (
-    <div className={styles.app}>
+    <div className={styles.app} data-settings>
       <aside className={styles.sidebar} aria-label={t('tabSettings')}>
         <div className={styles.brand}>
           <p className={styles.brandTitle}>{t('tabSettings')}</p>

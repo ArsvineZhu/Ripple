@@ -3,7 +3,7 @@
   flex-direction: column;
   width: 100%;
   height: 100%;
-  padding: 20px 24px 28px;
+  padding: var(--settings-space-3, 12px) var(--settings-space-6, 28px) var(--settings-space-6, 28px);
   overflow: hidden;
   color: var(--settings-fg, inherit);
   background: transparent;
@@ -12,7 +12,91 @@
 .container :global(.scroll-content) {
   display: flex;
   flex-direction: column;
-  gap: 28px;
+  gap: var(--settings-space-5, 20px);
+}
+
+/* Continuous preference group (sample chrome for General) */
+.prefGroupBlock {
+  display: flex;
+  flex-direction: column;
+  gap: var(--settings-space-2, 8px);
+  min-width: 0;
+}
+
+.prefGroupCaption {
+  margin: 0;
+  padding: 0 2px;
+  color: var(--settings-muted, inherit);
+  font-size: var(--settings-font-caption, 12px);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.prefGroup {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
+  background: var(--settings-card, var(--settings-panel, #fff));
+  border: 1px solid var(--settings-border, rgba(60, 60, 67, 0.12));
+  border-radius: var(--settings-radius-lg, 10px);
+}
+
+.prefRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--settings-space-4, 16px);
+  min-width: 0;
+  min-height: 44px;
+  padding: 10px var(--settings-space-4, 16px);
+  border-bottom: 1px solid var(--settings-divider, rgba(60, 60, 67, 0.1));
+}
+
+.prefRow:last-child {
+  border-bottom: none;
+}
+
+.prefRowStacked {
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--settings-space-2, 8px);
+  padding-top: 12px;
+  padding-bottom: 12px;
+}
+
+.prefRowText {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.prefRowLabel {
+  font-size: var(--settings-font-label, 13px);
+  font-weight: 500;
+  color: var(--settings-fg, inherit);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.prefRowHint {
+  margin: 0;
+  color: var(--settings-muted, inherit);
+  font-size: var(--settings-font-caption, 12px);
+  line-height: 1.35;
+}
+
+.prefRowControl {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: flex-end;
+  max-width: 60%;
+  min-width: 0;
 }
 
 .section {
@@ -47,7 +131,7 @@
   min-width: 0;
   max-width: 70%;
   padding: 0;
-  color: var(--island-text-color);
+  color: var(--settings-accent, var(--island-text-color));
   background: transparent;
   border: 0;
   font: inherit;
@@ -130,7 +214,7 @@
   min-width: 0;
   max-width: 100%;
   padding: 10px 14px;
-  color: var(--island-text-color);
+  color: var(--settings-fg, var(--island-text-color));
   background: var(--control-bg);
   border: 1px solid var(--control-border);
   border-radius: var(--control-radius);
@@ -220,7 +304,7 @@
   gap: 4px;
   flex-shrink: 0;
   padding: 6px;
-  color: var(--island-text-color);
+  color: var(--settings-danger, var(--island-text-color));
   background: transparent;
   border: none;
   cursor: pointer;
@@ -425,8 +509,8 @@
   gap: 6px;
   min-height: 36px;
   padding: 8px 12px;
-  color: var(--island-bg-color);
-  background: var(--island-text-color);
+  color: #ffffff;
+  background: var(--settings-accent, var(--island-text-color));
   border: 0;
   border-radius: var(--control-radius);
   font-weight: 600;

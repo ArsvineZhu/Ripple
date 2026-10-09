@@ -38,6 +38,7 @@ const mock = vi.hoisted(() => {
     show = vi.fn();
     focus = vi.fn();
     moveTop = vi.fn();
+    setBackgroundColor = vi.fn();
     webContents = {
       id: this.id + 100,
       isDestroyed: () => this.#destroyed,
@@ -91,6 +92,11 @@ const mock = vi.hoisted(() => {
 vi.mock('electron', () => ({
   BrowserWindow: mock.BrowserWindow,
   app: mock.app,
+  nativeTheme: {
+    shouldUseDarkColors: false,
+    on: vi.fn(),
+    off: vi.fn(),
+  },
 }));
 vi.mock('../src/main/assets', () => ({ getIconPath: () => '/tmp/icon.png' }));
 vi.mock('../src/main/services/windowDiagnostics', () => ({
@@ -129,6 +135,7 @@ describe('settings window singleton', () => {
     expect(getSettingsWindow()).toBe(first);
     expect(getWindowRole(first.webContents as unknown as WebContents)).toBe('settings');
     expect(mock.lastOptions?.skipTaskbar).toBe(false);
+    expect(mock.lastOptions?.backgroundColor).toBe('#f2f2f7');
     expect(mock.lastOptions).not.toHaveProperty('type');
     expect('transparent' in (mock.lastOptions ?? {}) ? mock.lastOptions?.transparent : false).toBe(
       false,
