@@ -17,17 +17,23 @@ export function isVerticalTakeover(deltaX: number, deltaY: number): boolean {
   return Math.abs(deltaY) > Math.max(NOISE_FLOOR, Math.abs(deltaX) * TAKEOVER_SHARE);
 }
 
-// A single dip/rise is not a gesture boundary. The fallback needs a sustained
-// low-energy tail and a new rising run. Native boundaries remain the fast path.
+// A single dip or rise is not a gesture boundary. A resumed push needs a rising run that clears
+// the tail it follows, and that tail must itself have decayed against the stroke peak: neither a
+// stroke's own ramp nor a decaying momentum tail satisfies both. Native boundaries stay the fast
+// path.
+const RESUME_FADE = 0.6;
+const RESUME_RATIO = 1.5;
+const RESUME_MARGIN = 8;
 export function isResumedWheelPush(input: {
   magnitude: number;
   lastMagnitude: number;
-  quietForMs: number;
+  peakMagnitude: number;
   risingSamples: number;
 }): boolean {
   return (
-    input.quietForMs >= 64 &&
     input.risingSamples >= 2 &&
-    input.magnitude >= Math.max(input.lastMagnitude * 1.5, input.lastMagnitude + 8)
+    input.lastMagnitude < input.peakMagnitude * RESUME_FADE &&
+    input.magnitude >=
+      Math.max(input.lastMagnitude * RESUME_RATIO, input.lastMagnitude + RESUME_MARGIN)
   );
 }
