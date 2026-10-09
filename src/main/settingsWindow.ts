@@ -25,18 +25,24 @@ export function getSettingsWindow(): BrowserWindow | null {
   return settingsWindow;
 }
 
-/** macOS: appear in the Dock while Settings is open so the window can be switched to. */
-function showMacDockForSettings(): void {
-  if (process.platform !== 'darwin') return;
-  app.setActivationPolicy('regular');
-  void app.dock?.show();
+/**
+ * LuLu makeActive: regular policy first, then show the window, then strong activation.
+ * Do not call dock.show()/hide(); setActivationPolicy alone drives the Dock tile.
+ */
+function presentSettingsWindow(window: BrowserWindow): void {
+  if (process.platform === 'darwin') app.setActivationPolicy('regular');
+  if (window.isMinimized()) window.restore();
+  window.show();
+  window.focus();
+  if (process.platform === 'darwin') {
+    app.focus({ steal: true });
+    window.moveTop();
+  }
 }
 
-/** macOS: leave the Dock again after Settings closes. */
-function hideMacDockAfterSettings(): void {
-  if (process.platform !== 'darwin') return;
-  app.setActivationPolicy('accessory');
-  app.dock?.hide();
+/** LuLu closeWindow path for Ripple: only Settings closing returns to accessory (Island stays up). */
+function onSettingsWindowClosed(): void {
+  if (process.platform === 'darwin') app.setActivationPolicy('accessory');
 }
 
 /**
@@ -48,7 +54,7 @@ export function attachSettingsWindow(window: BrowserWindow): void {
   registerWindowRole(window.webContents, 'settings');
   window.on('closed', () => {
     if (settingsWindow === window) settingsWindow = null;
-    hideMacDockAfterSettings();
+    onSettingsWindowClosed();
   });
 }
 
@@ -57,25 +63,16 @@ export function clearSettingsWindow(): void {
   settingsWindow = null;
 }
 
-function bringSettingsWindowForward(window: BrowserWindow): void {
-  if (window.isMinimized()) window.restore();
-  if (process.platform === 'darwin') app.focus({ steal: true });
-  window.show();
-  window.focus();
-  if (process.platform === 'darwin') window.moveTop();
-}
-
 /** One settings window: create on demand, focus if it already exists, destroy on close. */
 export function openSettingsWindow(): BrowserWindow {
   if (!configured) throw new Error('Settings window is not configured');
   if (settingsWindow && !settingsWindow.isDestroyed()) {
-    showMacDockForSettings();
-    bringSettingsWindowForward(settingsWindow);
+    presentSettingsWindow(settingsWindow);
     return settingsWindow;
   }
 
   const { diagnostics, onLoadError } = configured;
-  showMacDockForSettings();
+  if (process.platform === 'darwin') app.setActivationPolicy('regular');
   const window = new BrowserWindow({
     width: 720,
     height: 800,
@@ -108,11 +105,11 @@ export function openSettingsWindow(): BrowserWindow {
   });
 
   window.once('ready-to-show', () => {
-    if (!window.isDestroyed()) bringSettingsWindowForward(window);
+    if (!window.isDestroyed()) presentSettingsWindow(window);
   });
   window.on('closed', () => {
     if (settingsWindow === window) settingsWindow = null;
-    hideMacDockAfterSettings();
+    onSettingsWindowClosed();
   });
 
   const devServerUrl =

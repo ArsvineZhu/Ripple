@@ -30,7 +30,7 @@ import {
 registerBackgroundImageScheme();
 app.setName('Ripple Next');
 if (process.platform === 'win32') app.setAppUserModelId('com.arsvinezhu.ripple-next');
-// Start as accessory so the Dock stays empty until Settings opens (no permanent LSUIElement).
+// LSUIElement agent: start accessory; Settings open switches to regular (LuLu-style).
 if (process.platform === 'darwin') app.setActivationPolicy('accessory');
 
 if (!app.requestSingleInstanceLock()) {

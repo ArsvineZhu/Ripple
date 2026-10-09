@@ -28,10 +28,6 @@ const mock = vi.hoisted(() => {
   const app = {
     focus: vi.fn(),
     setActivationPolicy: vi.fn(),
-    dock: {
-      show: vi.fn(async () => undefined),
-      hide: vi.fn(),
-    },
   };
   class MockBrowserWindow {
     id = nextId++;
@@ -117,8 +113,6 @@ describe('settings window singleton', () => {
     clearWindowRoles();
     mock.app.focus.mockClear();
     mock.app.setActivationPolicy.mockClear();
-    mock.app.dock.show.mockClear();
-    mock.app.dock.hide.mockClear();
     configureSettingsWindow({
       diagnostics: {
         record: vi.fn(),
@@ -154,28 +148,33 @@ describe('settings window singleton', () => {
     expect(mock.windows).toHaveLength(2);
   });
 
-  it('shows the macOS Dock while Settings is open and hides it again on close', () => {
+  it('uses LuLu-style activation policy for the Dock without dock.show/hide', () => {
     const previousPlatform = process.platform;
     Object.defineProperty(process, 'platform', { configurable: true, value: 'darwin' });
     try {
-      const first = openSettingsWindow() as unknown as { destroy: () => void };
+      const first = openSettingsWindow() as unknown as {
+        destroy: () => void;
+        show: ReturnType<typeof vi.fn>;
+        focus: ReturnType<typeof vi.fn>;
+        moveTop: ReturnType<typeof vi.fn>;
+      };
+      // regular before/while presenting; ready-to-show also presents
       expect(mock.app.setActivationPolicy).toHaveBeenCalledWith('regular');
-      expect(mock.app.dock.show).toHaveBeenCalled();
+      expect(first.show).toHaveBeenCalled();
+      expect(first.focus).toHaveBeenCalled();
+      expect(mock.app.focus).toHaveBeenCalledWith({ steal: true });
+      expect(first.moveTop).toHaveBeenCalled();
+      expect(mock.app).not.toHaveProperty('dock');
 
       mock.app.setActivationPolicy.mockClear();
-      mock.app.dock.show.mockClear();
-      mock.app.dock.hide.mockClear();
-
       openSettingsWindow();
       expect(mock.app.setActivationPolicy).toHaveBeenCalledWith('regular');
-      expect(mock.app.dock.show).toHaveBeenCalled();
 
       mock.app.setActivationPolicy.mockClear();
-      mock.app.dock.hide.mockClear();
       first.destroy();
       expect(getSettingsWindow()).toBeNull();
       expect(mock.app.setActivationPolicy).toHaveBeenCalledWith('accessory');
-      expect(mock.app.dock.hide).toHaveBeenCalled();
+      expect(mock.app.setActivationPolicy).not.toHaveBeenCalledWith('regular');
     } finally {
       Object.defineProperty(process, 'platform', {
         configurable: true,

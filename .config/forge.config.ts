@@ -31,8 +31,8 @@ const config: ForgeConfig = {
           extendInfo: {
             NSAppleEventsUsageDescription:
               'Ripple Next needs to control media players like Spotify and Apple Music.',
-            // Dock visibility is runtime-only via setActivationPolicy (accessory ↔ regular).
-            // A permanent LSUIElement blocks dock.show() / regular policy in packaged apps.
+            // Agent like LuLu: Dock appears only via runtime setActivationPolicy('regular').
+            LSUIElement: true,
           },
         }
       : {}),
