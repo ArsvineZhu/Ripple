@@ -48,7 +48,11 @@ function tabAt(tabs: number[], index: number): number {
  *    100-400 ms. macOS Safari hands the same gesture to AppKit, whose curve is not public; the
  *    velocity multiplier is not in the WebKit source either, so 1 is used here.
  */
-const REBOUND_SPRING = { stiffness: 500, damping: 35, mass: 0.5 };
+// The band has to reach the mapped stretch inside a flick, which lasts 30-70 ms: measured, the
+// shipped 500/35 (response 0.20 s) only reached 7.5 px of the 28 px target at 32 ms and 16.8 px at
+// 64 ms, which is why a fast swipe showed almost no rebound. 1974/63 is response 0.10 s, ζ1.00, so
+// it is at 25.5 px by 64 ms and holds the full stretch until the release takes over.
+const REBOUND_SPRING = { stiffness: 1974, damping: 63, mass: 0.5 };
 const RUBBER_BAND_AMPLITUDE = 0.31;
 const RUBBER_BAND_DECAY = 20 / 1.6;
 const RUBBER_BAND_STOP = 0.5;
@@ -158,6 +162,7 @@ export function TabPanels(props: Props) {
     lastDelta: number;
     tailMin: number;
     decayed: boolean;
+    quiet: boolean;
     risingSamples: number;
   } | null>(null);
   const reducedMotion = useReducedMotion();
@@ -277,6 +282,7 @@ export function TabPanels(props: Props) {
         current.peak = current.lastDelta;
         current.tailMin = current.lastDelta;
         current.decayed = false;
+        current.quiet = false;
         current.risingSamples = 0;
       } else {
         gesture.current = null;
@@ -360,6 +366,10 @@ export function TabPanels(props: Props) {
         // The tail is measured against the stroke peak and the lowest sample since the last page,
         // not against the previous sample: a quick flick has no room to decay twice.
         if (isTailDecay(magnitude, previous.peak)) previous.decayed = true;
+        // The band is only released once the input is genuinely quiet, not at the first sample that
+        // drops below the resume threshold: cutting it loose there left a fast flick with 8px of a
+        // 17px stretch because the spring was still rising.
+        if (magnitude <= previous.peak * 0.15) previous.quiet = true;
         if (magnitude < previous.tailMin) previous.tailMin = magnitude;
         if (
           direction !== previous.direction ||
@@ -396,6 +406,7 @@ export function TabPanels(props: Props) {
           lastDelta: magnitude,
           tailMin: magnitude,
           decayed: false,
+          quiet: false,
           risingSamples: 0,
         };
       }
@@ -409,6 +420,7 @@ export function TabPanels(props: Props) {
         current.peak = magnitude;
         current.tailMin = magnitude;
         current.decayed = false;
+        current.quiet = false;
         // Direction is the trigger. Distance changes only the bounded elastic
         // response; it never decides whether another page should be selected.
         propsRef.current.onSelect(intent, direction);
@@ -428,7 +440,7 @@ export function TabPanels(props: Props) {
       // is left, so release it right there instead of holding it until the 150 ms input gap: the
       // page then finishes its slide as one movement instead of passing its centre and creeping
       // back.
-      if (reducedMotion || current.decayed) releaseElastic();
+      if (reducedMotion || current.quiet) releaseElastic();
       else trackElastic(direction * 28 * (1 - Math.exp(-excess / pageWidth)));
       clearTimeout(wheelTimer.current);
       wheelTimer.current = setTimeout(endGesture, 150);
