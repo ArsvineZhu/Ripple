@@ -57,6 +57,7 @@ vi.mock('../src/main/services/media', () => ({
   }),
 }));
 vi.mock('../src/main/tray', () => ({ setTrayLocale: vi.fn() }));
+vi.mock('../src/main/settingsWindow', () => ({ openSettingsWindow: vi.fn() }));
 import { setTrayLocale } from '../src/main/tray';
 import { registerIPC } from '../src/main/ipc';
 import { defaultAppState } from '../src/shared/appState';
@@ -226,6 +227,11 @@ describe('IPC boundary', () => {
       }),
     );
     expect(JSON.stringify(mock.recordDiagnostic.mock.calls)).not.toContain('private arguments');
+  });
+  it('opens the settings window through the dedicated channel', async () => {
+    const { openSettingsWindow } = await import('../src/main/settingsWindow');
+    await mock.handlers.get('open-settings')!({ sender: mock.island });
+    expect(openSettingsWindow).toHaveBeenCalledOnce();
   });
   it('reports diagnostics folder failures in Settings and preserves the IPC rejection', async () => {
     const error = new Error('Could not open diagnostics directory');

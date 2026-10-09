@@ -13,7 +13,7 @@ import {
 } from 'lucide-react';
 import { author, bugs, license, productName, repository, version } from '../../../package.json';
 import type { CSSProperties, ReactNode } from 'react';
-import { useEffect, useState } from 'react';
+import { useState } from 'react';
 import { TABS } from '../lib/tabs';
 import { Select } from '../components/Select';
 import { SearchableSelect } from '../components/SearchableSelect';
@@ -24,7 +24,6 @@ import { ElasticScrollArea } from '../components/ElasticScrollArea';
 import { supportedTimeZones } from '../lib/date';
 import { SETTINGS_TAB_ID } from '../../shared/appState';
 import { isValidSearchUrlTemplate } from '../lib/search';
-import { measureTextWidth } from '../lib/text';
 import type { IslandController } from '../hooks/useIslandController';
 import styles from './SettingsTab.module.css';
 
@@ -147,106 +146,12 @@ type Props = Pick<
   | 'workflowName'
   | 'workflowUrls'
   | 'workflows'
-> & {
-  onSettingsContentWidthChange: (width: number) => void;
-};
+>;
 export function SettingsTab(p: Props) {
   const { t, i18n } = useTranslation();
-  const onSettingsContentWidthChange = p.onSettingsContentWidthChange;
   const { language, handleLanguageChange, backgroundModeEnabled, handleBackgroundModeChange } =
     useSettingsContext();
   const [apiKeyDraft, setApiKeyDraft] = useState('');
-  useEffect(() => {
-    const container = document.getElementById('settings-container');
-    if (!container) return;
-
-    const measureElementText = (element: HTMLElement) => {
-      const text = element.textContent?.trim() ?? '';
-      const computedStyle = window.getComputedStyle(element);
-      const letterSpacing = Number.parseFloat(computedStyle.letterSpacing) || 0;
-      const measuredTextWidth =
-        measureTextWidth(text, computedStyle.font) || Array.from(text).length * 14;
-      return measuredTextWidth + letterSpacing * Array.from(text).length;
-    };
-
-    let frame: number | null = null;
-    const measureContentWidth = () => {
-      if (frame !== null) cancelAnimationFrame(frame);
-      frame = requestAnimationFrame(() => {
-        frame = null;
-        let rowLabelWidth = 0;
-        let settingsRowWidth = 0;
-        let stackedLabelWidth = 0;
-        let sectionHeadingWidth = 0;
-        const contentLabels = container.querySelectorAll<HTMLElement>(
-          `.${styles.label}, .${styles.sectionHeading}`,
-        );
-
-        for (const element of contentLabels) {
-          if (!element.getClientRects().length) continue;
-          const textWidth = measureElementText(element);
-
-          if (element.classList.contains(styles.sectionHeading)) {
-            sectionHeadingWidth = Math.max(sectionHeadingWidth, textWidth);
-          } else if (element.closest(`.${styles.stacked}`)) {
-            stackedLabelWidth = Math.max(stackedLabelWidth, textWidth);
-          } else {
-            rowLabelWidth = Math.max(rowLabelWidth, textWidth);
-          }
-        }
-
-        const rows = container.querySelectorAll<HTMLElement>(
-          `.${styles.row}:not(.${styles.stacked})`,
-        );
-        for (const row of rows) {
-          if (!row.getClientRects().length) continue;
-          const label = row.querySelector<HTMLElement>(`:scope > .${styles.label}`);
-          const labelWidth = label ? measureElementText(label) : 0;
-          const triggers = Array.from(
-            row.querySelectorAll<HTMLElement>('[data-select-value]'),
-          ).flatMap((element) => {
-            const trigger = element.closest('button');
-            return trigger ? [trigger] : [];
-          });
-          const rowGap = Number.parseFloat(window.getComputedStyle(row).columnGap) || 0;
-          const controlsWidth = triggers.reduce(
-            (width, trigger) => width + trigger.getBoundingClientRect().width,
-            0,
-          );
-          const requiredWidth =
-            labelWidth + (triggers.length ? rowGap * triggers.length : 0) + controlsWidth;
-          rowLabelWidth = Math.max(rowLabelWidth, labelWidth);
-          settingsRowWidth = Math.max(settingsRowWidth, requiredWidth);
-        }
-
-        const availableWidth = Math.min(720, Math.max(320, window.innerWidth - 32));
-        const requiredContentWidth = Math.max(
-          sectionHeadingWidth,
-          stackedLabelWidth,
-          rowLabelWidth,
-          settingsRowWidth,
-        );
-        const preferredWidth = Math.ceil(requiredContentWidth + 50);
-        onSettingsContentWidthChange(Math.min(availableWidth, Math.max(495, preferredWidth)));
-      });
-    };
-
-    const mutationObserver = new MutationObserver(measureContentWidth);
-    mutationObserver.observe(container, {
-      childList: true,
-      characterData: true,
-      subtree: true,
-    });
-    const resizeObserver = new ResizeObserver(measureContentWidth);
-    resizeObserver.observe(container);
-    measureContentWidth();
-
-    return () => {
-      if (frame !== null) cancelAnimationFrame(frame);
-      mutationObserver.disconnect();
-      resizeObserver.disconnect();
-    };
-  }, [onSettingsContentWidthChange]);
   const boolOptions = [
     { value: 'true', label: t('enabled') },
     { value: 'false', label: t('disabled') },

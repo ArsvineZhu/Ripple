@@ -3,6 +3,7 @@ import type { Locale } from '../shared/i18n';
 import { app, Menu, nativeImage, Tray } from 'electron';
 import { getIconPath } from './assets';
 import { getMainWindow, showMainWindow } from './window';
+import { openSettingsWindow } from './settingsWindow';
 let tray: Tray | null = null;
 export const hasTray = () => tray !== null;
 let locale: Locale;
@@ -15,6 +16,12 @@ function updateTrayMenu() {
   const t = messages[locale];
   tray.setContextMenu(
     Menu.buildFromTemplate([
+      {
+        label: t.openSettings,
+        click: () => {
+          openSettingsWindow();
+        },
+      },
       {
         label: t.trayToggle,
         click: () => {

@@ -161,6 +161,7 @@ export const ja: Messages = {
   searchOpenFailed: '検索先を開けませんでした。',
   unknownError: 'エラーが発生しました。',
   dismiss: '通知を閉じる',
+  openSettings: '設定を開く',
   trayToggle: 'Ripple Next を表示／非表示',
   quit: '終了',
   copied: 'コピーしました',

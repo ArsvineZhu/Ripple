@@ -220,6 +220,8 @@ export interface InvokeMap {
   'set-display': { args: [id: string | number]; result: void };
   'set-auto-launch': { args: [enable: boolean]; result: void };
   'focus-window': { args: []; result: void };
+  'open-settings': { args: []; result: void };
+  'quit-app': { args: []; result: void };
 }
 export interface ElectronAPI {
   getAppBootstrap(): Promise<AppBootstrap>;
@@ -256,4 +258,6 @@ export interface ElectronAPI {
   setDisplay(id: string | number): Promise<void>;
   setAutoLaunch(enable: boolean): Promise<void>;
   focusWindow(): Promise<void>;
+  openSettings(): Promise<void>;
+  quitApp(): Promise<void>;
 }

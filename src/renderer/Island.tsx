@@ -1,3 +1,4 @@
+import { useTranslation } from 'react-i18next';
 import styles from './styles/Island.module.css';
 import { useOverlay } from './components/OverlayProvider';
 import { animate, motion, useMotionValue } from 'motion/react';
@@ -11,10 +12,10 @@ import { NowPlayingTab } from './features/NowPlayingTab';
 import { AssistantTab } from './features/AssistantTab';
 import { ClipboardTab } from './features/ClipboardTab';
 import { TasksTab } from './features/TasksTab';
-import { SettingsTab } from './features/SettingsTab';
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { recordIslandContext } from './lib/diagnostics';
 export default function Island() {
+  const { t } = useTranslation();
   const controller = useIslandController();
   const [assistantAnswerHeight, setAssistantAnswerHeight] = useState(0);
   const resetAssistantAnswerHeight = useCallback(() => setAssistantAnswerHeight(0), []);
@@ -298,8 +299,18 @@ export default function Island() {
               {/*Tasks*/}
               {tab === 6 && <TasksTab {...controller} />}
 
-              {/*Settings Overhaul*/}
-              {tab === 7 && <SettingsTab {...controller} />}
+              {/* Settings opens the dedicated window; the tab stays as the entry. */}
+              {tab === 7 && (
+                <div className={styles.settingsLaunch}>
+                  <button
+                    type="button"
+                    className={styles.settingsLaunchButton}
+                    onClick={() => void window.electronAPI.openSettings()}
+                  >
+                    {t('openSettings')}
+                  </button>
+                </div>
+              )}
             </>
           )}
         />

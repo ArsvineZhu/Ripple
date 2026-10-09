@@ -160,6 +160,7 @@ export const en = {
   searchOpenFailed: 'Could not open the search destination.',
   unknownError: 'Something went wrong.',
   dismiss: 'Dismiss notification',
+  openSettings: 'Open Settings',
   trayToggle: 'Show/Hide Ripple Next',
   quit: 'Quit',
   copied: 'Copied!',

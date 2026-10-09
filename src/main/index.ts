@@ -10,9 +10,9 @@ import {
   getMainWindow,
   initializeLinuxInputShape,
   setWindowBackgroundMode,
-  showMainWindow,
 } from './window';
 import { hasTray, setTrayVisible } from './tray';
+import { configureSettingsWindow, openSettingsWindow } from './settingsWindow';
 import { createAppStateStore } from './services/appStateStore';
 import { createSecretStore } from './services/secretStore';
 import { createAssistantService } from './services/assistant';
@@ -63,12 +63,13 @@ async function startApplication() {
 
   app.on('second-instance', () => {
     if (!startupComplete || !diagnostics) return;
-    if (getMainWindow()) showMainWindow(true);
-    else createWindow(diagnostics, reportWindowLoadError);
+    if (!getMainWindow()) createWindow(diagnostics, reportWindowLoadError);
+    openSettingsWindow();
   });
   app.on('activate', () => {
     if (!startupComplete || !diagnostics) return;
     if (!getMainWindow()) createWindow(diagnostics, reportWindowLoadError);
+    openSettingsWindow();
   });
 
   const diagnosticsService = await initializeDiagnostics(userDataPath);
@@ -213,6 +214,10 @@ async function startApplication() {
     }
 
     applyBackgroundMode(initialState.settings.backgroundMode);
+    configureSettingsWindow({
+      diagnostics: diagnosticsService,
+      onLoadError: reportWindowLoadError,
+    });
     closeMedia = registerIPC({
       stateStore,
       secretStore,

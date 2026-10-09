@@ -65,6 +65,8 @@ const api: ElectronAPI = {
   setDisplay: (displayId) => invoke('set-display', displayId),
   setAutoLaunch: (enable) => invoke('set-auto-launch', enable),
   focusWindow: () => invoke('focus-window'),
+  openSettings: () => invoke('open-settings'),
+  quitApp: () => invoke('quit-app'),
   platform: process.platform,
 };
 contextBridge.exposeInMainWorld('electronAPI', api);

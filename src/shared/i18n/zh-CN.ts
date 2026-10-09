@@ -160,6 +160,7 @@ export const zhCN: Messages = {
   searchOpenFailed: '无法打开搜索目标。',
   unknownError: '发生错误。',
   dismiss: '关闭通知',
+  openSettings: '打开设置',
   trayToggle: '显示／隐藏 Ripple Next',
   quit: '退出',
   copied: '已复制！',

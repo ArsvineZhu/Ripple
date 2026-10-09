@@ -160,6 +160,7 @@ export const zhTW: Messages = {
   searchOpenFailed: '無法開啟搜尋目標。',
   unknownError: '發生錯誤。',
   dismiss: '關閉通知',
+  openSettings: '開啟設定',
   trayToggle: '顯示／隱藏 Ripple Next',
   quit: '結束',
   copied: '已複製！',

@@ -12,6 +12,7 @@ import type { DiagnosticsService } from './services/diagnostics';
 import { applyWindowInputRegion, getMainWindow, markRendererReady, showMainWindow } from './window';
 import { broadcastToRegisteredWindows, getWindowRole, isAllowedIpcSender } from './windowRoles';
 import type { WindowRole } from './windowRoles';
+import { openSettingsWindow } from './settingsWindow';
 import { getWindowBoundsForDisplay } from './windowBounds';
 import { discoverApps, buildAppCache, launchApp, launchQuickApp } from './services/apps';
 import { setAutoLaunch } from './services/autostart';
@@ -282,6 +283,12 @@ export function registerIPC(services: IPCServices) {
   handle(services, 'set-auto-launch', async (_event, enable) => {
     if (typeof enable !== 'boolean') throw new TypeError('Expected boolean');
     await setAutoLaunch(enable);
+  });
+  handle(services, 'open-settings', (_event) => {
+    openSettingsWindow();
+  });
+  handle(services, 'quit-app', (_event) => {
+    app.quit();
   });
   return media.close;
 }
