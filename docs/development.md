@@ -2,7 +2,7 @@
 
 # Development
 
-Use Node `22.23.3` from [.node-version](../.node-version) and pnpm `12.9.1` from `package.json`. The current toolchain requires Node 22.13 or newer. Linux packaging needs `dpkg`, `fakeroot`, `rpm` and build tools. Optional system features use `playerctl`, `bluetoothctl`, `fuser` and `pactl`. Windows MSI creation needs WiX Toolset; macOS packaging needs Xcode Command Line Tools. Run native makers on their matching host.
+Use Node `22.23.3` from [.node-version](../.node-version) and pnpm `12.9.1` from `package.json`. The current toolchain requires Node 22.13 or newer. Linux packaging needs `dpkg`, `fakeroot`, `rpm` and build tools. Optional system features use `bluetoothctl`, `fuser` and `pactl`. Windows MSI creation needs WiX Toolset; macOS packaging needs Xcode Command Line Tools. Run native makers on their matching host.
 
 ```sh
 pnpm install --frozen-lockfile
@@ -38,9 +38,11 @@ The state service stores settings, tasks, workflows, quick apps, and encrypted A
 
 Vercel AI SDK's `streamText` and OpenAI-compatible provider implement streaming chat in main. The default system prompt is maintained in `src/main/prompts/default-assistant.md` and bundled with the main process. `xstate` and `@xstate/react` implement cancellable interaction delays and re-entry gates. Linux quick apps discover XDG desktop entries and launch them through `gio launch`; custom commands use `spawn` with an argument array and no shell.
 
-The browser search URL template is persisted in settings and must contain `{query}`; direct HTTP(S) addresses still open as URLs. Clock and date formatting use the selected locale and either the system time zone or a saved IANA zone. Renderer errors are routed to their owning feature and rendered inline; `InlineNotices` uses the Island's existing Motion fade-and-blur transition. Long vertical panels use Smooth Scrollbar's bounce overscroll; the AI answer panel grows with its content up to the available screen height. Range controls use the settings CSS Module for themed tracks, thumbs and focus states.
+The browser search URL template is persisted in settings and must contain `{query}`; direct HTTP(S) addresses still open as URLs. Clock and date formatting use the selected locale and either the system time zone or a saved IANA zone. Renderer errors are routed to their owning feature and rendered inline; `InlineNotices` uses the Island's existing Motion fade-and-blur transition. Long vertical panels use native scrolling; the AI answer panel grows with its content up to the available screen height. Range controls use the settings CSS Module for themed tracks, thumbs and focus states.
 
 ## Local diagnostics
+
+Cross-platform findings, diagnostic fields and native feedback rules are documented in [platform compatibility](platform-compatibility.md). CI checks/tests run on Ubuntu, Windows and macOS. Reinstall dependencies from the lockfile when changing operating systems.
 
 Ripple Next writes `ripple-next.log` under `<userData>/diagnostics/` and stores Electron minidumps in its `crashes/` subdirectory. In Settings, open **Diagnostics** and choose **Open diagnostics folder** to view them. The log transport has a 5 MiB size limit; on startup, crash reports older than 30 days and all but the 10 newest reports are removed.
 

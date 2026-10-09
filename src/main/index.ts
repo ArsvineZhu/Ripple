@@ -1,4 +1,4 @@
-import { app, safeStorage } from 'electron';
+import { app, powerMonitor, safeStorage, screen } from 'electron';
 import fs from 'node:fs';
 import path from 'node:path';
 import os from 'node:os';
@@ -22,8 +22,12 @@ import {
   installChildProcessDiagnostics,
   installFatalErrorMonitor,
 } from './services/processDiagnostics';
-import { setWindowsMediaErrorHandler } from './platform/windows/media';
+import {
+  installBackgroundImageProtocol,
+  registerBackgroundImageScheme,
+} from './services/backgroundImage';
 
+registerBackgroundImageScheme();
 app.setName('Ripple Next');
 if (process.platform === 'win32') app.setAppUserModelId('com.arsvinezhu.ripple-next');
 
@@ -41,6 +45,7 @@ async function startApplication() {
   const notices = createNoticeBus();
   let diagnostics: DiagnosticsService | null = null;
   let startupComplete = false;
+  let closeMedia = () => {};
   function reportWindowLoadError(error: unknown) {
     diagnostics?.recordError('window', error);
     const detail = error instanceof Error ? error.message : String(error);
@@ -58,7 +63,7 @@ async function startApplication() {
 
   app.on('second-instance', () => {
     if (!startupComplete || !diagnostics) return;
-    if (getMainWindow()) showMainWindow();
+    if (getMainWindow()) showMainWindow(true);
     else createWindow(diagnostics, reportWindowLoadError);
   });
   app.on('activate', () => {
@@ -79,8 +84,22 @@ async function startApplication() {
     osRelease: os.release(),
   });
   installFatalErrorMonitor(diagnosticsService);
-  setWindowsMediaErrorHandler((error) => diagnosticsService.recordError('media', error));
   installChildProcessDiagnostics(app, diagnosticsService);
+  let graphicsSignature = '';
+  app.on('gpu-info-update', () => {
+    const gpu = app.getGPUFeatureStatus();
+    const event = {
+      kind: 'graphics-status' as const,
+      hardwareAcceleration: app.isHardwareAccelerationEnabled(),
+      compositing: gpu.gpu_compositing,
+      rasterization: gpu.rasterization,
+      webgl: gpu.webgl,
+    };
+    const signature = JSON.stringify(event);
+    if (signature === graphicsSignature) return;
+    graphicsSignature = signature;
+    diagnosticsService.record(event);
+  });
 
   const stateStore = createAppStateStore(userDataPath);
   const secretStore = createSecretStore(stateStore, {
@@ -120,6 +139,58 @@ async function startApplication() {
   };
 
   void app.whenReady().then(async () => {
+    installBackgroundImageProtocol(
+      async () => (await stateStore.load()).settings.backgroundImage,
+      (error) => diagnosticsService.recordError('application', error),
+    );
+    diagnosticsService.record({ kind: 'app-lifecycle', phase: 'ready' });
+    diagnosticsService.record({
+      kind: 'platform-capabilities',
+      packaged: app.isPackaged,
+      displayCount: screen.getAllDisplays().length,
+      scaleFactors: screen.getAllDisplays().map((display) => display.scaleFactor),
+      mediaBackend:
+        process.platform === 'win32'
+          ? 'winrt'
+          : process.platform === 'darwin'
+            ? 'applescript'
+            : 'mpris',
+      inputBackend:
+        process.platform === 'linux'
+          ? 'x11-shape'
+          : process.platform === 'win32'
+            ? 'windows-cursor-region'
+            : 'mouse-passthrough',
+      sessionType:
+        process.platform === 'win32'
+          ? 'windows'
+          : process.platform === 'darwin'
+            ? 'macos'
+            : process.env.XDG_SESSION_TYPE === 'wayland'
+              ? 'wayland'
+              : process.env.DISPLAY
+                ? 'x11'
+                : 'unknown',
+      secureStorage: await safeStorage.isAsyncEncryptionAvailable().catch((error) => {
+        diagnosticsService.recordError('application', error);
+        return false;
+      }),
+    });
+    powerMonitor.on('suspend', () =>
+      diagnosticsService.record({ kind: 'app-lifecycle', phase: 'suspend' }),
+    );
+    powerMonitor.on('resume', () =>
+      diagnosticsService.record({ kind: 'app-lifecycle', phase: 'resume' }),
+    );
+    screen.on('display-added', () =>
+      diagnosticsService.record({ kind: 'app-lifecycle', phase: 'display-added' }),
+    );
+    screen.on('display-removed', () =>
+      diagnosticsService.record({ kind: 'app-lifecycle', phase: 'display-removed' }),
+    );
+    screen.on('display-metrics-changed', () =>
+      diagnosticsService.record({ kind: 'app-lifecycle', phase: 'display-metrics-changed' }),
+    );
     let initialState = defaultAppState;
     try {
       initialState = await stateStore.load();
@@ -142,7 +213,7 @@ async function startApplication() {
     }
 
     applyBackgroundMode(initialState.settings.backgroundMode);
-    registerIPC({
+    closeMedia = registerIPC({
       stateStore,
       secretStore,
       assistant,
@@ -156,10 +227,13 @@ async function startApplication() {
   });
 
   app.on('before-quit', () => {
+    diagnosticsService.record({ kind: 'app-lifecycle', phase: 'before-quit' });
     closeInputConnection();
+    closeMedia();
     stateStore.close();
   });
   app.on('window-all-closed', () => {
+    diagnosticsService.record({ kind: 'app-lifecycle', phase: 'window-all-closed' });
     if (process.platform === 'linux' && !backgroundMode && !hasTray()) app.quit();
   });
 }

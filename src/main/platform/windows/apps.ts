@@ -1,204 +1,98 @@
 import type { AppEntry } from '../../../shared/contracts';
-import { exec, execFile, spawn } from 'node:child_process';
-import fs from 'node:fs';
+import fs from 'node:fs/promises';
 import { shell } from 'electron';
-
 import { parseCommand } from './commands';
-interface DiscoveredApp {
-  name: string;
-  type: string;
-  path?: string;
-  appId?: string;
-}
-// --- App discovery providers ---
+import { powerShellLiteral, runPowerShell } from './powershell';
+import { spawnDetached } from '../../services/processes';
 
-// Scans Start Menu .lnk files and resolves them to Win32 exe paths.
-// Skips shortcuts targeting explorer.exe (UWP launchers) or WindowsApps.
-function discoverStartMenu(): Promise<DiscoveredApp[]> {
-  return new Promise<DiscoveredApp[]>((resolve) => {
-    const script = `
-[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
-$shell   = New-Object -ComObject WScript.Shell
-$dirs    = @("$env:ProgramData\\Microsoft\\Windows\\Start Menu\\Programs","$env:APPDATA\\Microsoft\\Windows\\Start Menu\\Programs")
+// Keep shortcuts intact: their arguments and working directory belong to Windows.
+export async function buildCache(): Promise<AppEntry[]> {
+  const output = await runPowerShell(
+    String.raw`
+$shell = New-Object -ComObject WScript.Shell
+$dirs = @([Environment]::GetFolderPath('CommonPrograms'), [Environment]::GetFolderPath('Programs'))
 $results = [System.Collections.Generic.List[object]]::new()
 foreach ($dir in $dirs) {
-  if (-not (Test-Path $dir)) { continue }
-  Get-ChildItem $dir -Recurse -Filter '*.lnk' -EA SilentlyContinue | ForEach-Object {
-    try {
-      $target = $shell.CreateShortcut($_.FullName).TargetPath
-      if ($target -and $target.EndsWith('.exe') -and
-          $target -notlike '*\\\\explorer.exe' -and
-          $target -notmatch 'WindowsApps' -and
-          (Test-Path $target -EA SilentlyContinue)) {
-        $results.Add([PSCustomObject]@{ name = $_.BaseName; type = 'win32'; path = $target })
+  if (-not (Test-Path -LiteralPath $dir)) { continue }
+  Get-ChildItem -LiteralPath $dir -Recurse -Filter '*.lnk' -ErrorAction SilentlyContinue | ForEach-Object {
+    $shortcut = $shell.CreateShortcut($_.FullName)
+    $target = $shortcut.TargetPath
+    if ($target -and $target.EndsWith('.exe', [StringComparison]::OrdinalIgnoreCase) -and
+        $target -notlike '*\explorer.exe' -and $target -notmatch 'WindowsApps' -and
+        (Test-Path -LiteralPath $target)) {
+      $results.Add([PSCustomObject]@{ name = $_.BaseName; identifier = $_.FullName })
+    }
+  }
+}
+Get-StartApps | Where-Object { $_.AppID -match '.+!.+' } | ForEach-Object {
+  $results.Add([PSCustomObject]@{ name = $_.Name; identifier = 'shell:AppsFolder\' + $_.AppID })
+}
+ConvertTo-Json -InputObject @($results.ToArray()) -Compress
+`,
+    { timeout: 30_000, maxBuffer: 5 * 1024 * 1024 },
+  );
+  const items: unknown = JSON.parse(output);
+  if (!Array.isArray(items)) throw new TypeError('Invalid Windows application discovery response');
+  const seen = new Set<string>();
+  return items
+    .flatMap((item): AppEntry[] => {
+      if (!item || typeof item.name !== 'string' || typeof item.identifier !== 'string') {
+        throw new TypeError('Invalid Windows application entry');
       }
-    } catch {}
-  }
-}
-@($results) | ConvertTo-Json -Compress -Depth 2
-`;
-    const enc = Buffer.from(script, 'utf16le').toString('base64');
-    exec(
-      `powershell -NoProfile -EncodedCommand ${enc}`,
-      { maxBuffer: 5 * 1024 * 1024 },
-      (err, out) => {
-        if (err || !out) return resolve([]);
-        try {
-          const d = JSON.parse(out.trim());
-          resolve(Array.isArray(d) ? d : d ? [d] : []);
-        } catch {
-          resolve([]);
-        }
-      },
-    );
-  });
-}
-
-// Gets UWP / Store apps via Get-StartApps.
-// UWP entries have AppID in the form PackageFamilyName!AppId (contains '!').
-function discoverUWP(): Promise<DiscoveredApp[]> {
-  return new Promise<DiscoveredApp[]>((resolve) => {
-    const script = `
-[Console]::OutputEncoding = [System.Text.Encoding]::UTF8
-$results = [System.Collections.Generic.List[object]]::new()
-Get-StartApps -EA SilentlyContinue | ForEach-Object {
-  if ($_.AppID -match '.+!.+') {
-    $results.Add([PSCustomObject]@{ name = $_.Name; type = 'uwp'; appId = $_.AppID })
-  }
-}
-@($results) | ConvertTo-Json -Compress -Depth 2
-`;
-    const enc = Buffer.from(script, 'utf16le').toString('base64');
-    exec(
-      `powershell -NoProfile -EncodedCommand ${enc}`,
-      { maxBuffer: 2 * 1024 * 1024 },
-      (err, out) => {
-        if (err || !out) return resolve([]);
-        try {
-          const d = JSON.parse(out.trim());
-          resolve(Array.isArray(d) ? d : d ? [d] : []);
-        } catch {
-          resolve([]);
-        }
-      },
-    );
-  });
-}
-
-// Converts provider-specific shapes to the shared launch-target contract.
-// win32: identifier = executable path | uwp: identifier = shell:AppsFolder\\appId
-export async function buildCache() {
-  const [startMenu, uwp] = await Promise.all([discoverStartMenu(), discoverUWP()]);
-  const seen = new Set();
-  const entries: AppEntry[] = [];
-  for (const item of [...startMenu, ...uwp]) {
-    if (!item.name || !(item.path || item.appId)) continue;
-    const launch = item.type === 'uwp' ? `shell:AppsFolder\\${item.appId}` : item.path;
-    const key = launch!.toLowerCase();
-    if (!seen.has(key)) {
+      const key = item.identifier.toLowerCase();
+      if (seen.has(key)) return [];
       seen.add(key);
-      entries.push({
-        name: item.name,
-        target: { kind: 'platform-app', platform: 'win32', identifier: launch! },
-      });
-    }
-  }
-  return entries.sort((a, b) => a.name.localeCompare(b.name));
+      return [
+        {
+          name: item.name,
+          target: { kind: 'platform-app', platform: 'win32', identifier: item.identifier },
+        },
+      ];
+    })
+    .sort((a, b) => a.name.localeCompare(b.name));
 }
 
-// --- Launch abstraction ---
-export function launchWindows(input: string) {
-  const trimmed = input.trim();
-
-  // UWP apps and schemes
-  if (trimmed.startsWith('shell:')) {
-    const safe = trimmed.replace(/'/g, "''");
-    exec(`powershell -NoProfile -WindowStyle Hidden -Command "Start-Process '${safe}'"`);
-    return;
-  }
-
-  // Paths with slashes (ex: C:\Program Files\App.exe)
-  if (/[\\/]/.test(trimmed)) {
-    const { exe, args } = parseCommand(trimmed);
-
-    // If no arguments, use native OS approach for best compatibility
-    if (args.length === 0) {
-      if (exe.toLowerCase().endsWith('.url')) {
-        try {
-          const content = fs.readFileSync(exe, 'utf8');
-          const m = content.match(/^URL=(.+)$/im);
-          if (m) shell.openExternal(m[1].trim());
-        } catch {}
-        return;
-      }
-      shell.openPath(exe).then((err) => {
-        if (err) exec(`start "" "${exe}"`);
-      });
-      return;
-    }
-
-    // Arguments provided - spawn exactly to prevent execution escaping vulnerabilities
-    const finalExe = /[\\/]/.test(exe) && !/\.[^\\.]+$/.test(exe) ? exe + '.exe' : exe;
-
-    // cmd / bat scripts must run via cmd.exe
-    if (/\.(cmd|bat)$/i.test(finalExe)) {
-      const child = spawn('cmd.exe', ['/c', finalExe, ...args], {
-        shell: false,
-        detached: true,
-        stdio: 'ignore',
-      });
-      child.on('error', () => {});
-      child.unref();
-      return;
-    }
-
-    // powershell scripts
-    if (/\.ps1$/i.test(finalExe)) {
-      const child = spawn(
-        'powershell.exe',
-        ['-NoProfile', '-ExecutionPolicy', 'Bypass', '-File', finalExe, ...args],
-        { shell: false, detached: true, stdio: 'ignore' },
-      );
-      child.on('error', () => {});
-      child.unref();
-      return;
-    }
-
-    const child = spawn(finalExe, args, {
-      shell: false,
-      detached: true,
-      stdio: 'ignore',
-    });
-    child.on('error', () => {});
-    child.unref();
-    return;
-  }
-
-  // App Paths or raw executables
-  if (trimmed.includes(' ')) {
-    const safe = trimmed.replace(/'/g, "''");
-    exec(`powershell -NoProfile -WindowStyle Hidden -Command "Start-Process '${safe}'"`);
+export async function launchWindowsEntry(identifier: string): Promise<void> {
+  if (/^shell:/i.test(identifier)) {
+    // Start-Process uses ShellExecuteEx; Explorer's exit code is not an activation result.
+    await runPowerShell('Start-Process -FilePath ' + powerShellLiteral(identifier));
+  } else if (/\.(exe|com)$/i.test(identifier)) {
+    await spawnDetached(identifier, []);
   } else {
-    exec(`start "" ${trimmed}`);
+    const error = await shell.openPath(identifier);
+    if (error) throw new Error(error);
   }
 }
 
-export function launchWindowsEntry(identifier: string): Promise<void> {
-  if (identifier.startsWith('shell:')) {
-    return new Promise((resolve, reject) => {
-      execFile('explorer.exe', [identifier], (error) => {
-        if (error)
-          reject(new Error(`Could not launch application: ${error.message}`, { cause: error }));
-        else resolve();
-      });
-    });
+export async function launchWindows(input: string): Promise<void> {
+  const trimmed = input.trim();
+  if (/^shell:/i.test(trimmed)) return launchWindowsEntry(trimmed);
+  const candidate = trimmed
+    .replace(/^"(.*)"$/, '$1')
+    .replace(/%([^%]+)%/g, (_, name) => process.env[name] || '%' + name + '%');
+  if (
+    await fs.stat(candidate).then(
+      () => true,
+      () => false,
+    )
+  ) {
+    const error = await shell.openPath(candidate);
+    if (error) throw new Error(error);
+    return;
   }
-  return new Promise((resolve, reject) => {
-    const child = spawn(identifier, [], { detached: true, stdio: 'ignore', windowsHide: true });
-    child.once('error', reject);
-    child.once('spawn', () => {
-      child.unref();
-      resolve();
-    });
-  });
+  const { exe, args } = parseCommand(trimmed);
+  if (/\.ps1$/i.test(exe)) {
+    await spawnDetached('powershell.exe', ['-NoProfile', '-File', exe, ...args]);
+  } else if (/\.(cmd|bat)$/i.test(exe)) {
+    await runPowerShell(
+      'Start-Process -FilePath ' +
+        powerShellLiteral(exe) +
+        (args.length
+          ? ' -ArgumentList ' +
+            powerShellLiteral(args.map((arg) => '"' + arg.replace(/"/g, '""') + '"').join(' '))
+          : ''),
+    );
+  } else {
+    await spawnDetached(exe, args);
+  }
 }

@@ -1,7 +1,7 @@
 nodeLinker: hoisted
 
 allowBuilds:
-  '@bitdisaster/exe-icon-extractor@1.0.10': true
+  '@bitdisaster/exe-icon-extractor@1.0.10': false
   core-js: true
   'esbuild@0.28.2': true
   'fs-xattr@0.3.1': true

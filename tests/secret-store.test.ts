@@ -39,11 +39,11 @@ describe('encrypted API key storage', () => {
     }
   });
 
-  it('refuses weak or unavailable encryption without persisting a secret', async () => {
+  it('refuses unavailable encryption without persisting a secret on every platform', async () => {
     const userDataPath = await mkdtemp(path.join(tmpdir(), 'ripple-next-secret-'));
     const database = createAppStateStore(userDataPath);
     const crypto = {
-      isAsyncEncryptionAvailable: async () => true,
+      isAsyncEncryptionAvailable: async () => false,
       getSelectedStorageBackend: () => 'basic_text',
       encryptStringAsync: vi.fn(async (value: string) => Buffer.from(value)),
       decryptStringAsync: vi.fn(),
@@ -54,6 +54,25 @@ describe('encrypted API key storage', () => {
       );
       expect(database.hasSecret('api-key')).toBe(false);
       expect(existsSync(path.join(userDataPath, 'credentials.bin'))).toBe(false);
+    } finally {
+      database.close();
+      await rm(userDataPath, { recursive: true, force: true });
+    }
+  });
+  it.runIf(process.platform === 'linux')('refuses the Linux plaintext backend', async () => {
+    const userDataPath = await mkdtemp(path.join(tmpdir(), 'ripple-next-secret-'));
+    const database = createAppStateStore(userDataPath);
+    try {
+      const crypto = {
+        isAsyncEncryptionAvailable: async () => true,
+        getSelectedStorageBackend: () => 'basic_text',
+        encryptStringAsync: async (value: string) => Buffer.from(value),
+        decryptStringAsync: vi.fn(),
+      };
+      await expect(createSecretStore(database, crypto).setApiKey('sk-secret')).rejects.toThrow(
+        'OS-backed secure storage is unavailable',
+      );
+      expect(database.hasSecret('api-key')).toBe(false);
     } finally {
       database.close();
       await rm(userDataPath, { recursive: true, force: true });

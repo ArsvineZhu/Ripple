@@ -20,7 +20,7 @@ function updateTrayMenu() {
         click: () => {
           const window = getMainWindow();
           if (window?.isVisible()) window.hide();
-          else showMainWindow();
+          else showMainWindow(true);
         },
       },
       { type: 'separator' },

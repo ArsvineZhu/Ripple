@@ -1,30 +1,15 @@
-import { spawn } from 'node:child_process';
 import fs from 'node:fs';
 import path from 'node:path';
 import { app, shell } from 'electron';
 import { AppEntrySchema } from '../../shared/contracts';
 import type { AppEntry, QuickAppTarget } from '../../shared/contracts';
 import { launchLinuxDesktopEntry, discoverLinuxApps } from '../platform/linux/apps';
-import { launchApp as launchMacApp } from '../platform/macos/apps';
+import { launchApp as launchMacApp, discoverMacApps } from '../platform/macos/apps';
 import { buildCache, launchWindows, launchWindowsEntry } from '../platform/windows/apps';
+import { spawnDetached } from './processes';
+import { randomUUID } from 'node:crypto';
 
-function spawnDetached(executable: string, args: string[], workingDirectory?: string) {
-  return new Promise<void>((resolve, reject) => {
-    const child = spawn(executable, args, {
-      ...(workingDirectory ? { cwd: workingDirectory } : {}),
-      detached: true,
-      stdio: 'ignore',
-      shell: false,
-    });
-    child.once('error', (error) => {
-      reject(new Error(`Could not start ${executable}: ${error.message}`, { cause: error }));
-    });
-    child.once('spawn', () => {
-      child.unref();
-      resolve();
-    });
-  });
-}
+let cacheBuild: Promise<void> | undefined;
 
 export async function launchQuickApp(target: QuickAppTarget): Promise<void> {
   switch (target.kind) {
@@ -54,7 +39,17 @@ export async function launchApp(appName: string): Promise<void> {
       await launchMacApp(appName);
       break;
     case 'win32':
-      launchWindows(appName);
+      if (!/[\\/]/.test(appName)) {
+        const matches = await discoverApps(appName);
+        const exact = matches.find(
+          (entry) => entry.name.toLocaleLowerCase() === appName.toLocaleLowerCase(),
+        );
+        if (exact?.target.kind === 'platform-app') {
+          await launchWindowsEntry(exact.target.identifier);
+          break;
+        }
+      }
+      await launchWindows(appName);
       break;
     default: {
       const matches = await discoverLinuxApps(appName);
@@ -72,22 +67,37 @@ export async function launchApp(appName: string): Promise<void> {
 
 export async function buildAppCache(): Promise<void> {
   if (process.platform !== 'win32') return;
-  const cacheFile = path.join(app.getPath('userData'), 'installed-apps.json');
-  const entries = await buildCache();
-  await fs.promises.mkdir(path.dirname(cacheFile), { recursive: true });
-  await fs.promises.writeFile(cacheFile, JSON.stringify(entries), { mode: 0o600 });
+  if (cacheBuild) return cacheBuild;
+  cacheBuild = (async () => {
+    const cacheFile = path.join(app.getPath('userData'), 'installed-apps.json');
+    const entries = await buildCache();
+    await fs.promises.mkdir(path.dirname(cacheFile), { recursive: true });
+    const temporaryPath = cacheFile + '.' + randomUUID() + '.tmp';
+    try {
+      await fs.promises.writeFile(temporaryPath, JSON.stringify(entries), { mode: 0o600 });
+      await fs.promises.rename(temporaryPath, cacheFile);
+    } finally {
+      await fs.promises.rm(temporaryPath, { force: true });
+    }
+  })();
+  try {
+    await cacheBuild;
+  } finally {
+    cacheBuild = undefined;
+  }
 }
 
 export async function discoverApps(query: string): Promise<AppEntry[]> {
   const normalizedQuery = query.trim();
   if (process.platform === 'linux') return discoverLinuxApps(normalizedQuery);
+  if (process.platform === 'darwin') return discoverMacApps(normalizedQuery);
   if (process.platform !== 'win32') return [];
 
   const cacheFile = path.join(app.getPath('userData'), 'installed-apps.json');
   try {
     const contents = await fs.promises.readFile(cacheFile, 'utf8');
     const data: unknown = JSON.parse(contents);
-    if (!Array.isArray(data)) return [];
+    if (!Array.isArray(data)) throw new TypeError('Invalid installed application cache');
     const needle = normalizedQuery.toLocaleLowerCase();
     return data
       .flatMap((entry): AppEntry[] => {
@@ -96,7 +106,11 @@ export async function discoverApps(query: string): Promise<AppEntry[]> {
         return [parsed.data];
       })
       .slice(0, 20);
-  } catch {
-    return [];
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') {
+      await buildAppCache();
+      return discoverApps(normalizedQuery);
+    }
+    throw error;
   }
 }

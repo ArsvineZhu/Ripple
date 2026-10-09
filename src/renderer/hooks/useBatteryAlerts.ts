@@ -1,6 +1,7 @@
 import type { Dispatch, SetStateAction } from 'react';
 import type { IslandMode } from '../../shared/contracts';
 import { useState, useEffect } from 'react';
+import { enterAlertMode, leaveAlertMode } from '../lib/modes';
 export function useBatteryAlerts({
   percent,
   charging,
@@ -19,10 +20,10 @@ export function useBatteryAlerts({
       (percent === 20 || percent === 15 || percent === 10 || percent === 5 || percent === 3) &&
       enabled
     ) {
-      setMode('quick');
+      setMode(enterAlertMode);
       setAlert(true);
       const timerId = setTimeout(() => {
-        setMode('still');
+        setMode(leaveAlertMode);
         setAlert(null);
       }, 3000);
       return () => {
@@ -32,10 +33,10 @@ export function useBatteryAlerts({
   }, [percent, enabled, setMode]);
   useEffect(() => {
     if (charging === true && enabled) {
-      setMode('quick');
+      setMode(enterAlertMode);
       setChargingAlert(true);
       const timerId = setTimeout(() => {
-        setMode('still');
+        setMode(leaveAlertMode);
         setChargingAlert(false);
       }, 1500);
       return () => {

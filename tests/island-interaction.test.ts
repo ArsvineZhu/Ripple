@@ -121,7 +121,7 @@ describe('Island position and overlay lifecycle', () => {
         mode: 'large',
         isDragging: false,
         setMode,
-        spotifyTrack: { name: 'Fixture', artist: 'Fixture', state: 'playing', source: 'fixture' },
+        mediaTrack: { name: 'Fixture', artist: 'Fixture', state: 'playing', source: 'fixture' },
       });
       useEffect(() => {
         navigation = current;
@@ -148,6 +148,25 @@ describe('Island position and overlay lifecycle', () => {
         new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }),
       ),
     );
+    expect(navigation!.currentTabId).toBe(3);
+    // Batched repeats must each use the latest tab, and reversal must not wait
+    // for a timer or an outgoing animation to finish.
+    await act(async () => {
+      for (let index = 0; index < 2; index++) {
+        document.body.dispatchEvent(
+          new KeyboardEvent('keydown', { key: 'ArrowRight', repeat: true, bubbles: true }),
+        );
+      }
+    });
+    expect(navigation!.currentTabId).toBe(5);
+    await act(async () => {
+      document.body.dispatchEvent(
+        new KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true }),
+      );
+      document.body.dispatchEvent(
+        new KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true }),
+      );
+    });
     expect(navigation!.currentTabId).toBe(3);
     const overlay = document.createElement('div');
     overlay.setAttribute('data-island-overlay', '');

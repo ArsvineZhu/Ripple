@@ -114,7 +114,7 @@ export function AssistantTab({
                         >
                           <CopyButton
                             className={styles.codeCopyButton}
-                            onCopy={() => navigator.clipboard.writeText(codeContent)}
+                            onCopy={() => window.electronAPI.writeClipboardText(codeContent)}
                           />
                           <pre className={styles.codePre} {...props}>
                             {children}

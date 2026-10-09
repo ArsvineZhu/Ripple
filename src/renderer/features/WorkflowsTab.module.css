@@ -113,3 +113,31 @@
   will-change: transform;
   flex-shrink: 0;
 }
+
+.workflowItem,
+.appItem {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  min-width: 0;
+}
+
+.appItem {
+  flex-shrink: 0;
+  max-width: 220px;
+}
+
+.launchError {
+  color: #ffa6a6;
+  font-size: 11px;
+  line-height: 1.4;
+  margin: 6px 4px 0;
+  overflow-wrap: anywhere;
+  text-align: center;
+}
+
+.appButton:disabled,
+.workflowButton:disabled {
+  opacity: 0.6;
+  cursor: wait;
+}

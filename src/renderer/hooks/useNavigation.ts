@@ -1,5 +1,5 @@
 import { isInteractiveTarget } from '../lib/interactions';
-import type { PointerEvent, WheelEvent, Dispatch, SetStateAction } from 'react';
+import type { PointerEvent, Dispatch, SetStateAction } from 'react';
 import type { MediaTrack, IslandMode } from '../../shared/contracts';
 import { normalizeHiddenTabs, SETTINGS_TAB_ID } from '../../shared/appState';
 import { visibleTabIds, nextTabId } from '../lib/navigation';
@@ -8,12 +8,14 @@ import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { TABS } from '../lib/tabs';
 import { useAppState } from '../components/AppStateProvider';
 export function useNavigation({
-  spotifyTrack,
+  mediaTrack,
+  mediaAvailable = !!mediaTrack,
   mode,
   isDragging,
   setMode,
 }: {
-  spotifyTrack: MediaTrack | null;
+  mediaTrack: MediaTrack | null;
+  mediaAvailable?: boolean;
   mode: IslandMode;
   isDragging: boolean;
   setMode: Dispatch<SetStateAction<IslandMode>>;
@@ -36,7 +38,7 @@ export function useNavigation({
       : [...currentHiddenTabs, id];
     if (newHidden.length < TABS.length) updateState({ settings: { hiddenTabs: newHidden } });
   };
-  const isMusicActive = !!spotifyTrack;
+  const isMusicActive = mediaAvailable;
   const visibleTabs = useMemo(
     () => visibleTabIds(tabOrder, hiddenTabs, isMusicActive),
     [tabOrder, hiddenTabs, isMusicActive],
@@ -52,30 +54,6 @@ export function useNavigation({
       setTabState([visibleTabs[0], 0]);
     }
   }, [hiddenTabs, visibleTabs, currentTabId]);
-  const tabVariants = {
-    enter: (direction: number) => ({
-      x: direction > 0 ? 300 : direction < 0 ? -300 : 0,
-      opacity: 0,
-      scale: 0.95,
-      filter: 'blur(10px)',
-    }),
-    center: {
-      x: 0,
-      opacity: 1,
-      scale: 1,
-      filter: 'blur(0px)',
-    },
-    exit: (direction: number) => ({
-      x: direction < 0 ? 300 : direction > 0 ? -300 : 0,
-      opacity: 0,
-      scale: 0.95,
-      filter: 'blur(10px)',
-    }),
-  };
-  const wheelSwipeThreshold = 60;
-  const wheelLockout = useRef(false);
-  const wheelAccumulator = useRef(0);
-  const wheelResetTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
   const swipeStartX = useRef<number | null>(0);
   const swipeStartY = useRef(0);
   const swipeMoved = useRef(false);
@@ -87,9 +65,18 @@ export function useNavigation({
         setMode('large');
         return;
       }
-      setTabState([nextTabId(visibleTabs, currentTabId, direction), direction]);
+      setTabState(([id]) => [nextTabId(visibleTabs, id, direction), direction]);
     },
-    [mode, setMode, visibleTabs, currentTabId],
+    [mode, setMode, visibleTabs],
+  );
+  const selectTab = useCallback(
+    (id: number, direction?: number) => {
+      if (!visibleTabs.includes(id)) return;
+      setTabState((previous) =>
+        previous[0] === id ? previous : [id, direction ?? (id > previous[0] ? 1 : -1)],
+      );
+    },
+    [visibleTabs],
   );
   const clearClickSuppression = () => {
     suppressClick.current = false;
@@ -98,29 +85,6 @@ export function useNavigation({
     const suppressed = suppressClick.current;
     suppressClick.current = false;
     return suppressed;
-  };
-  const handleWheelSwipe = (e: WheelEvent<HTMLDivElement>) => {
-    if (wheelLockout.current || mode !== 'large' || isDragging) return;
-    if (Math.abs(e.deltaY) > Math.abs(e.deltaX)) return;
-    let delta = e.deltaX;
-    if (e.deltaMode === 1) delta *= 40;
-    if (e.deltaMode === 2) delta *= 800;
-    wheelAccumulator.current += delta;
-    if (wheelResetTimeout.current) clearTimeout(wheelResetTimeout.current);
-    wheelResetTimeout.current = setTimeout(() => {
-      wheelAccumulator.current = 0;
-    }, 150);
-
-    if (Math.abs(wheelAccumulator.current) >= wheelSwipeThreshold) {
-      const isNext = wheelAccumulator.current > 0;
-      wheelLockout.current = true;
-      wheelAccumulator.current = 0;
-
-      moveTab(isNext ? 1 : -1);
-      setTimeout(() => {
-        wheelLockout.current = false;
-      }, 800);
-    }
   };
   const handlePointerDown = (e: PointerEvent<HTMLDivElement>) => {
     if (e.pointerType === 'mouse' && e.button !== 0) return;
@@ -162,18 +126,14 @@ export function useNavigation({
     const startY = swipeStartY.current;
     swipeStartX.current = null;
 
-    if (mode !== 'large' || isDragging || wheelLockout.current) return;
+    if (mode !== 'large' || isDragging) return;
     if (!swipeMoved.current) return;
 
     const dx = e.clientX - startX;
     const dy = e.clientY - startY;
     if (Math.abs(dx) < swipeThreshold || Math.abs(dx) <= Math.abs(dy)) return;
 
-    wheelLockout.current = true;
     moveTab(dx > 0 ? -1 : 1);
-    setTimeout(() => {
-      wheelLockout.current = false;
-    }, 800);
   };
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
@@ -212,10 +172,10 @@ export function useNavigation({
     currentTabId,
     direction,
     currentTab,
-    tabVariants,
+    visibleTabs,
+    selectTab,
     clearClickSuppression,
     consumeClickSuppression,
-    handleWheelSwipe,
     isInteractiveTarget,
     handlePointerDown,
     handlePointerMove,

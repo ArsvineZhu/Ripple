@@ -9,6 +9,38 @@ export interface MediaTrack {
   state: string;
   source: string;
 }
+export interface MediaSession extends MediaTrack {
+  id: string;
+  playerName: string;
+  state: 'playing' | 'paused' | 'stopped' | 'unknown';
+  capabilities: {
+    previous: boolean | null;
+    play: boolean | null;
+    pause: boolean | null;
+    next: boolean | null;
+    toggle: boolean | null;
+  };
+  isCurrent?: boolean;
+  stale?: boolean;
+}
+export type MediaError =
+  | 'mediaReadFailed'
+  | 'mediaSessionGone'
+  | 'mediaCommandUnsupported'
+  | 'mediaCommandFailed'
+  | 'mediaOpenFailed';
+export interface MediaSnapshot {
+  sessions: MediaSession[];
+  activeSessionId: string | null;
+  manualSessionId: string | null;
+  status: 'ready' | 'idle' | 'error';
+  lastSuccessfulReadAt: number | null;
+  error: MediaError | null;
+}
+export interface MediaOperationResult {
+  snapshot: MediaSnapshot;
+  error: MediaError | null;
+}
 export const QuickAppTargetSchema = z.discriminatedUnion('kind', [
   z
     .object({
@@ -72,6 +104,10 @@ export interface InputRect {
 }
 export type MediaCommand = 'previous' | 'playpause' | 'next';
 export type IslandMode = 'still' | 'quick' | 'large';
+export const ScrollGestureStartSchema = z
+  .object({ at: z.number().finite().nonnegative() })
+  .strict();
+export type ScrollGestureStart = z.infer<typeof ScrollGestureStartSchema>;
 export type NoticeCode =
   | 'appLaunchFailed'
   | 'autoLaunchFailed'
@@ -149,6 +185,8 @@ interface AppBootstrap {
 export interface InvokeMap {
   'get-app-bootstrap': { args: []; result: AppBootstrap };
   'open-diagnostics-folder': { args: []; result: void };
+  'read-clipboard-text': { args: []; result: string };
+  'write-clipboard-text': { args: [text: string]; result: void };
   'update-app-state': { args: [patch: AppStatePatch]; result: AppState };
   'save-api-key': { args: [key: string]; result: void };
   'launch-quick-app': { args: [id: string]; result: void };
@@ -165,11 +203,16 @@ export interface InvokeMap {
     args: [ignore: boolean, forward: boolean];
     result: void;
   };
-  'get-system-media': { args: []; result: MediaTrack | null };
+  'get-system-media': { args: []; result: MediaSnapshot };
+  'select-media-session': { args: [id: string | null]; result: MediaOperationResult };
+  'open-media-session': { args: [id: string]; result: MediaOperationResult };
   'get-bluetooth-status': { args: []; result: boolean };
   'get-camera-status': { args: []; result: boolean };
   'get-microphone-status': { args: []; result: boolean };
-  'control-system-media': { args: [command: MediaCommand]; result: void };
+  'control-system-media': {
+    args: [command: MediaCommand, sessionId: string];
+    result: MediaOperationResult;
+  };
   'open-external': { args: [url: string]; result: void };
   'launch-app': { args: [name: string]; result: void };
   'build-app-cache': { args: []; result: void };
@@ -181,6 +224,8 @@ export interface InvokeMap {
 export interface ElectronAPI {
   getAppBootstrap(): Promise<AppBootstrap>;
   openDiagnosticsFolder(): Promise<void>;
+  readClipboardText(): Promise<string>;
+  writeClipboardText(text: string): Promise<void>;
   updateAppState(patch: AppStatePatch): Promise<AppState>;
   saveApiKey(key: string): Promise<void>;
   launchQuickApp(id: string): Promise<void>;
@@ -190,16 +235,19 @@ export interface ElectronAPI {
   cancelAssistant(requestId: string): Promise<void>;
   onAppNotice(callback: (notice: AppNotice) => void): () => void;
   onAssistantEvent(callback: (event: AssistantEvent) => void): () => void;
+  onScrollGestureStart(callback: (event: ScrollGestureStart) => void): () => void;
   getSystemLocale(): Promise<string>;
   setUILocale(locale: Locale): Promise<void>;
   platform: string;
   setIgnoreMouseEvents(ignore: boolean, forward: boolean): Promise<void>;
   setWindowInputShape(rect: InputRect): void;
-  getSystemMedia(): Promise<MediaTrack | null>;
+  getSystemMedia(): Promise<MediaSnapshot>;
+  selectMediaSession(id: string | null): Promise<MediaOperationResult>;
+  openMediaSession(id: string): Promise<MediaOperationResult>;
   getBluetoothStatus(): Promise<boolean>;
   getCameraStatus(): Promise<boolean>;
   getMicrophoneStatus(): Promise<boolean>;
-  controlSystemMedia(command: MediaCommand): Promise<void>;
+  controlSystemMedia(command: MediaCommand, sessionId: string): Promise<MediaOperationResult>;
   openExternal(url: string): Promise<void>;
   launchApp(name: string): Promise<void>;
   buildAppCache(): Promise<void>;

@@ -14,38 +14,86 @@
   margin-top: 5px;
 }
 
-.batteryContainer {
+.statusRow {
   position: absolute;
   top: 17px;
+  left: 25px;
   right: 25px;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  height: 18px;
+  font-size: 15px;
+  line-height: 18px;
+}
+
+.batteryContainer {
+  --battery-empty: #8e939a;
+  position: relative;
+  margin-left: auto;
   width: max-content;
+  padding-right: 3px;
+}
+.batteryContainer::after {
+  content: '';
+  position: absolute;
+  top: 50%;
+  right: 0;
+  width: 2.25px;
+  height: 6px;
+  border-radius: 0 1.5px 1.5px 0;
+  background: var(--battery-empty);
+  transform: translateY(-50%);
 }
 .batteryBar {
+  --battery-fill: #ffffff;
   display: inline-flex;
   align-items: center;
+  width: 33px;
+  height: 18px;
   border-radius: 6px;
-  padding: 4px 8px;
+  padding: 0 2.25px;
+  color: #000000;
+  background: linear-gradient(
+    to right,
+    var(--battery-fill) 0,
+    var(--battery-fill) var(--battery-level),
+    var(--battery-empty) var(--battery-level),
+    var(--battery-empty) 100%
+  );
+}
+.batteryBar[data-charging='true'] {
+  --battery-fill: #34c759;
+  color: #ffffff;
 }
 .batteryBar h1 {
   margin: 0;
-  font-size: 13px;
-  line-height: 1;
+  font-size: inherit;
+  line-height: inherit;
+}
+.batteryBar[data-charging='true'][data-three-digits='true'] {
+  width: 42px;
 }
 .batteryText {
   display: flex;
   align-items: center;
-  gap: 4px;
+  justify-content: center;
+  gap: 0.75px;
+  width: 100%;
+  min-height: 12px;
+  font-variant-numeric: tabular-nums;
   white-space: nowrap;
 }
 .batteryText svg {
+  width: 8.25px;
+  height: 12px;
   flex-shrink: 0;
 }
 
 .weatherPosition {
-  font-size: 15px;
-  left: 25px;
-  top: 14px;
-  position: absolute;
+  margin: 0;
+  font-size: inherit;
+  line-height: inherit;
   animation: none;
 }
 

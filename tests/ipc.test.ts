@@ -6,6 +6,9 @@ const mock = vi.hoisted(() => ({
   shape: vi.fn(),
   openDiagnosticsFolder: vi.fn(),
   recordApplicationError: vi.fn(),
+  readClipboard: vi.fn(),
+  writeClipboard: vi.fn(),
+  recordDiagnostic: vi.fn(),
   window: {
     webContents: {},
     focus: vi.fn(),
@@ -14,6 +17,7 @@ const mock = vi.hoisted(() => ({
   },
 }));
 vi.mock('electron', () => ({
+  clipboard: { readText: mock.readClipboard, writeText: mock.writeClipboard },
   ipcMain: {
     handle: (
       channel: string,
@@ -35,10 +39,16 @@ vi.mock('electron', () => ({
 vi.mock('../src/main/window', () => ({
   getMainWindow: () => mock.window,
   showMainWindow: vi.fn(),
-  applyLinuxInputShape: mock.shape,
+  applyWindowInputRegion: mock.shape,
 }));
-vi.mock('../src/main/services/mediaControl', () => ({
-  controlSystemMedia: vi.fn(),
+vi.mock('../src/main/services/media', () => ({
+  createMediaService: () => ({
+    getSnapshot: vi.fn(),
+    selectSession: vi.fn(),
+    openSession: vi.fn(),
+    control: vi.fn(),
+    close: vi.fn(),
+  }),
 }));
 vi.mock('../src/main/tray', () => ({ setTrayLocale: vi.fn() }));
 import { setTrayLocale } from '../src/main/tray';
@@ -63,6 +73,7 @@ const services = {
     rendererReady: vi.fn(),
   },
   diagnostics: {
+    record: mock.recordDiagnostic,
     openFolder: mock.openDiagnosticsFolder,
     recordError: mock.recordApplicationError,
   },
@@ -124,6 +135,56 @@ describe('IPC boundary', () => {
     });
     expect(mock.openDiagnosticsFolder).toHaveBeenCalledOnce();
   });
+  it('reads native clipboard text without recording its contents', async () => {
+    mock.readClipboard.mockReturnValue('private clipboard text');
+    const result = await mock.handlers.get('read-clipboard-text')!({
+      sender: mock.window.webContents,
+    });
+    expect(result).toBe('private clipboard text');
+    expect(JSON.stringify(mock.recordDiagnostic.mock.calls)).not.toContain(
+      'private clipboard text',
+    );
+  });
+  it('records a polled failure once, counts repeats, and records recovery', async () => {
+    mock.recordDiagnostic.mockClear();
+    const event = { sender: mock.window.webContents };
+    const error = Object.assign(new Error('private clipboard message'), { code: 'EACCES' });
+    mock.readClipboard
+      .mockImplementationOnce(() => {
+        throw error;
+      })
+      .mockImplementationOnce(() => {
+        throw error;
+      })
+      .mockReturnValue('recovered private text');
+    const read = mock.handlers.get('read-clipboard-text')!;
+    await expect(read(event)).rejects.toBe(error);
+    await expect(read(event)).rejects.toBe(error);
+    await expect(read(event)).resolves.toBe('recovered private text');
+    expect(mock.recordDiagnostic.mock.calls.map(([entry]) => entry.phase)).toEqual([
+      'failed',
+      'recovered',
+    ]);
+    expect(mock.recordDiagnostic.mock.calls[1][0].repeated).toBe(1);
+    expect(JSON.stringify(mock.recordDiagnostic.mock.calls)).not.toContain('private');
+  });
+  it('records IPC failure channel and system code without recording arguments', async () => {
+    mock.recordDiagnostic.mockClear();
+    const error = Object.assign(new Error('private arguments'), { code: 'EACCES' });
+    mock.openDiagnosticsFolder.mockRejectedValueOnce(error);
+    await expect(
+      mock.handlers.get('open-diagnostics-folder')!({ sender: mock.window.webContents }),
+    ).rejects.toBe(error);
+    expect(mock.recordDiagnostic).toHaveBeenCalledWith(
+      expect.objectContaining({
+        kind: 'ipc-operation',
+        channel: 'open-diagnostics-folder',
+        phase: 'failed',
+        error: expect.objectContaining({ code: 'EACCES' }),
+      }),
+    );
+    expect(JSON.stringify(mock.recordDiagnostic.mock.calls)).not.toContain('private arguments');
+  });
   it('reports diagnostics folder failures in Settings and preserves the IPC rejection', async () => {
     const error = new Error('Could not open diagnostics directory');
     mock.openDiagnosticsFolder.mockRejectedValueOnce(error);
@@ -138,6 +199,8 @@ describe('IPC boundary', () => {
       'error',
       'settings',
     );
-    expect(mock.recordApplicationError).toHaveBeenCalledWith('application', error);
+    expect(mock.recordDiagnostic).toHaveBeenCalledWith(
+      expect.objectContaining({ channel: 'open-diagnostics-folder', phase: 'failed' }),
+    );
   });
 });

@@ -17,3 +17,5 @@ Settings control time format, startup, display, snap/free positioning, theme/col
 Settings → General → Language offers Follow system, 简体中文, English, 繁體中文 and 日本語. Selection applies immediately to the interface and tray and is remembered after restart. Switching language retains current settings and input drafts.
 
 Use arrow keys and Enter inside a dropdown; Escape closes it and returns focus to its trigger. Tab navigation shortcuts apply outside interactive controls. Position Mode keeps the settings view open while the Island moves. Workflow input width is fixed to its form.
+
+On Windows, installed quick apps use Start Menu shortcuts and Store app identifiers. Launch failures appear beside the clicked app or workflow; retrying clears the old message. Settings → Diagnostics opens local logs and crash reports. See [platform compatibility](docs/platform-compatibility.md) for Windows adaptation details.

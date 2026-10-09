@@ -2,7 +2,7 @@
 
 # 开发指南
 
-使用 [.node-version](../.node-version) 中的 Node `22.23.3`，并使用 `package.json` 固定的 pnpm `12.9.1`。当前工具链要求 Node 22.13 或更新版本。Linux 打包需要 `dpkg`、`fakeroot`、`rpm` 和构建工具；可选系统功能使用 `playerctl`、`bluetoothctl`、`fuser`、`pactl`。Windows MSI 需要 WiX Toolset，macOS 打包需要 Xcode Command Line Tools。在对应系统运行原生 maker。
+使用 [.node-version](../.node-version) 中的 Node `22.23.3`，并使用 `package.json` 固定的 pnpm `12.9.1`。当前工具链要求 Node 22.13 或更新版本。Linux 打包需要 `dpkg`、`fakeroot`、`rpm` 和构建工具；可选系统功能使用 `bluetoothctl`、`fuser`、`pactl`。Windows MSI 需要 WiX Toolset，macOS 打包需要 Xcode Command Line Tools。在对应系统运行原生 maker。
 
 ```sh
 pnpm install --frozen-lockfile
@@ -38,9 +38,11 @@ Main 拥有应用生命周期、托盘、透明窗口、系统能力和 typed IP
 
 AI SDK 的 `streamText` 与 OpenAI 兼容 provider 在 main 实现流式对话。默认 system prompt 保存在 `src/main/prompts/default-assistant.md`，并随 main bundle 打包。`xstate` 和 `@xstate/react` 管理可取消的交互延迟与重入门控。Linux 快捷应用从 XDG 桌面入口发现并通过 `gio launch` 启动；自定义命令通过 `spawn` 接收参数数组，不经过 shell。
 
-浏览器搜索地址模板保存在设置中，必须包含 `{query}`；直接输入 HTTP(S) 地址仍会作为网址打开。时钟和日期使用当前语言，并可跟随系统时区或指定 IANA 时区。错误会路由到所属功能区行内展示；`InlineNotices` 沿用 Island 的 Motion 淡入与模糊过渡。长内容区使用 Smooth Scrollbar 的回弹效果；AI 回答会随内容增长，并限制在当前屏幕可用高度内。设置页滑块由对应 CSS Module 统一管理主题轨道、滑块和焦点样式。
+浏览器搜索地址模板保存在设置中，必须包含 `{query}`；直接输入 HTTP(S) 地址仍会作为网址打开。时钟和日期使用当前语言，并可跟随系统时区或指定 IANA 时区。错误会路由到所属功能区行内展示；`InlineNotices` 沿用 Island 的 Motion 淡入与模糊过渡。长内容区使用系统原生纵向滚动，横向页签使用可接续的连续动画与有界回弹；AI 回答会随内容增长，并限制在当前屏幕可用高度内。设置页滑块由对应 CSS Module 统一管理主题轨道、滑块和焦点样式。
 
 ## 本地诊断
+
+平台适配检查结果、诊断字段和平台验收边界见 [Windows 适配与诊断](platform-compatibility.zh-CN.md)。CI 在 Ubuntu、Windows 和 macOS 上执行检查与测试；更换系统时，从锁文件重新安装依赖。
 
 Ripple Next 将 `ripple-next.log` 写入 `<userData>/diagnostics/`，Electron minidump 保存在其中的 `crashes/` 子目录。可在设置页的“诊断”区域选择“打开诊断文件夹”。日志传输大小上限为 5 MiB；每次启动时会清理超过 30 天的崩溃报告，并只保留最新的 10 份。
 

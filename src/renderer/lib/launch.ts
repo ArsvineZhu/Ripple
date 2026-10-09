@@ -1,11 +1,11 @@
-export function openApp(app: string) {
+export async function openApp(app: string): Promise<void> {
   if (!app) return;
   const trimmedApp = app.trim();
 
   // 1. Explicit protocol URLs — checked first so that file:// and https://
   //    aren't accidentally caught by the path-separator test below.
   if (/^(https?|file):\/\//i.test(trimmedApp)) {
-    window.electronAPI?.openExternal(trimmedApp);
+    await window.electronAPI?.openExternal(trimmedApp);
     return;
   }
 
@@ -18,7 +18,7 @@ export function openApp(app: string) {
     trimmedApp.startsWith('shell:'); // UWP shell URI
 
   if (isLaunchTarget) {
-    window.electronAPI?.launchApp(trimmedApp);
+    await window.electronAPI?.launchApp(trimmedApp);
     return;
   }
 
@@ -28,31 +28,17 @@ export function openApp(app: string) {
     /^(\d{1,3}\.){3}\d{1,3}(:\d+)?(\/.*)?$/.test(trimmedApp) ||
     /^localhost(:\d+)?(\/.*)?$/i.test(trimmedApp)
   ) {
-    window.electronAPI?.openExternal(`http://${trimmedApp}`);
+    await window.electronAPI?.openExternal(`http://${trimmedApp}`);
     return;
   }
 
   // 4. Bare domain — must end with 2+ alpha chars so python3.11 and
   //    192.168.1.1 are not misclassified. DO NOT use .includes('.').
   if (/^[a-z0-9.-]+\.[a-z]{2,}$/i.test(trimmedApp)) {
-    window.electronAPI?.openExternal(`https://${trimmedApp}`);
+    await window.electronAPI?.openExternal(`https://${trimmedApp}`);
     return;
   }
 
   // 5. Everything else — treat as a command or app name
-  window.electronAPI?.launchApp(trimmedApp);
-}
-export function openMusicPlayer(source: string) {
-  if (!source) return;
-
-  if (source === 'Spotify') {
-    openApp('Spotify');
-  } else if (source === 'Music') {
-    openApp('Music');
-  } else if (source === 'music.apple.com' || source.includes('Apple')) {
-    openApp('Music');
-  } else {
-    // Fallback: try to open by source name
-    openApp(source);
-  }
+  await window.electronAPI?.launchApp(trimmedApp);
 }

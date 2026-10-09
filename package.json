@@ -42,6 +42,7 @@
   "devDependencies": {
     "@ai-sdk/openai-compatible": "3.0.62",
     "@electron-forge/cli": "8.0.1",
+    "@electron-forge/core": "8.0.1",
     "@electron-forge/maker-deb": "8.0.1",
     "@electron-forge/maker-dmg": "8.0.1",
     "@electron-forge/maker-rpm": "8.0.1",
@@ -62,6 +63,7 @@
     "@xstate/react": "6.1.0",
     "ai": "7.0.127",
     "cmdk": "1.1.1",
+    "dbus-native": "0.16.1",
     "electron": "44.5.1",
     "happy-dom": "20.14.5",
     "i18next": "26.4.2",
@@ -75,7 +77,6 @@
     "react-dom": "19.3.0",
     "react-i18next": "17.0.15",
     "react-markdown": "10.1.0",
-    "smooth-scrollbar": "^8.8.4",
     "tsx": "4.23.15",
     "typescript": "7.0.2",
     "vite": "8.3.2",

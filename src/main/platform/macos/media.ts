@@ -1,83 +1,82 @@
-import { exec } from 'node:child_process';
-import type { MediaTrack } from '../../../shared/contracts';
-export function getSystemMedia(): Promise<MediaTrack | null> {
-  return new Promise<MediaTrack | null>((resolve) => {
-    const script = `
-            tell application "System Events"
-                set spotifyRunning to (name of every process) contains "Spotify"
-                set musicRunning to (name of every process) contains "Music"
-            end tell
-            if spotifyRunning then
-                try
-                    tell application "Spotify"
-                        set mediaState to player state as string
-                        set songName to name of current track
-                        set artistName to artist of current track
-                        set albumName to album of current track
-                        try
-                            set artUrl to artwork url of current track
-                        on error
-                            set artUrl to ""
-                        end try
-                    end tell
-                    return "Spotify" & "||" & mediaState & "||" & songName & "||" & artistName & "||" & albumName & "||" & artUrl
-                on error
-                    return "Error"
-                end try
-            else if musicRunning then
-                try
-                    tell application "Music" 
-                        set mediaState to player state as string
-                        set songName to name of current track
-                        set artistName to artist of current track
-                        set albumName to album of current track
-                    end tell
-                    return "Music" & "||" & mediaState & "||" & songName & "||" & artistName & "||" & albumName & "||" & "" 
-                on error
-                    return "Error"
-                end try
-            else
-                return "None"
-            end if
-            `;
-    exec(`osascript -e '${script}'`, (error, stdout) => {
-      if (error) {
-        return resolve(null);
-      }
-      const output = stdout.trim();
-
-      if (!output || output === 'None' || output === 'Error') return resolve(null);
-
-      const parts = output.split('||');
-      if (parts.length >= 4) {
-        resolve({
-          name: parts[2],
-          artist: parts[3],
-          album: parts[4],
-          artwork_url: parts[5] || null,
-          state: parts[1] === 'playing' ? 'playing' : 'paused',
-          source: parts[0],
-        });
-      } else {
-        resolve(null);
-      }
-    });
-  });
+import { z } from 'zod';
+import { runCommand } from '../../services/processes';
+import type { MediaCommand, MediaSession } from '../../../shared/contracts';
+async function runningPlayers() {
+  const names = (await runCommand('/bin/ps', ['-A', '-o', 'comm=']))
+    .split('\n')
+    .map((name) => name.trim().split('/').at(-1));
+  return ['Spotify', 'Music'].filter((name) => names.includes(name));
 }
-
-export function controlSystemMedia(
-  command: import('../../../shared/contracts').MediaCommand,
-): void {
-  const script = `
-        tell application "System Events"
-            set spotifyRunning to (name of every process) contains "Spotify"
-            set musicRunning to (name of every process) contains "Music"
-        end tell
-        if spotifyRunning then
-            tell application "Spotify" to ${command} track
-        else if musicRunning then
-            tell application "Music" to ${command} track
-        end if
-        `;
-  exec(`osascript -e '${script}'`);
+const trackSchema = z.object({
+  name: z.string(),
+  artist: z.string(),
+  album: z.string(),
+  artwork: z.string(),
+  state: z.enum(['playing', 'paused', 'stopped']),
+});
+async function readPlayer(player: string): Promise<MediaSession> {
+  const script = `use framework "Foundation"
+use scripting additions
+tell application "${player}"
+  set mediaState to player state as string
+  set songName to ""
+  set artistName to ""
+  set albumName to ""
+  set artUrl to ""
+  try
+    set songName to name of current track
+    set artistName to artist of current track
+    set albumName to album of current track
+    ${player === 'Spotify' ? 'set artUrl to artwork url of current track' : ''}
+  end try
+end tell
+set info to current application's NSMutableDictionary's dictionary()
+info's setObject:songName forKey:"name"
+info's setObject:artistName forKey:"artist"
+info's setObject:albumName forKey:"album"
+info's setObject:artUrl forKey:"artwork"
+info's setObject:mediaState forKey:"state"
+set data to current application's NSJSONSerialization's dataWithJSONObject:info options:0 |error|:(missing value)
+return (current application's NSString's alloc()'s initWithData:data encoding:4) as text`;
+  const info = trackSchema.parse(
+    JSON.parse(await runCommand('/usr/bin/osascript', ['-e', script])),
+  );
+  return {
+    id: player,
+    playerName: player,
+    source: player,
+    name: info.name,
+    artist: info.artist,
+    album: info.album,
+    state: info.state,
+    artwork_url: info.artwork || null,
+    capabilities: { previous: null, next: null, play: true, pause: true, toggle: true },
+  };
+}
+export async function getMediaSessions() {
+  const players = await runningPlayers();
+  const results = await Promise.allSettled(players.map(readPlayer));
+  return {
+    sessions: results.flatMap((result) => (result.status === 'fulfilled' ? [result.value] : [])),
+    failedIds: results.flatMap((result, index) =>
+      result.status === 'rejected' ? [players[index]] : [],
+    ),
+  };
+}
+export async function controlSystemMedia(
+  command: MediaCommand,
+  session: MediaSession,
+): Promise<void> {
+  if (!['Spotify', 'Music'].includes(session.id) || !(await runningPlayers()).includes(session.id))
+    throw new Error('Media session unavailable');
+  const operation = command === 'playpause' ? 'playpause' : command + ' track';
+  await runCommand('/usr/bin/osascript', [
+    '-e',
+    `tell application "${session.id}" to ${operation}`,
+  ]);
+}
+export async function openMediaSession(session: MediaSession): Promise<void> {
+  if (!['Spotify', 'Music'].includes(session.id) || !(await runningPlayers()).includes(session.id))
+    throw new Error('Media session unavailable');
+  await runCommand('/usr/bin/open', ['-a', session.id]);
 }

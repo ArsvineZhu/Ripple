@@ -2,6 +2,7 @@ import type { Dispatch, SetStateAction } from 'react';
 import type { IslandMode } from '../../shared/contracts';
 import { useState, useEffect, useRef } from 'react';
 import { recordRendererError } from '../lib/diagnostics';
+import { enterAlertMode, leaveAlertMode } from '../lib/modes';
 
 const BLUETOOTH_POLL_INTERVAL_MS = 15000;
 const CAPTURE_DEVICE_POLL_INTERVAL_MS = 5000;
@@ -18,10 +19,10 @@ export function useDeviceAlerts(setMode: Dispatch<SetStateAction<IslandMode>>) {
   const captureAlertDisplayed = useRef({ camera: false, microphone: false });
   useEffect(() => {
     if (bluetooth === true) {
-      setMode('quick');
+      setMode(enterAlertMode);
       setBluetoothAlert(true);
       const timerId = setTimeout(() => {
-        setMode('still');
+        setMode(leaveAlertMode);
         setBluetoothAlert(false);
       }, 3000);
       return () => {
@@ -91,6 +92,9 @@ export function useDeviceAlerts(setMode: Dispatch<SetStateAction<IslandMode>>) {
       active = false;
       if (bluetoothTimer) clearTimeout(bluetoothTimer);
       if (captureTimer) clearTimeout(captureTimer);
+      if (captureAlertTimer.current) clearTimeout(captureAlertTimer.current);
+      captureAlertTimer.current = null;
+      captureAlertQueue.current = [];
     };
   }, []);
   useEffect(() => {
@@ -99,7 +103,7 @@ export function useDeviceAlerts(setMode: Dispatch<SetStateAction<IslandMode>>) {
       const nextAlert = captureAlertQueue.current.shift();
       if (!nextAlert) return;
 
-      setMode('quick');
+      setMode(enterAlertMode);
       if (nextAlert === 'camera') {
         setCameraAlert(true);
       } else {
@@ -116,7 +120,7 @@ export function useDeviceAlerts(setMode: Dispatch<SetStateAction<IslandMode>>) {
         if (captureAlertQueue.current.length > 0) {
           processCaptureQueue();
         } else {
-          setMode('still');
+          setMode(leaveAlertMode);
         }
       }, 3000);
     };
