@@ -1,7 +1,7 @@
 import styles from './styles/Island.module.css';
 import { useOverlay } from './components/OverlayProvider';
-import { motion } from 'motion/react';
-import { AnimatePresence } from 'motion/react';
+import { animate, motion, useMotionValue } from 'motion/react';
+import { TabPanels } from './components/TabPanels';
 import { useIslandController } from './hooks/useIslandController';
 import { QuickView } from './components/QuickView';
 import { BrowserSearchTab } from './features/BrowserSearchTab';
@@ -12,7 +12,7 @@ import { AssistantTab } from './features/AssistantTab';
 import { ClipboardTab } from './features/ClipboardTab';
 import { TasksTab } from './features/TasksTab';
 import { SettingsTab } from './features/SettingsTab';
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { recordIslandContext } from './lib/diagnostics';
 export default function Island() {
   const controller = useIslandController();
@@ -32,7 +32,6 @@ export default function Island() {
     clearClickSuppression,
     consumeClickSuppression,
     isInteractiveTarget,
-    handleWheelSwipe,
     handlePointerDown,
     handlePointerMove,
     handlePointerUp,
@@ -45,8 +44,7 @@ export default function Island() {
     isHovered,
     theme,
     currentTab,
-    syncLinuxWindowShape,
-    bgImage,
+    syncWindowInputRegion,
     islandBorderEnabled,
     cameraInUse,
     microphoneInUse,
@@ -55,9 +53,10 @@ export default function Island() {
     percent,
     alert,
     bluetoothAlert,
-    direction,
     currentTabId,
-    tabVariants,
+    visibleTabs,
+    selectTab,
+    direction,
     trackPointerPosition,
   } = controller;
   const reportIslandContext = useCallback(() => {
@@ -81,6 +80,60 @@ export default function Island() {
     mode === 'large' && currentTab === 4 && controller.asked
       ? Math.min(Math.max(height, window.innerHeight - 80), Math.max(height, assistantAnswerHeight))
       : height;
+  const visualWidth = useMotionValue(width);
+  const visualHeight = useMotionValue(animatedHeight);
+  const tabMoving = useRef(false);
+  const dimensionAnimation = useRef<{
+    width: ReturnType<typeof animate>;
+    height: ReturnType<typeof animate>;
+  } | null>(null);
+  useEffect(() => {
+    if (mode !== 'large') tabMoving.current = false;
+    if (mode === 'large' && tabMoving.current) return;
+    const transition = { type: 'spring' as const, stiffness: 400, damping: 40, mass: 2.5 };
+    const horizontal = animate(visualWidth, width, transition);
+    const vertical = animate(visualHeight, animatedHeight, transition);
+    dimensionAnimation.current = { width: horizontal, height: vertical };
+    return () => {
+      horizontal.stop();
+      vertical.stop();
+    };
+  }, [mode, width, animatedHeight, visualWidth, visualHeight]);
+  useEffect(() => {
+    let frame: number | undefined;
+    const sync = () => {
+      if (frame !== undefined) return;
+      frame = requestAnimationFrame(() => {
+        frame = undefined;
+        syncWindowInputRegion();
+      });
+    };
+    const stopWidth = visualWidth.on('change', sync);
+    const stopHeight = visualHeight.on('change', sync);
+    return () => {
+      stopWidth();
+      stopHeight();
+      if (frame !== undefined) cancelAnimationFrame(frame);
+    };
+  }, [visualWidth, visualHeight, syncWindowInputRegion]);
+  const handleTabProgress = (from: number, to: number, progress: number, moving: boolean) => {
+    tabMoving.current = moving;
+    // Navigation takes over the size values even if opening was still animating
+    // and the requested tabs happen to have identical dimensions.
+    dimensionAnimation.current?.width.stop();
+    dimensionAnimation.current?.height.stop();
+    dimensionAnimation.current = null;
+    const source = controller.getExpandedTabSize(from);
+    const target = controller.getExpandedTabSize(to);
+    const answerHeight = (id: number, base: number) =>
+      id === 4 && controller.asked
+        ? Math.min(Math.max(base, window.innerHeight - 80), Math.max(base, assistantAnswerHeight))
+        : base;
+    visualWidth.set(source.width + (target.width - source.width) * progress);
+    const fromHeight = answerHeight(from, source.height);
+    visualHeight.set(fromHeight + (answerHeight(to, target.height) - fromHeight) * progress);
+    syncWindowInputRegion();
+  };
   return (
     <motion.div
       id="Island"
@@ -119,9 +172,6 @@ export default function Island() {
           window.electronAPI.setIgnoreMouseEvents(false, false);
         }
       }}
-      onWheel={(event) => {
-        if (!isOverlayOpen) handleWheelSwipe(event);
-      }}
       onPointerDownCapture={beginPointerGesture}
       onPointerDown={(event) => {
         if (!isOverlayOpen) handlePointerDown(event);
@@ -140,8 +190,6 @@ export default function Island() {
         bottom: sideStyles.bottom || 'auto',
       }}
       animate={{
-        width: `${width}px`,
-        height: `${animatedHeight}px`,
         left: sideStyles.left,
         top: sideStyles.top || 'auto',
         bottom: sideStyles.bottom || 'auto',
@@ -160,9 +208,9 @@ export default function Island() {
                 ? 0
                 : 14,
       }}
-      onUpdate={syncLinuxWindowShape}
+      onUpdate={syncWindowInputRegion}
       onAnimationComplete={() => {
-        syncLinuxWindowShape();
+        syncWindowInputRegion();
         reportIslandContext();
         finishPositionChange();
       }}
@@ -174,7 +222,9 @@ export default function Island() {
         x: { duration: 0.15 },
       }}
       style={{
-        backgroundImage: `url('${bgImage}')`,
+        width: visualWidth,
+        height: visualHeight,
+        backgroundImage: controller.backgroundImageStyle,
         justifyContent: mode === 'large' && currentTab === 3 ? 'flex-start' : 'center',
         border:
           theme === 'win95'
@@ -211,52 +261,49 @@ export default function Island() {
       {/*Quickview*/}
       <QuickView {...controller} />
 
-      <AnimatePresence custom={direction} mode="popLayout">
-        {mode === 'large' && (
-          <motion.div
-            key={currentTabId}
-            custom={direction}
-            variants={tabVariants}
-            initial="enter"
-            animate="center"
-            exit="exit"
-            transition={{
-              x: { type: 'spring', stiffness: 400, damping: 40 },
-              opacity: { duration: 0.15 },
-            }}
-            className={styles.tabPanel}
-          >
-            {/*Browser Search*/}
-            {currentTab === 0 && <BrowserSearchTab {...controller} />}
-            {/* Workflows & Quick Apps */}
-            {currentTab === 1 && <WorkflowsTab {...controller} />}
+      {mode === 'large' && (
+        <TabPanels
+          tabs={visibleTabs}
+          activeId={currentTabId}
+          width={visualWidth}
+          direction={direction}
+          disabled={isOverlayOpen}
+          onProgress={handleTabProgress}
+          onSelect={selectTab}
+          renderTab={(tab) => (
+            <>
+              {/*Browser Search*/}
+              {tab === 0 && <BrowserSearchTab {...controller} />}
+              {/* Workflows & Quick Apps */}
+              {tab === 1 && <WorkflowsTab {...controller} />}
 
-            {/*Overview tab*/}
-            {currentTab === 2 && <OverviewTab {...controller} />}
+              {/*Overview tab*/}
+              {tab === 2 && <OverviewTab {...controller} />}
 
-            {/* Now Playing*/}
-            {currentTab === 3 && <NowPlayingTab {...controller} />}
+              {/* Now Playing*/}
+              {tab === 3 && <NowPlayingTab {...controller} />}
 
-            {/* AI tab container */}
-            {currentTab === 4 && (
-              <AssistantTab
-                {...controller}
-                onAnswerContentSizeChange={setAssistantAnswerHeight}
-                resetAnswerContentSize={resetAssistantAnswerHeight}
-              />
-            )}
+              {/* AI tab container */}
+              {tab === 4 && (
+                <AssistantTab
+                  {...controller}
+                  onAnswerContentSizeChange={setAssistantAnswerHeight}
+                  resetAnswerContentSize={resetAssistantAnswerHeight}
+                />
+              )}
 
-            {/*Clipboard*/}
-            {currentTab === 5 && <ClipboardTab {...controller} />}
+              {/*Clipboard*/}
+              {tab === 5 && <ClipboardTab {...controller} />}
 
-            {/*Tasks*/}
-            {currentTab === 6 && <TasksTab {...controller} />}
+              {/*Tasks*/}
+              {tab === 6 && <TasksTab {...controller} />}
 
-            {/*Settings Overhaul*/}
-            {currentTab === 7 && <SettingsTab {...controller} />}
-          </motion.div>
-        )}
-      </AnimatePresence>
+              {/*Settings Overhaul*/}
+              {tab === 7 && <SettingsTab {...controller} />}
+            </>
+          )}
+        />
+      )}
       <div ref={setContainer} data-island-overlay className={styles.overlay} />
     </motion.div>
   );

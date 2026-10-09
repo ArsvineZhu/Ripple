@@ -1,4 +1,5 @@
 import type { AppNotice, AssistantEvent, ElectronAPI, InvokeMap } from '../shared/contracts';
+import { ScrollGestureStartSchema } from '../shared/contracts';
 import { contextBridge, ipcRenderer } from 'electron';
 
 function invoke<K extends keyof InvokeMap>(
@@ -9,6 +10,8 @@ function invoke<K extends keyof InvokeMap>(
 }
 const api: ElectronAPI = {
   openDiagnosticsFolder: () => invoke('open-diagnostics-folder'),
+  readClipboardText: () => invoke('read-clipboard-text'),
+  writeClipboardText: (text) => invoke('write-clipboard-text', text),
   getSystemLocale: () => invoke('get-system-locale'),
   setUILocale: (locale) => invoke('set-ui-locale', locale),
   getAppBootstrap: () => invoke('get-app-bootstrap'),
@@ -30,6 +33,14 @@ const api: ElectronAPI = {
     ipcRenderer.on('assistant-event', listener);
     return () => ipcRenderer.removeListener('assistant-event', listener);
   },
+  onScrollGestureStart: (callback) => {
+    const listener = (_event: Electron.IpcRendererEvent, payload: unknown) => {
+      const result = ScrollGestureStartSchema.safeParse(payload);
+      if (result.success) callback(result.data);
+    };
+    ipcRenderer.on('scroll-gesture-start', listener);
+    return () => ipcRenderer.removeListener('scroll-gesture-start', listener);
+  },
   setIgnoreMouseEvents: (ignore, forward) => {
     return invoke('set-ignore-mouse-events', ignore, forward);
   },
@@ -44,8 +55,7 @@ const api: ElectronAPI = {
   buildAppCache: () => invoke('build-app-cache'),
   getDisplays: () => invoke('get-displays'),
   setDisplay: (displayId) => invoke('set-display', displayId),
-  setAutoLaunch: (enable) =>
-    process.platform !== 'darwin' ? invoke('set-auto-launch', enable) : Promise.resolve(),
+  setAutoLaunch: (enable) => invoke('set-auto-launch', enable),
   focusWindow: () => invoke('focus-window'),
   platform: process.platform,
 };

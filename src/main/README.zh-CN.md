@@ -2,6 +2,8 @@
 
 # 主进程
 
+`services/backgroundImage.ts` 通过 `ripple-background:` 加载当前配置的本地背景，开发与打包版本共用此入口。支持绝对路径及文件 URL，使用 `pathToFileURL` 编码文件名，只允许读取当前配置的图片。网络图片仍由 renderer 直接加载。
+
 Main 管理应用生命周期、托盘、透明窗口、IPC 校验和系统能力。`index.ts` 设置 Ripple Next 专用用户数据目录，并在创建 renderer 窗口前载入类型化状态和安全凭据服务。
 
 服务负责原子状态存储、加密 API key、应用内通知、AI 请求、应用发现与启动、开机启动；平台适配器封装 Linux、macOS 和 Windows 差异。`ipc.ts` 校验发送方和 payload，共享类型见[shared 说明](../shared/README.zh-CN.md)。
@@ -11,3 +13,7 @@ Main 管理应用生命周期、托盘、透明窗口、IPC 校验和系统能�
 Linux 窗口需等 renderer 就绪并确认首个 X11 `ShapeInput` 区域后显示。X11 客户端保持静态打包；输入区域继续使用 `ShapeInput`。
 
 参见[开发指南](../../docs/development.zh-CN.md)和[仓库地图](../../INDEX.zh-CN.md)。
+
+`services/scrollGestures.ts` 将 Chromium 的新触控板手势边界（`gestureFlingCancel`）转发到 preload，只携带时间戳。监听器保留 WebContents 引用，在销毁和窗口关闭时清理，不转发按键内容、鼠标坐标或滚轮数据。
+
+平台命令通过 `services/processes.ts` 执行，具有超时和真实的异步失败结果；Windows 使用编码的 PowerShell 脚本与共享 WinRT 异步转换。IPC 诊断记录操作结果、耗时和安全错误字段，启动反馈由 renderer 的操作项显示。剪贴板文本读写通过校验后的原生桥接执行。检查结果见 [Windows 适配与诊断](../../docs/platform-compatibility.zh-CN.md)。

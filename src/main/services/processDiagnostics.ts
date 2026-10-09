@@ -1,5 +1,5 @@
 import type { DiagnosticsService } from './diagnostics';
-import { serializeDiagnosticError } from './diagnostics';
+import { serializeDiagnosticError } from '../../shared/diagnostics';
 
 interface ChildProcessEventSource {
   on(event: 'child-process-gone', listener: (event: unknown, details: unknown) => void): unknown;

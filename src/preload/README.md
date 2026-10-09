@@ -9,3 +9,7 @@ The bridge covers app-state bootstrap and patches, secure API-key save/removal, 
 Keep this bundle sandbox-compatible and keep each bridge method aligned with its shared request, response and event contract.
 
 See the [developer guide](../../docs/development.md) and [repository map](../../INDEX.md).
+
+The bridge also exposes `readClipboardText()` and `writeClipboardText(text)` so desktop clipboard operations use Electron's native API without browser focus/permission assumptions.
+
+`onScrollGestureStart(callback)` delivers validated native touchpad start timestamps through `scroll-gesture-start` and returns an unsubscribe function. It exposes no raw input events or pointer/key data.

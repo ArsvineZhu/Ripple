@@ -6,6 +6,12 @@ import { islandInputRectangle, toDeviceRectangle } from '../src/shared/inputGeom
 import { noticeAreaForCode, noticeAreaForPatch } from '../src/shared/contracts';
 
 describe('Windows application commands', () => {
+  it('normalizes executable paths while preserving URL arguments and Windows switches', () => {
+    expect(parseCommand('C:/Apps/app.exe /open "https://example.com/a/b"')).toEqual({
+      exe: 'C:\\Apps\\app.exe',
+      args: ['/open', 'https://example.com/a/b'],
+    });
+  });
   it('preserves quoted paths and mid-token argument quotes', () => {
     expect(parseCommand('"C:\\Program Files\\App\\app.exe" --flag="hello world" --bare')).toEqual({
       exe: 'C:\\Program Files\\App\\app.exe',

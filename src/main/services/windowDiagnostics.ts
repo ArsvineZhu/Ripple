@@ -46,6 +46,11 @@ export function attachWindowDiagnostics(
   for (const event of ['ready-to-show', 'show', 'hide', 'focus', 'blur', 'closed'] as const) {
     window.on(event, () => recordWindowEvent(event));
   }
+  for (const event of ['did-start-loading', 'dom-ready', 'did-finish-load'] as const) {
+    window.webContents.on(event, () =>
+      diagnostics.record({ kind: 'window-lifecycle', event, windowId, webContentsId }),
+    );
+  }
   window.webContents.on('unresponsive', () => {
     diagnostics.record({
       kind: 'window-lifecycle',

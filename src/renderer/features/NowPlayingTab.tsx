@@ -10,6 +10,7 @@ import { Pause } from 'lucide-react';
 import { Play } from 'lucide-react';
 import { SkipForwardIcon } from 'lucide-react';
 import type { IslandController } from '../hooks/useIslandController';
+import { useMediaAction } from '../hooks/useMediaAction';
 type Props = Pick<
   IslandController,
   | 'spotifyTrack'
@@ -30,6 +31,7 @@ export function NowPlayingTab({
   textColor,
 }: Props) {
   const { t } = useTranslation();
+  const mediaAction = useMediaAction();
   return (
     <div className={styles['container']}>
       <AnimatePresence propagate mode="wait">
@@ -51,7 +53,12 @@ export function NowPlayingTab({
                 className={styles['artwork']}
                 ref={albumRef}
                 src={spotifyTrack.artwork_url}
-                onClick={() => openMusicPlayer(spotifyTrack.source)}
+                onClick={() =>
+                  void mediaAction.perform(
+                    () => openMusicPlayer(spotifyTrack.source),
+                    'appLaunchFailed',
+                  )
+                }
                 onMouseEnter={() => setAlbumHovered(true)}
                 onMouseLeave={() => {
                   setAlbumHovered(false);
@@ -162,7 +169,9 @@ export function NowPlayingTab({
                   className={[styles['media-btn'], styles['previousButton']].join(' ')}
                   aria-label={t('previous')}
                   onClick={() => {
-                    window.electronAPI.controlSystemMedia('previous');
+                    void mediaAction.perform(() =>
+                      window.electronAPI.controlSystemMedia('previous'),
+                    );
                   }}
                   style={{ color: textColor }}
                 >
@@ -172,7 +181,9 @@ export function NowPlayingTab({
                   className={[styles['media-btn'], styles['playButton']].join(' ')}
                   aria-label={t('playPause')}
                   onClick={() => {
-                    window.electronAPI.controlSystemMedia('playpause');
+                    void mediaAction.perform(() =>
+                      window.electronAPI.controlSystemMedia('playpause'),
+                    );
                   }}
                   style={{ color: textColor }}
                 >
@@ -186,7 +197,7 @@ export function NowPlayingTab({
                   className={[styles['media-btn'], styles['nextButton']].join(' ')}
                   aria-label={t('next')}
                   onClick={() => {
-                    window.electronAPI.controlSystemMedia('next');
+                    void mediaAction.perform(() => window.electronAPI.controlSystemMedia('next'));
                   }}
                   style={{ color: textColor }}
                 >
@@ -209,6 +220,11 @@ export function NowPlayingTab({
           </motion.div>
         )}
       </AnimatePresence>
+      {mediaAction.error && (
+        <p className={styles.actionError} role="alert">
+          {t(mediaAction.error)}
+        </p>
+      )}
     </div>
   );
 }

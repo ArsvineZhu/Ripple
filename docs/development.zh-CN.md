@@ -42,6 +42,8 @@ AI SDK 的 `streamText` 与 OpenAI 兼容 provider 在 main 实现流式对话�
 
 ## 本地诊断
 
+平台适配检查结果、诊断字段和平台验收边界见 [Windows 适配与诊断](platform-compatibility.zh-CN.md)。CI 在 Ubuntu、Windows 和 macOS 上执行检查与测试；更换系统时，从锁文件重新安装依赖。
+
 Ripple Next 将 `ripple-next.log` 写入 `<userData>/diagnostics/`，Electron minidump 保存在其中的 `crashes/` 子目录。可在设置页的“诊断”区域选择“打开诊断文件夹”。日志传输大小上限为 5 MiB；每次启动时会清理超过 30 天的崩溃报告，并只保留最新的 10 份。
 
 崩溃报告不会上传。AI 日志记录请求 ID、阶段耗时、增量数量和回答字符数，不记录提示词或回答正文。错误记录包含错误类型和堆栈帧，不包含自由格式的错误消息。minidump 是二进制进程快照，应作为敏感的本机诊断数据处理。

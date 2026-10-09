@@ -1,5 +1,6 @@
 import { chmod, mkdir, readdir, rm, stat } from 'node:fs/promises';
 import path from 'node:path';
+import { randomUUID } from 'node:crypto';
 
 import { app, crashReporter, shell } from 'electron';
 import log from 'electron-log/main';
@@ -29,24 +30,28 @@ export interface DiagnosticsService {
 }
 
 export async function pruneCrashReports(directory: string, now: number): Promise<void> {
-  let entries;
-  try {
-    entries = await readdir(directory, { withFileTypes: true });
-  } catch {
-    return;
-  }
-
   const files: Array<{ path: string; modifiedAt: number }> = [];
-  for (const entry of entries) {
-    if (!entry.isFile()) continue;
-    const filePath = path.join(directory, entry.name);
+  async function collect(folder: string): Promise<void> {
+    let entries;
     try {
-      const file = await stat(filePath);
-      if (file.isFile()) files.push({ path: filePath, modifiedAt: file.mtimeMs });
+      entries = await readdir(folder, { withFileTypes: true });
     } catch {
-      // A report can disappear while the retention pass is running.
+      return;
+    }
+    for (const entry of entries) {
+      const filePath = path.join(folder, entry.name);
+      if (entry.isDirectory()) await collect(filePath);
+      else if (entry.isFile() && entry.name.endsWith('.dmp')) {
+        try {
+          const file = await stat(filePath);
+          files.push({ path: filePath, modifiedAt: file.mtimeMs });
+        } catch {
+          // Crashpad can move a report during retention.
+        }
+      }
     }
   }
+  await collect(directory);
 
   const expiration = now - CRASH_MAX_AGE_MS;
   const recent: typeof files = [];
@@ -69,6 +74,7 @@ export async function initializeDiagnostics(userDataPath: string): Promise<Diagn
   const crashDirectory = path.join(directory, CRASH_DIRECTORY);
   const logPath = path.join(directory, LOG_FILE);
   let loggerReady = false;
+  const sessionId = randomUUID();
   let rendererContext: RendererDiagnosticContext | undefined;
 
   const write = (level: 'info' | 'warn' | 'error', value: unknown, forceStderr = false) => {
@@ -77,7 +83,9 @@ export async function initializeDiagnostics(userDataPath: string): Promise<Diagn
         ? value
         : JSON.stringify({
             timestamp: new Date().toISOString(),
+            sessionId,
             process: 'main',
+            level,
             event: value,
           });
     if (!forceStderr && loggerReady) {
@@ -93,9 +101,7 @@ export async function initializeDiagnostics(userDataPath: string): Promise<Diagn
 
   const recordError = (source: DiagnosticErrorSource, error: unknown) => {
     write('error', {
-      timestamp: new Date().toISOString(),
-      process: 'main',
-      event: 'error',
+      kind: 'error',
       source,
       error: serializeDiagnosticError(error),
     });
@@ -112,9 +118,7 @@ export async function initializeDiagnostics(userDataPath: string): Promise<Diagn
     write(
       'error',
       {
-        timestamp: new Date().toISOString(),
-        process: 'main',
-        event: 'diagnostics-directory-init-failed',
+        kind: 'diagnostics-directory-init-failed',
         error: serializeDiagnosticError(error),
       },
       true,
@@ -131,9 +135,7 @@ export async function initializeDiagnostics(userDataPath: string): Promise<Diagn
     write(
       'error',
       {
-        timestamp: new Date().toISOString(),
-        process: 'main',
-        event: 'logger-init-failed',
+        kind: 'logger-init-failed',
         error: serializeDiagnosticError(error),
       },
       true,
@@ -145,9 +147,7 @@ export async function initializeDiagnostics(userDataPath: string): Promise<Diagn
     crashReporter.start({ productName: 'Ripple Next', uploadToServer: false });
   } catch (error) {
     write('error', {
-      timestamp: new Date().toISOString(),
-      process: 'main',
-      event: 'crash-reporter-init-failed',
+      kind: 'crash-reporter-init-failed',
       error: serializeDiagnosticError(error),
     });
   }
@@ -160,7 +160,14 @@ export async function initializeDiagnostics(userDataPath: string): Promise<Diagn
 
   const diagnostics: DiagnosticsService = {
     record(event) {
-      write('info', event);
+      const failed =
+        event.kind === 'main-exception' ||
+        (event.kind === 'ipc-operation' && event.phase === 'failed') ||
+        ((event.kind === 'renderer-exit' || event.kind === 'child-process-exit') &&
+          event.reason !== 'clean-exit') ||
+        (event.kind === 'window-lifecycle' && event.event === 'did-fail-load') ||
+        (event.kind === 'linux-input-shape' && event.state === 'failed');
+      write(failed ? 'error' : 'info', event);
     },
     recordError,
     setRendererContext(context) {
@@ -180,14 +187,30 @@ export async function initializeDiagnostics(userDataPath: string): Promise<Diagn
   log.hooks.push((message) => {
     if (message.variables?.processType !== 'renderer') return message;
     const first = message.data?.[0];
-    if (typeof first !== 'string' || !first.startsWith(RENDERER_CONTEXT_PREFIX)) return message;
+    if (typeof first !== 'string') return message;
     try {
+      if (!first.startsWith(RENDERER_CONTEXT_PREFIX)) {
+        const value = JSON.parse(first);
+        if (value?.process === 'renderer') {
+          message.data[0] = JSON.stringify({ ...value, sessionId, level: message.level });
+        }
+        return message;
+      }
       const event: unknown = JSON.parse(first.slice(RENDERER_CONTEXT_PREFIX.length));
-      if (!event || typeof event !== 'object' || !('context' in event)) return message;
+      if (!event || typeof event !== 'object' || !('context' in event)) return false;
       const parsed = RendererDiagnosticContextSchema.safeParse(event.context);
-      if (parsed.success) diagnostics.setRendererContext(parsed.data);
+      if (!parsed.success) return false;
+      diagnostics.setRendererContext(parsed.data);
+      message.data[0] = JSON.stringify({
+        timestamp: new Date().toISOString(),
+        sessionId,
+        process: 'renderer',
+        level: message.level,
+        event: { kind: 'renderer-context', context: parsed.data },
+      });
     } catch {
       // Ignore malformed renderer context and keep the previous valid snapshot.
+      if (first.startsWith(RENDERER_CONTEXT_PREFIX)) return false;
     }
     return message;
   });

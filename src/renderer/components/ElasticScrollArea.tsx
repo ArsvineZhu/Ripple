@@ -1,11 +1,6 @@
 import type { HTMLAttributes, ReactNode, WheelEvent } from 'react';
 import { useEffect, useLayoutEffect, useRef } from 'react';
-import Scrollbar from 'smooth-scrollbar';
-import OverscrollPlugin, { OverscrollEffect } from 'smooth-scrollbar/plugins/overscroll';
 import styles from './ElasticScrollArea.module.css';
-
-const registerPlugin = Scrollbar.use.bind(Scrollbar);
-registerPlugin(OverscrollPlugin);
 
 type Props = Omit<HTMLAttributes<HTMLDivElement>, 'onWheel'> & {
   children: ReactNode;
@@ -25,34 +20,20 @@ export function ElasticScrollArea({ children, className, onContentSizeChange, ..
     const viewport = viewportRef.current;
     if (!viewport || !contentRef.current) return;
 
-    const scrollbar = Scrollbar.init(viewport, {
-      damping: 0.12,
-      renderByPixels: true,
-      alwaysShowTracks: false,
-      continuousScrolling: false,
-      plugins: {
-        overscroll: {
-          effect: OverscrollEffect.BOUNCE,
-          damping: 0.15,
-          maxOverscroll: 72,
-          glowColor: 'transparent',
-        },
-      },
-    });
+    const content = contentRef.current;
 
     let frame: number | null = null;
     const updateContentSize = () => {
       if (frame !== null) return;
       frame = requestAnimationFrame(() => {
         frame = null;
-        scrollbar.update();
-        onContentSizeChangeRef.current?.(scrollbar.contentEl.scrollHeight);
+        onContentSizeChangeRef.current?.(content.scrollHeight);
       });
     };
     const resizeObserver = new ResizeObserver(updateContentSize);
-    resizeObserver.observe(scrollbar.contentEl);
+    resizeObserver.observe(content);
     const mutationObserver = new MutationObserver(updateContentSize);
-    mutationObserver.observe(scrollbar.contentEl, {
+    mutationObserver.observe(content, {
       childList: true,
       characterData: true,
       subtree: true,
@@ -63,14 +44,12 @@ export function ElasticScrollArea({ children, className, onContentSizeChange, ..
       if (frame !== null) cancelAnimationFrame(frame);
       resizeObserver.disconnect();
       mutationObserver.disconnect();
-      scrollbar.destroy();
     };
   }, []);
 
   // Keep vertical scrolling here; let horizontal gestures reach Island unless a child can scroll them.
   const stopIslandWheel = (event: WheelEvent<HTMLDivElement>) => {
-    const horizontalGesture =
-      event.deltaX !== 0 && Math.abs(event.deltaX) >= Math.abs(event.deltaY);
+    const horizontalGesture = event.deltaX !== 0 && event.deltaY === 0;
     if (!horizontalGesture) {
       event.stopPropagation();
       return;
@@ -106,8 +85,7 @@ export function ElasticScrollArea({ children, className, onContentSizeChange, ..
       onWheel={stopIslandWheel}
       ref={viewportRef}
     >
-      {/* Scrollbar moves this stable host; React reconciles changing content inside it. */}
-      <div className={styles.content} ref={contentRef}>
+      <div className={`${styles.content} scroll-content`} ref={contentRef}>
         {children}
       </div>
     </div>

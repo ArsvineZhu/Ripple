@@ -1,97 +1,79 @@
-import { exec, execFile } from 'node:child_process';
+import { z } from 'zod';
 import type { MediaCommand, MediaTrack } from '../../../shared/contracts';
+import { runPowerShell, winrtAsync } from './powershell';
 
-let reportMediaError = (_error: unknown) => {};
+const winrt =
+  winrtAsync +
+  String.raw`
+$managerType = [Windows.Media.Control.GlobalSystemMediaTransportControlsSessionManager, Windows.Media.Control, ContentType = WindowsRuntime]
+$manager = Await-WinRT ($managerType::RequestAsync()) $managerType
+$session = $manager.GetCurrentSession()
+`;
 
-export function setWindowsMediaErrorHandler(handler: (error: unknown) => void): void {
-  reportMediaError = handler;
-}
-
-export function controlSystemMedia(command: MediaCommand): void {
+export async function controlSystemMedia(command: MediaCommand): Promise<void> {
   const operation = {
     previous: 'TrySkipPreviousAsync',
     playpause: 'TryTogglePlayPauseAsync',
     next: 'TrySkipNextAsync',
   }[command];
-  const psScript = `
-    $ErrorActionPreference = 'Stop'
-    Add-Type -AssemblyName System.Runtime.WindowsRuntime
-    $manager = [Windows.Media.Control.GlobalSystemMediaTransportControlsSessionManager, Windows.Media.Control, ContentType = WindowsRuntime]::RequestAsync().GetAwaiter().GetResult()
-    $session = $manager.GetCurrentSession()
-    if ($session) {
-      $operation = $session.${operation}()
-      $operation.GetAwaiter().GetResult() | Out-Null
-    }
-  `;
-  const encodedScript = Buffer.from(psScript, 'utf16le').toString('base64');
-  execFile(
-    'powershell.exe',
-    ['-NoProfile', '-NonInteractive', '-EncodedCommand', encodedScript],
-    { windowsHide: true },
-    (error) => {
-      if (error) reportMediaError(error);
-    },
+  await runPowerShell(
+    winrt +
+      '\nif ($session) { if (-not (Await-WinRT ($session.' +
+      operation +
+      '()) ([bool]))) { throw "Media command declined" } }',
   );
 }
 
-export function getSystemMedia(): Promise<MediaTrack | null> {
-  return new Promise<MediaTrack | null>((resolve) => {
-    const psScript = `[Console]::OutputEncoding = [System.Text.Encoding]::UTF8; Add-Type -AssemblyName System.Runtime.WindowsRuntime; $manager = [Windows.Media.Control.GlobalSystemMediaTransportControlsSessionManager, Windows.Media.Control, ContentType = WindowsRuntime]::RequestAsync().GetAwaiter().GetResult(); $session = $manager.GetCurrentSession(); if ($session) { $props = $session.TryGetMediaPropertiesAsync().GetAwaiter().GetResult(); $playback = $session.GetPlaybackInfo(); $status = $playback.PlaybackStatus; $thumbnail = $props.Thumbnail; $artwork = ''; if ($thumbnail) { try { $stream = $thumbnail.OpenReadAsync().GetAwaiter().GetResult(); $buffer = New-Object byte[] $stream.Size; $reader = New-Object Windows.Storage.Streams.DataReader $stream; $reader.LoadAsync($stream.Size).GetAwaiter().GetResult() | Out-Null; $reader.ReadBytes($buffer); $artwork = 'data:image/png;base64,' + [Convert]::ToBase64String($buffer); $reader.Close(); $stream.Close(); } catch { } } $info = @{ Title = $props.Title; Artist = $props.Artist; Album = $props.AlbumTitle; Status = $status.ToString().ToLower(); Source = $session.SourceAppUserModelId; Artwork = $artwork }; return $info | ConvertTo-Json -Compress; } return 'null';`;
+const MediaSchema = z.object({
+  Title: z.string(),
+  Artist: z.string(),
+  Album: z.string(),
+  Status: z.string(),
+  Source: z.string(),
+  Artwork: z.string().nullable(),
+});
 
-    // Use EncodedCommand to avoid quoting/escaping issues and increase buffer
-    const enc = Buffer.from(psScript, 'utf16le').toString('base64');
-    exec(
-      `powershell -NoProfile -EncodedCommand ${enc}`,
-      { maxBuffer: 10 * 1024 * 1024, encoding: 'utf8' },
-      (error, stdout) => {
-        if (error) reportMediaError(error);
-
-        if (error || !stdout || stdout.trim() === 'null' || stdout.trim() === "'null'") {
-          // Fallback: try reading Spotify window title
-          exec(
-            `powershell -NoProfile -Command "[Console]::OutputEncoding = [System.Text.Encoding]::UTF8; Get-Process | Where-Object {$_.ProcessName -eq 'Spotify'} | Select-Object MainWindowTitle"`,
-            { encoding: 'utf8' },
-            (err, out) => {
-              if (err || !out) {
-                if (err) reportMediaError(err);
-                return resolve(null);
-              }
-              const title = out
-                .split('\n')
-                .find((l) => l.includes('-'))
-                ?.trim();
-              if (title) {
-                const [artist, ...songParts] = title.split(' - ');
-                const song = songParts.join(' - ');
-                resolve({
-                  name: song || title,
-                  artist: artist || '',
-                  state: 'playing',
-                  source: 'Spotify',
-                });
-              } else {
-                resolve(null);
-              }
-            },
-          );
-          return;
-        }
-
-        try {
-          const data = JSON.parse(stdout);
-          resolve({
-            name: data.Title || '',
-            artist: data.Artist || '',
-            album: data.Album || '',
-            artwork_url: data.Artwork || null,
-            state: data.Status === 'playing' ? 'playing' : 'paused',
-            source: data.Source || 'System',
-          });
-        } catch (e) {
-          reportMediaError(e);
-          resolve(null);
-        }
-      },
-    );
-  });
+export async function getSystemMedia(): Promise<MediaTrack | null> {
+  const output = await runPowerShell(
+    winrt +
+      String.raw`
+if (-not $session) { return 'null' }
+$propertiesType = [Windows.Media.Control.GlobalSystemMediaTransportControlsSessionMediaProperties, Windows.Media.Control, ContentType = WindowsRuntime]
+$props = Await-WinRT ($session.TryGetMediaPropertiesAsync()) $propertiesType
+$artwork = $null
+if ($props.Thumbnail) {
+  $stream = $null
+  $reader = $null
+  try {
+    $streamType = [Windows.Storage.Streams.IRandomAccessStreamWithContentType, Windows.Storage.Streams, ContentType = WindowsRuntime]
+    $stream = Await-WinRT ($props.Thumbnail.OpenReadAsync()) $streamType
+    if ($stream.Size -le 5MB) {
+      $reader = [Windows.Storage.Streams.DataReader]::new($stream)
+      $null = Await-WinRT ($reader.LoadAsync([uint32]$stream.Size)) ([uint32])
+      $buffer = New-Object byte[] ([int]$stream.Size)
+      $reader.ReadBytes($buffer)
+      $artwork = 'data:' + $stream.ContentType + ';base64,' + [Convert]::ToBase64String($buffer)
+    }
+  } finally {
+    if ($reader) { $reader.Dispose() }
+    if ($stream) { $stream.Dispose() }
+  }
+}
+@{ Title = [string]$props.Title; Artist = [string]$props.Artist; Album = [string]$props.AlbumTitle;
+   Status = $session.GetPlaybackInfo().PlaybackStatus.ToString().ToLowerInvariant();
+   Source = [string]$session.SourceAppUserModelId; Artwork = $artwork } | ConvertTo-Json -Compress
+`,
+    { maxBuffer: 10 * 1024 * 1024 },
+  );
+  const result: unknown = JSON.parse(output);
+  if (result === null) return null;
+  const data = MediaSchema.parse(result);
+  return {
+    name: data.Title,
+    artist: data.Artist,
+    album: data.Album,
+    artwork_url: data.Artwork,
+    state: data.Status === 'playing' ? 'playing' : 'paused',
+    source: data.Source,
+  };
 }

@@ -1,4 +1,4 @@
-import { app, ipcMain, screen, shell } from 'electron';
+import { app, clipboard, ipcMain, screen, shell } from 'electron';
 import { isLocale } from '../shared/i18n';
 import type { AppState, AppStatePatch } from '../shared/appState';
 import { noticeAreaForCode, noticeAreaForPatch } from '../shared/contracts';
@@ -8,13 +8,8 @@ import type { InvokeMap, QuickAppTarget } from '../shared/contracts';
 import { QuickAppTargetSchema } from '../shared/contracts';
 import { setTrayLocale } from './tray';
 import type { DiagnosticsService } from './services/diagnostics';
-import {
-  applyLinuxInputShape,
-  getMainWindow,
-  getWindowBoundsForDisplay,
-  markRendererReady,
-  showMainWindow,
-} from './window';
+import { applyWindowInputRegion, getMainWindow, markRendererReady, showMainWindow } from './window';
+import { getWindowBoundsForDisplay } from './windowBounds';
 import { discoverApps, buildAppCache, launchApp, launchQuickApp } from './services/apps';
 import { setAutoLaunch } from './services/autostart';
 import { getSystemMedia } from './services/getSystemMedia';
@@ -22,6 +17,7 @@ import { getBluetoothStatus } from './services/getBluetoothStatus';
 import { getCameraStatus } from './services/getCameraStatus';
 import { getMicrophoneStatus } from './services/getMicrophoneStatus';
 import { controlSystemMedia } from './services/mediaControl';
+import { serializeDiagnosticError } from '../shared/diagnostics';
 import type { AssistantEvent } from '../shared/contracts';
 
 interface StateStore {
@@ -58,7 +54,7 @@ interface IPCServices {
   secretStore: SecretStore;
   assistant: AssistantService;
   notices: NoticeService;
-  diagnostics: Pick<DiagnosticsService, 'openFolder' | 'recordError'>;
+  diagnostics: Pick<DiagnosticsService, 'openFolder' | 'recordError' | 'record'>;
   applyBackgroundMode(enabled: boolean): void;
 }
 
@@ -77,9 +73,6 @@ function channelErrorCode(channel: keyof InvokeMap): NoticeCode | null {
       return 'stateSaveFailed';
     case 'save-api-key':
       return 'secretStorageUnavailable';
-    case 'launch-app':
-    case 'launch-quick-app':
-      return 'appLaunchFailed';
     case 'set-auto-launch':
       return 'autoLaunchFailed';
     case 'open-diagnostics-folder':
@@ -96,12 +89,49 @@ function handle<K extends keyof InvokeMap>(
     ...args: InvokeMap[K]['args']
   ) => InvokeMap[K]['result'] | Promise<InvokeMap[K]['result']>,
 ) {
+  const polled = [
+    'get-system-media',
+    'get-bluetooth-status',
+    'get-camera-status',
+    'get-microphone-status',
+    'read-clipboard-text',
+  ].includes(channel);
+  let observed = false;
+  let failure: { signature: string; loggedAt: number; suppressed: number } | undefined;
   ipcMain.handle(channel, async (event, ...args: unknown[]) => {
     if (event.sender !== getMainWindow()?.webContents) throw new Error('Unknown IPC sender');
+    const started = performance.now();
     try {
-      return await listener(...(args as InvokeMap[K]['args']));
+      const result = await listener(...(args as InvokeMap[K]['args']));
+      if (!polled || !observed || failure) {
+        services.diagnostics.record({
+          kind: 'ipc-operation',
+          channel,
+          phase: failure ? 'recovered' : 'completed',
+          elapsedMs: Math.round(performance.now() - started),
+          ...(failure ? { repeated: failure.suppressed } : {}),
+        });
+      }
+      observed = true;
+      failure = undefined;
+      return result;
     } catch (error) {
-      services.diagnostics.recordError('application', error);
+      const summary = serializeDiagnosticError(error);
+      const signature = JSON.stringify(summary);
+      const now = Date.now();
+      if (polled && failure?.signature === signature && now - failure.loggedAt < 60_000) {
+        failure.suppressed += 1;
+      } else {
+        services.diagnostics.record({
+          kind: 'ipc-operation',
+          channel,
+          phase: 'failed',
+          elapsedMs: Math.round(performance.now() - started),
+          error: summary,
+          ...(failure ? { repeated: failure.suppressed } : {}),
+        });
+        failure = { signature, loggedAt: now, suppressed: 0 };
+      }
       const code = channelErrorCode(channel);
       if (code) {
         const detail = error instanceof Error ? error.message : String(error);
@@ -135,6 +165,10 @@ export function registerIPC(services: IPCServices) {
     hasApiKey: await services.secretStore.hasApiKey(),
   }));
   handle(services, 'open-diagnostics-folder', () => services.diagnostics.openFolder());
+  handle(services, 'read-clipboard-text', () => clipboard.readText());
+  handle(services, 'write-clipboard-text', (text) =>
+    clipboard.writeText(getText(text, 'Clipboard text', 1_000_000)),
+  );
   handle(services, 'update-app-state', async (patch) => {
     if (!isAppStatePatch(patch)) throw new TypeError('Invalid app state update');
     const state = await services.stateStore.update(patch);
@@ -181,20 +215,19 @@ export function registerIPC(services: IPCServices) {
       throw new TypeError('Invalid mouse passthrough options');
     }
     const window = getMainWindow();
-    if (process.platform !== 'linux' && window) window.setIgnoreMouseEvents(ignore, { forward });
+    if (process.platform === 'darwin' && window) window.setIgnoreMouseEvents(ignore, { forward });
   });
   ipcMain.on('set-window-input-shape', (event, rect: unknown) => {
     if (event.sender !== getMainWindow()?.webContents || !isInputRect(rect)) return;
     try {
-      applyLinuxInputShape(rect);
+      applyWindowInputRegion(rect);
     } catch (error) {
       const detail = error instanceof Error ? error.message : String(error);
       services.notices.report('inputShapeFailed', detail);
     }
   });
   handle(services, 'focus-window', () => {
-    showMainWindow();
-    getMainWindow()?.focus();
+    showMainWindow(true);
   });
   handle(services, 'open-external', async (url) => {
     const value = getText(url, 'URL', 8192);
@@ -210,7 +243,7 @@ export function registerIPC(services: IPCServices) {
     if (!['previous', 'playpause', 'next'].includes(command)) {
       throw new TypeError('Invalid media command');
     }
-    controlSystemMedia(command);
+    return controlSystemMedia(command);
   });
   handle(services, 'get-displays', () =>
     screen.getAllDisplays().map((display) => ({

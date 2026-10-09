@@ -11,10 +11,17 @@ export function useWorkflows() {
   const [workflowUrls, setWorkflowUrls] = useState('');
   async function openWorkflow(workflow: Workflow) {
     if (!workflow || !workflow.urls) return;
+    const failures: unknown[] = [];
     for (let i = 0; i < workflow.urls.length; i++) {
-      openApp(workflow.urls[i]);
-      await new Promise((r) => setTimeout(r, 400));
+      try {
+        await openApp(workflow.urls[i]);
+      } catch (error) {
+        failures.push(error);
+      }
+      if (i < workflow.urls.length - 1) await new Promise((r) => setTimeout(r, 400));
     }
+    if (failures.length)
+      throw new AggregateError(failures, 'Could not launch all workflow targets');
   }
   function addWorkflow() {
     const name = workflowName.trim();

@@ -4,6 +4,7 @@ import { useTranslation } from 'react-i18next';
 import { AnimatePresence } from 'motion/react';
 import { motion } from 'motion/react';
 import { openMusicPlayer } from '../lib/launch';
+import { useMediaAction } from '../hooks/useMediaAction';
 import { Music } from 'lucide-react';
 import { Pause } from 'lucide-react';
 import { Play } from 'lucide-react';
@@ -69,6 +70,7 @@ export function QuickView({
   weather,
 }: Props) {
   const { t, i18n } = useTranslation();
+  const mediaAction = useMediaAction();
   const number = (value: number | string | null) =>
     value === null || value === ''
       ? '??'
@@ -113,7 +115,12 @@ export function QuickView({
                     <img
                       className={styles['artwork']}
                       src={spotifyTrack.artwork_url}
-                      onClick={() => openMusicPlayer(spotifyTrack.source)}
+                      onClick={() =>
+                        void mediaAction.perform(
+                          () => openMusicPlayer(spotifyTrack.source),
+                          'appLaunchFailed',
+                        )
+                      }
                       onMouseEnter={() => setAlbumHovered(true)}
                       onMouseLeave={() => {
                         setAlbumHovered(false);
@@ -198,7 +205,9 @@ export function QuickView({
                       transition={{ duration: 0.25, ease: 'easeInOut' }}
                       onClick={(e) => {
                         e.stopPropagation();
-                        window.electronAPI.controlSystemMedia('playpause');
+                        void mediaAction.perform(() =>
+                          window.electronAPI.controlSystemMedia('playpause'),
+                        );
                       }}
                       onMouseEnter={() => {
                         if (window.electronAPI)
@@ -214,6 +223,11 @@ export function QuickView({
                   )}
                 </AnimatePresence>
               </div>
+              {mediaAction.error && (
+                <p className={styles.actionError} role="alert">
+                  {t(mediaAction.error)}
+                </p>
+              )}
             </motion.div>
           ) : (
             <motion.div

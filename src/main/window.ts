@@ -1,11 +1,14 @@
 import { createLinuxInputShape } from './platform/linux/inputShape';
 import { app, BrowserWindow, screen } from 'electron';
-import type { Display } from 'electron';
 import path from 'node:path';
 
 import { getIconPath } from './assets';
 import type { DiagnosticsService } from './services/diagnostics';
 import { attachWindowDiagnostics, recordRendererReady } from './services/windowDiagnostics';
+import { createWindowsInputRegion } from './platform/windows/inputRegion';
+import type { InputRect } from '../shared/contracts';
+import { getWindowBoundsForDisplay } from './windowBounds';
+import { installScrollGestureBridge } from './services/scrollGestures';
 declare const MAIN_WINDOW_VITE_DEV_SERVER_URL: string | undefined;
 declare const MAIN_WINDOW_VITE_NAME: string;
 if (process.platform === 'linux') {
@@ -16,15 +19,10 @@ let activeDiagnostics: DiagnosticsService | null = null;
 let mainWindowReady = false;
 let rendererIsReady = false;
 let backgroundMode = false;
-let linuxDisplaySyncInstalled = false;
-export const getWindowBoundsForDisplay = (display: Display) => {
-  const workArea = display.workArea;
-  return process.platform === 'linux' && workArea.width > 0 && workArea.height > 0
-    ? workArea
-    : display.bounds;
-};
-const syncLinuxWindowToDisplay = () => {
-  if (process.platform !== 'linux' || !mainWindow || mainWindow.isDestroyed()) return;
+let displaySyncInstalled = false;
+let windowsInputRegion: ReturnType<typeof createWindowsInputRegion> | undefined;
+const syncWindowToDisplay = () => {
+  if (!mainWindow || mainWindow.isDestroyed()) return;
   const currentBounds = mainWindow.getBounds();
   const displayBounds = getWindowBoundsForDisplay(screen.getDisplayMatching(currentBounds));
   if (
@@ -36,9 +34,9 @@ const syncLinuxWindowToDisplay = () => {
     mainWindow.setBounds(displayBounds);
   }
 };
-const installLinuxDisplaySync = () => {
-  if (process.platform !== 'linux' || linuxDisplaySyncInstalled) return;
-  linuxDisplaySyncInstalled = true;
+const installDisplaySync = () => {
+  if (displaySyncInstalled) return;
+  displaySyncInstalled = true;
   screen.on('display-metrics-changed', (_event, display, changedMetrics) => {
     if (
       !changedMetrics.includes('bounds') &&
@@ -48,25 +46,26 @@ const installLinuxDisplaySync = () => {
       return;
     }
     if (mainWindow && screen.getDisplayMatching(mainWindow.getBounds()).id === display.id) {
-      syncLinuxWindowToDisplay();
+      syncWindowToDisplay();
     }
   });
-  screen.on('display-removed', () => syncLinuxWindowToDisplay());
+  screen.on('display-removed', () => syncWindowToDisplay());
 };
 const applySkipTaskbar = () => {
   if (!mainWindow) return;
   if (process.platform === 'linux') inputShape.setSkipTaskbar(backgroundMode);
   else mainWindow.setSkipTaskbar(backgroundMode);
 };
-export const showMainWindow = () => {
+export const showMainWindow = (focus = false) => {
   if (!mainWindow || !mainWindowReady || !rendererIsReady) return;
   if (process.platform === 'linux' && !inputShape.isReady()) return;
 
-  syncLinuxWindowToDisplay();
-  mainWindow.show();
+  syncWindowToDisplay();
+  if (focus) mainWindow.show();
+  else if (!mainWindow.isVisible()) mainWindow.showInactive();
   applySkipTaskbar();
-  mainWindow.setAlwaysOnTop(true, process.platform === 'linux' ? 'screen-saver' : 'pop-up-menu');
-  mainWindow.focus();
+  mainWindow.setAlwaysOnTop(true, process.platform === 'linux' ? 'screen-saver' : 'floating');
+  if (focus) mainWindow.focus();
 };
 
 export const markRendererReady = () => {
@@ -80,7 +79,7 @@ export const createWindow = (
   onLoadError: (error: unknown) => void = () => {},
 ) => {
   activeDiagnostics = diagnostics;
-  installLinuxDisplaySync();
+  installDisplaySync();
   mainWindowReady = false;
   rendererIsReady = false;
   inputShape.reset();
@@ -122,32 +121,43 @@ export const createWindow = (
       nodeIntegration: false,
       preload: path.join(__dirname, 'preload.cjs'),
       devTools: false,
+      // Windows passthrough needs an active renderer to track input geometry.
+      // Other platforms can retain Electron's throttling when the window hides.
+      backgroundThrottling: !isWindows,
     },
     show: false,
   });
   attachWindowDiagnostics(mainWindow, diagnostics);
+  const closeScrollGestureBridge = installScrollGestureBridge(mainWindow.webContents);
+  diagnostics.record({
+    kind: 'window-lifecycle',
+    event: 'created',
+    windowId: mainWindow.id,
+    webContentsId: mainWindow.webContents.id,
+  });
 
   if (!isLinux) {
     mainWindow.setIgnoreMouseEvents(true, { forward: true });
+    if (isWindows) windowsInputRegion = createWindowsInputRegion(mainWindow, diagnostics);
   } else {
     mainWindow.setIgnoreMouseEvents(false);
-    mainWindow.on('move', syncLinuxWindowToDisplay);
-    mainWindow.on('resize', syncLinuxWindowToDisplay);
+    mainWindow.on('move', syncWindowToDisplay);
+    mainWindow.on('resize', syncWindowToDisplay);
   }
 
   mainWindow.once('ready-to-show', () => {
     mainWindowReady = true;
-    syncLinuxWindowToDisplay();
+    syncWindowToDisplay();
     showMainWindow();
   });
 
   mainWindow.on('closed', () => {
+    closeScrollGestureBridge();
+    windowsInputRegion = undefined;
     mainWindow = null;
   });
 
-  try {
-    mainWindow.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
-  } catch {}
+  if (!isWindows) mainWindow.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
 
   if (MAIN_WINDOW_VITE_DEV_SERVER_URL) {
     void mainWindow.loadURL(MAIN_WINDOW_VITE_DEV_SERVER_URL).catch(onLoadError);
@@ -171,5 +181,11 @@ export const initializeLinuxInputShape = (
   if (onError) inputShape.setErrorHandler(onError);
   inputShape.initialize();
 };
-export const applyLinuxInputShape = inputShape.apply;
-export const closeInputConnection = inputShape.close;
+export const applyWindowInputRegion = (rect: InputRect) => {
+  if (process.platform === 'win32') windowsInputRegion?.apply(rect);
+  else if (process.platform === 'linux') inputShape.apply(rect);
+};
+export const closeInputConnection = () => {
+  windowsInputRegion?.close();
+  inputShape.close();
+};

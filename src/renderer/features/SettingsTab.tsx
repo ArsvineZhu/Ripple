@@ -69,6 +69,7 @@ type Props = Pick<
   | 'batteryAlertsEnabled'
   | 'bgColor'
   | 'bgImage'
+  | 'backgroundImageError'
   | 'currentDisplayId'
   | 'defaultTabId'
   | 'displays'
@@ -315,7 +316,7 @@ export function SettingsTab(p: Props) {
             emptyLabel={t('noTimeZoneMatches')}
           />
         </Field>
-        {window.electronAPI?.platform !== 'darwin' && (
+        <div>
           <Field label={t('autoLaunch')}>
             <Select
               label={t('autoLaunch')}
@@ -324,7 +325,8 @@ export function SettingsTab(p: Props) {
               options={boolOptions}
             />
           </Field>
-        )}
+          <InlineNotices area="settings" codes={['autoLaunchFailed']} />
+        </div>
         <div>
           <Field label={t('backgroundMode')}>
             <Select
@@ -335,9 +337,10 @@ export function SettingsTab(p: Props) {
             />
           </Field>
           <p className={styles.hint}>{t('backgroundModeHint')}</p>
+          <InlineNotices area="settings" codes={['backgroundModeFailed']} />
         </div>
         <InlineNotices area="system" />
-        <InlineNotices area="settings" codes={['stateSaveFailed', 'autoLaunchFailed']} />
+        <InlineNotices area="settings" codes={['stateSaveFailed']} />
         {p.displays.length > 0 && (
           <Field label={t('display')}>
             <Select
@@ -609,10 +612,17 @@ export function SettingsTab(p: Props) {
           <input
             className={styles.input}
             aria-label={t('backgroundImage')}
-            placeholder="https://..."
+            placeholder={t('backgroundImageHint')}
             value={p.bgImage}
             onChange={p.handleBgImageChange}
+            aria-invalid={p.backgroundImageError}
+            aria-describedby={p.backgroundImageError ? 'background-image-error' : undefined}
           />
+          {p.backgroundImageError && (
+            <p id="background-image-error" className={styles.fieldError} role="alert">
+              {t('backgroundImageFailed')}
+            </p>
+          )}
         </Field>
       </Section>
       <Section title={t('features')}>
@@ -688,7 +698,6 @@ export function SettingsTab(p: Props) {
         </Field>
       </Section>
       <Section title={t('quickApps')}>
-        <InlineNotices area="quick-apps" />
         <Field label={t('quickApps')}>
           <Select
             label={t('quickApps')}
@@ -774,6 +783,7 @@ export function SettingsTab(p: Props) {
             onChange={(event) => p.setAppUrl(event.target.value)}
           />
         )}
+        <InlineNotices area="quick-apps" />
         <div className={styles.appList}>
           <AnimatePresence propagate>
             {p.quickApps.map((app, index) => (

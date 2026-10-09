@@ -138,3 +138,8 @@
   align-items: center;
   gap: 2px;
 }
+.actionError {
+  color: #ffa6a6;
+  font-size: 11px;
+  margin: 0 8px;
+}

@@ -9,20 +9,17 @@
   display: flex;
   align-items: flex-start;
   gap: 10px;
-  padding: 9px 11px;
+  padding: 2px 0;
   color: var(--island-text-color);
-  background: color-mix(in srgb, var(--island-text-color), transparent 96%);
-  border: 1px solid color-mix(in srgb, var(--island-text-color), transparent 84%);
-  border-radius: 12px;
   overflow: hidden;
 }
 
 .warning {
-  border-color: color-mix(in srgb, #f0bc55, transparent 48%);
+  color: #f0bc55;
 }
 
 .error {
-  border-color: color-mix(in srgb, #ff6969, transparent 45%);
+  color: #ffa6a6;
 }
 
 .message {

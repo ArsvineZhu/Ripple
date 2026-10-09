@@ -1,15 +1,5 @@
-import { spawn } from 'node:child_process';
 import path from 'node:path';
 
-const forgeCli = path.join(
-  __dirname,
-  '..',
-  'node_modules',
-  '@electron-forge',
-  'cli',
-  'dist',
-  'electron-forge.js',
-);
 const electronArgs = process.argv.slice(2);
 
 if (
@@ -19,19 +9,20 @@ if (
   electronArgs.unshift('--ozone-platform=x11');
 }
 
-const forgeArgs = ['start'];
-if (electronArgs.length > 0) forgeArgs.push('--', ...electronArgs);
-
-const forge = spawn(process.execPath, [forgeCli, ...forgeArgs], {
-  env: process.env,
-  stdio: 'inherit',
-});
-
-forge.on('error', (error) => {
-  console.error('Failed to start Electron Forge:', error);
-  process.exitCode = 1;
-});
-
-forge.on('exit', (code, signal) => {
-  process.exitCode = code ?? (signal ? 1 : 0);
-});
+// The CLI launches console commands to re-check pnpm configuration on every
+// start. The start API keeps Windows development inside the invoking terminal.
+void import('@electron-forge/core')
+  .then(({ api }) => api.start({ dir: path.resolve(__dirname, '..'), args: electronArgs }))
+  .then((child) => {
+    child.on('error', (error) => {
+      console.error('Failed to start Electron:', error);
+      process.exitCode = 1;
+    });
+    child.on('exit', (code, signal) => {
+      if (!child.restarted) process.exit(code ?? (signal ? 1 : 0));
+    });
+  })
+  .catch((error) => {
+    console.error('Failed to start Electron Forge:', error);
+    process.exit(1);
+  });

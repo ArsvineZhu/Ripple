@@ -69,4 +69,18 @@ describe('bundled messages and formatting', () => {
       formatDateShort('en', acrossDay, 'Asia/Tokyo'),
     );
   });
+  it('spaces Chinese and Japanese date numbers, units and weekdays', () => {
+    const date = new Date('2026-10-09T12:00:00Z');
+    expect(formatDateShort('zh-CN', date, 'UTC')).toBe('10 月 9 日 周五');
+    expect(formatDateShort('zh-TW', date, 'UTC')).toBe('10 月 9 日 週五');
+    expect(formatDateShort('ja', date, 'UTC')).toBe('10 月 9 日 (金)');
+    expect(formatDateShort('en', date, 'UTC')).toBe(
+      new Intl.DateTimeFormat('en', {
+        weekday: 'short',
+        month: 'short',
+        day: 'numeric',
+        timeZone: 'UTC',
+      }).format(date),
+    );
+  });
 });

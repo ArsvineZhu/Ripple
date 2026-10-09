@@ -19,6 +19,8 @@ import { modeReducer, resolveMode } from '../lib/modes';
 import { useNavigation } from './useNavigation';
 import { useWindowInput } from './useWindowInput';
 import { useAppState } from '../components/AppStateProvider';
+import { expandedTabSize } from '../lib/tabGeometry';
+import { useBackgroundImage } from './useBackgroundImage';
 export function useIslandController() {
   const { t } = useTranslation();
   const { state: appState, updateState } = useAppState();
@@ -78,6 +80,7 @@ export function useIslandController() {
     handleBgImageChange,
   } = useSettingsContext();
   const mode = resolveMode(requestedMode, standbyBorderEnabled, largeStandbyEnabled);
+  const backgroundImage = useBackgroundImage(bgImage);
   const {
     spotifyTrack,
     albumHovered,
@@ -176,10 +179,10 @@ export function useIslandController() {
     currentTabId,
     direction,
     currentTab,
-    tabVariants,
+    visibleTabs,
+    selectTab,
     clearClickSuppression,
     consumeClickSuppression,
-    handleWheelSwipe,
     isInteractiveTarget,
     handlePointerDown,
     handlePointerMove,
@@ -188,7 +191,7 @@ export function useIslandController() {
   useLayoutEffect(() => {
     setAssistantActive(currentTab === 4 && asked);
   }, [asked, currentTab, setAssistantActive]);
-  const { islandElementRef, syncLinuxWindowShape, trackPointerPosition } =
+  const { islandElementRef, syncWindowInputRegion, trackPointerPosition } =
     useWindowInput(geometryExited);
   let isPlaying = spotifyTrack?.state === 'playing';
   const trackTitle = spotifyTrack ? spotifyTrack.name || t('unknownSong') : '';
@@ -196,17 +199,12 @@ export function useIslandController() {
   const nowPlayingText = spotifyTrack ? `${trackTitle} • ${trackArtist}` : '';
   const textWidth = measureTextWidth(nowPlayingText) || nowPlayingText.length * 7;
   const nowPlayingWidth = Math.min(300, Math.max(122, Math.ceil(textWidth + 24 + 6 + 20)));
+  const getExpandedTabSize = (id: number) =>
+    expandedTabSize(id, settingsContentWidth, positionMode === 'free');
+  const expandedSize = getExpandedTabSize(currentTab);
   let width =
     mode === 'large'
-      ? currentTab === 7
-        ? (settingsContentWidth ?? 495)
-        : currentTab === 1
-          ? 480
-          : currentTab === 3
-            ? 330
-            : currentTab === 0
-              ? 405
-              : 380
+      ? expandedSize.width
       : mode === 'quick' &&
           isPlaying &&
           !alert &&
@@ -225,22 +223,7 @@ export function useIslandController() {
           : isPlaying
             ? nowPlayingWidth
             : 170;
-  let height =
-    mode === 'large'
-      ? currentTab === 7
-        ? positionMode === 'free'
-          ? 425
-          : 345
-        : currentTab === 6
-          ? 250
-          : currentTab === 3
-            ? 150
-            : currentTab === 0
-              ? 120
-              : currentTab === 1
-                ? 210
-                : 190
-      : 40;
+  let height = mode === 'large' ? expandedSize.height : 40;
   useEffect(() => {
     const savedDisplayId = appState.settings.displayId;
     if (savedDisplayId && window.electronAPI?.setDisplay) {
@@ -302,12 +285,12 @@ export function useIslandController() {
     standbyBorderEnabled,
     largeStandbyEnabled,
     isInteractiveTarget,
-    handleWheelSwipe,
     handlePointerDown,
     handlePointerMove,
     handlePointerUp,
     sideStyles,
     width,
+    getExpandedTabSize,
     onSettingsContentWidthChange: setSettingsContentWidth,
     height,
     hideNotActiveIslandEnabled,
@@ -316,9 +299,10 @@ export function useIslandController() {
     isHovered,
     theme,
     currentTab,
-    syncLinuxWindowShape,
+    syncWindowInputRegion,
     trackPointerPosition,
     bgImage,
+    ...backgroundImage,
     islandBorderEnabled,
     cameraInUse,
     microphoneInUse,
@@ -343,7 +327,8 @@ export function useIslandController() {
     weather,
     direction,
     currentTabId,
-    tabVariants,
+    visibleTabs,
+    selectTab,
     browserSearch,
     setBrowserSearch,
     searchBrowser,

@@ -14,15 +14,5 @@
     ".config/**/*.ts",
     ".config/**/*.mts"
   ],
-  "ignoreBinaries": [
-    "start",
-    "system_profiler",
-    "bluetoothctl",
-    "ioreg",
-    "pactl",
-    "osascript",
-    "playerctl",
-    "gio",
-    "explorer.exe"
-  ]
+  "ignoreBinaries": ["gio"]
 }

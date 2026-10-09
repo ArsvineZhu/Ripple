@@ -23,17 +23,15 @@ export function tokenizeArgs(str: string) {
 }
 
 // Parses a Windows command string into { exe, args }.
-// Normalizes forward slashes and expands %ENV_VAR% before splitting.
+// Expands %ENV_VAR% before splitting; arguments retain URL and switch slashes.
 export function parseCommand(input: string) {
-  const prepared = input
-    .replace(/\//g, '\\')
-    .replace(/%([^%]+)%/g, (_, v) => process.env[v] || `%${v}%`);
+  const prepared = input.replace(/%([^%]+)%/g, (_, v) => process.env[v] || `%${v}%`);
 
   // Quoted exe path: "C:\path with spaces\app.exe" [args...]
   const quotedMatch = prepared.match(/^"([^"]+)"(.*)/);
   if (quotedMatch) {
     return {
-      exe: quotedMatch[1],
+      exe: quotedMatch[1].replace(/\//g, '\\'),
       args: quotedMatch[2].trim() ? tokenizeArgs(quotedMatch[2].trim()) : [],
     };
   }
@@ -43,16 +41,16 @@ export function parseCommand(input: string) {
   const extMatch = prepared.match(/^(.+?\.(?:exe|cmd|bat|com|ps1))(?:\s+(.*))?$/i);
   if (extMatch) {
     return {
-      exe: extMatch[1],
+      exe: extMatch[1].replace(/\//g, '\\'),
       args: extMatch[2] ? tokenizeArgs(extMatch[2]) : [],
     };
   }
 
   // No recognised extension (e.g. cmd, wt) — split on first whitespace.
   const spaceIdx = prepared.search(/\s/);
-  if (spaceIdx === -1) return { exe: prepared, args: [] };
+  if (spaceIdx === -1) return { exe: prepared.replace(/\//g, '\\'), args: [] };
   return {
-    exe: prepared.slice(0, spaceIdx),
+    exe: prepared.slice(0, spaceIdx).replace(/\//g, '\\'),
     args: tokenizeArgs(prepared.slice(spaceIdx + 1).trim()),
   };
 }

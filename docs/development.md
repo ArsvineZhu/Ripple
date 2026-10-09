@@ -42,6 +42,8 @@ The browser search URL template is persisted in settings and must contain `{quer
 
 ## Local diagnostics
 
+Migration findings, diagnostic fields and native feedback rules are documented in [platform compatibility](platform-compatibility.md). CI checks/tests run on Ubuntu, Windows and macOS. Reinstall dependencies from the lockfile when changing operating systems.
+
 Ripple Next writes `ripple-next.log` under `<userData>/diagnostics/` and stores Electron minidumps in its `crashes/` subdirectory. In Settings, open **Diagnostics** and choose **Open diagnostics folder** to view them. The log transport has a 5 MiB size limit; on startup, crash reports older than 30 days and all but the 10 newest reports are removed.
 
 Crash-report uploads are disabled. Assistant logs record request IDs, lifecycle timing, delta counts and answer length, but never the prompt or answer text. Error records contain the error type and stack frames, not the free-form error message. Treat minidumps as sensitive local data because they are binary process snapshots.

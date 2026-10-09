@@ -15,12 +15,25 @@ export function useOverview(
   const [time, setTime] = useState<string | null>(null);
   const [weather, setWeather] = useState<WeatherReading | null>(null);
   useEffect(() => {
+    let timer: ReturnType<typeof setTimeout>;
     const update = () => {
+      clearTimeout(timer);
       setTime(formatTime(i18n.language, hourFormat, new Date(), timeZone));
+      // The clock displays minutes. Align updates with the next minute rather
+      // than waking the renderer sixty times for the same visible value.
+      timer = setTimeout(update, 60_000 - (Date.now() % 60_000));
+    };
+    const resume = () => {
+      if (document.visibilityState !== 'hidden') update();
     };
     update();
-    const timer = setInterval(update, 1000);
-    return () => clearInterval(timer);
+    window.addEventListener('focus', update);
+    document.addEventListener('visibilitychange', resume);
+    return () => {
+      clearTimeout(timer);
+      window.removeEventListener('focus', update);
+      document.removeEventListener('visibilitychange', resume);
+    };
   }, [hourFormat, i18n.language, timeZone]);
   useEffect(() => {
     if (!location.trim()) {

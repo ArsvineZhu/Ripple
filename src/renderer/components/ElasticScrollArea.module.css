@@ -1,27 +1,26 @@
-.viewport {
+.viewport.viewport {
   min-height: 0;
-  overflow: hidden;
-  overscroll-behavior: contain;
+  overflow-x: hidden;
+  overflow-y: auto;
+  overscroll-behavior-y: contain;
+  scrollbar-width: thin;
+  scrollbar-color: color-mix(in srgb, var(--island-text-color), transparent 58%) transparent;
 }
 
 .content {
-  display: contents;
+  display: flow-root;
 }
 
-.viewport :global(.scrollbar-track) {
-  background: transparent !important;
+.viewport::-webkit-scrollbar {
+  width: 4px;
+  height: 4px;
 }
 
-.viewport :global(.scrollbar-track-y) {
-  width: 4px !important;
-}
-
-.viewport :global(.scrollbar-thumb) {
-  width: 3px !important;
+.viewport::-webkit-scrollbar-thumb {
   border-radius: 999px;
-  background: color-mix(in srgb, var(--island-text-color), transparent 58%) !important;
+  background: color-mix(in srgb, var(--island-text-color), transparent 58%);
 }
 
-.viewport :global(.scrollbar-track-x) {
-  display: none !important;
+.viewport::-webkit-scrollbar-track {
+  background: transparent;
 }

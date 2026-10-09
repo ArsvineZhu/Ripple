@@ -9,3 +9,7 @@ Preload 通过明确的 `contextBridge` 方法暴露隔离的 `electronAPI`，�
 保持 preload bundle 兼容 sandbox；调整方法时同步更新 shared 请求、响应和事件契约。
 
 参见[开发指南](../../docs/development.zh-CN.md)和[仓库地图](../../INDEX.zh-CN.md)。
+
+桥接还提供 `readClipboardText()` 和 `writeClipboardText(text)`，使用 Electron 原生剪贴板接口，避免桌面失焦时浏览器权限路径失败。
+
+`onScrollGestureStart(callback)` 通过 `scroll-gesture-start` 传递经过校验的原生触控板手势开始时间戳，并返回取消订阅函数；不暴露原始输入事件、鼠标坐标或按键内容。

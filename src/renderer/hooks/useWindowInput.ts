@@ -26,7 +26,7 @@ export function useWindowInput(onGeometryExit: () => void) {
   const trackPointerPosition = (event: { clientX: number; clientY: number }) => {
     pointerPositionRef.current = { x: event.clientX, y: event.clientY };
   };
-  const syncLinuxWindowShape = () => {
+  const syncWindowInputRegion = () => {
     const element = islandElementRef.current;
     if (!element) return;
 
@@ -42,13 +42,23 @@ export function useWindowInput(onGeometryExit: () => void) {
       onGeometryExitRef.current();
     }
     lastBoundsRef.current = bounds;
-    if (window.electronAPI?.platform !== 'linux') return;
+    const platform = window.electronAPI?.platform;
+    if (platform !== 'linux' && platform !== 'win32') return;
 
-    const rect = islandInputRectangle(
-      bounds,
-      { width: window.innerWidth, height: window.innerHeight },
-      window.devicePixelRatio || 1,
-    );
+    const rect =
+      platform === 'win32'
+        ? {
+            x: bounds.left,
+            y: bounds.top,
+            width: bounds.width,
+            height: bounds.height,
+            scaleFactor: window.devicePixelRatio || 1,
+          }
+        : islandInputRectangle(
+            bounds,
+            { width: window.innerWidth, height: window.innerHeight },
+            window.devicePixelRatio || 1,
+          );
 
     if (rect.width <= 0 || rect.height <= 0) return;
     const previous = lastWindowShapeRef.current;
@@ -66,9 +76,9 @@ export function useWindowInput(onGeometryExit: () => void) {
     window.electronAPI.setWindowInputShape(rect);
   };
   useEffect(() => {
-    syncLinuxWindowShape();
-    window.addEventListener('resize', syncLinuxWindowShape);
-    return () => window.removeEventListener('resize', syncLinuxWindowShape);
+    syncWindowInputRegion();
+    window.addEventListener('resize', syncWindowInputRegion);
+    return () => window.removeEventListener('resize', syncWindowInputRegion);
   }, []);
-  return { islandElementRef, syncLinuxWindowShape, trackPointerPosition };
+  return { islandElementRef, syncWindowInputRegion, trackPointerPosition };
 }

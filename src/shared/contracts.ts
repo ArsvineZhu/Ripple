@@ -72,6 +72,10 @@ export interface InputRect {
 }
 export type MediaCommand = 'previous' | 'playpause' | 'next';
 export type IslandMode = 'still' | 'quick' | 'large';
+export const ScrollGestureStartSchema = z
+  .object({ at: z.number().finite().nonnegative() })
+  .strict();
+export type ScrollGestureStart = z.infer<typeof ScrollGestureStartSchema>;
 export type NoticeCode =
   | 'appLaunchFailed'
   | 'autoLaunchFailed'
@@ -149,6 +153,8 @@ interface AppBootstrap {
 export interface InvokeMap {
   'get-app-bootstrap': { args: []; result: AppBootstrap };
   'open-diagnostics-folder': { args: []; result: void };
+  'read-clipboard-text': { args: []; result: string };
+  'write-clipboard-text': { args: [text: string]; result: void };
   'update-app-state': { args: [patch: AppStatePatch]; result: AppState };
   'save-api-key': { args: [key: string]; result: void };
   'launch-quick-app': { args: [id: string]; result: void };
@@ -181,6 +187,8 @@ export interface InvokeMap {
 export interface ElectronAPI {
   getAppBootstrap(): Promise<AppBootstrap>;
   openDiagnosticsFolder(): Promise<void>;
+  readClipboardText(): Promise<string>;
+  writeClipboardText(text: string): Promise<void>;
   updateAppState(patch: AppStatePatch): Promise<AppState>;
   saveApiKey(key: string): Promise<void>;
   launchQuickApp(id: string): Promise<void>;
@@ -190,6 +198,7 @@ export interface ElectronAPI {
   cancelAssistant(requestId: string): Promise<void>;
   onAppNotice(callback: (notice: AppNotice) => void): () => void;
   onAssistantEvent(callback: (event: AssistantEvent) => void): () => void;
+  onScrollGestureStart(callback: (event: ScrollGestureStart) => void): () => void;
   getSystemLocale(): Promise<string>;
   setUILocale(locale: Locale): Promise<void>;
   platform: string;

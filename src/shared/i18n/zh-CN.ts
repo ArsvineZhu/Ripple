@@ -42,6 +42,8 @@ export const zhCN: Messages = {
   islandColor: 'Island 颜色',
   textColor: '文字颜色',
   backgroundImage: '背景图片地址',
+  backgroundImageHint: '图片网址或本地文件路径',
+  backgroundImageFailed: '无法加载背景图片，请检查地址和文件。',
   features: '功能',
   batteryAlerts: '低电量提醒',
   standby: '待机模式',

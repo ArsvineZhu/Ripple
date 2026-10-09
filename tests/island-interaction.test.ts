@@ -149,6 +149,25 @@ describe('Island position and overlay lifecycle', () => {
       ),
     );
     expect(navigation!.currentTabId).toBe(3);
+    // Batched repeats must each use the latest tab, and reversal must not wait
+    // for a timer or an outgoing animation to finish.
+    await act(async () => {
+      for (let index = 0; index < 2; index++) {
+        document.body.dispatchEvent(
+          new KeyboardEvent('keydown', { key: 'ArrowRight', repeat: true, bubbles: true }),
+        );
+      }
+    });
+    expect(navigation!.currentTabId).toBe(5);
+    await act(async () => {
+      document.body.dispatchEvent(
+        new KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true }),
+      );
+      document.body.dispatchEvent(
+        new KeyboardEvent('keydown', { key: 'ArrowLeft', bubbles: true }),
+      );
+    });
+    expect(navigation!.currentTabId).toBe(3);
     const overlay = document.createElement('div');
     overlay.setAttribute('data-island-overlay', '');
     overlay.innerHTML = '<div role="menu"></div>';

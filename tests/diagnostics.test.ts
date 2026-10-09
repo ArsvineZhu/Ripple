@@ -1,4 +1,4 @@
-import { mkdtemp, readdir, rm, stat, utimes, writeFile } from 'node:fs/promises';
+import { mkdir, mkdtemp, readdir, rm, stat, utimes, writeFile } from 'node:fs/promises';
 import os from 'node:os';
 import path from 'node:path';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
@@ -68,6 +68,38 @@ afterEach(async () => {
 });
 
 describe('local diagnostics', () => {
+  it('keeps system error codes and causes without leaking multiline command output', () => {
+    const cause = Object.assign(new Error('private command arguments'), {
+      code: 'ENOENT',
+      syscall: 'spawn',
+    });
+    const error = Object.assign(new Error('operation failed', { cause }), {
+      code: 1,
+      killed: true,
+    });
+    error.stack =
+      'Error: failed\nAuthorization: private-token\n#< CLIXML\n    at run (/app/main.js:2:1)';
+    const result = serializeDiagnosticError(error);
+    expect(result).toMatchObject({
+      code: 1,
+      killed: true,
+      cause: { code: 'ENOENT', syscall: 'spawn' },
+    });
+    expect(result.frames).toEqual(['    at run (/app/main.js:2:1)']);
+    expect(JSON.stringify(result)).not.toMatch(/private|CLIXML|Authorization/);
+  });
+
+  it('retains nested Crashpad dumps without removing its metadata', async () => {
+    const directory = await makeTemporaryDirectory();
+    await mkdir(path.join(directory, 'reports'));
+    await writeFile(path.join(directory, 'settings.dat'), 'metadata');
+    const expired = path.join(directory, 'reports', 'expired.dmp');
+    await writeFile(expired, 'dump');
+    await utimes(expired, 0, 0);
+    await pruneCrashReports(directory, Date.now());
+    expect(await readdir(path.join(directory, 'reports'))).toEqual([]);
+    expect(await readdir(directory)).toContain('settings.dat');
+  });
   it('serializeDiagnosticError omits the message and keeps stack frames', () => {
     const error = new TypeError('Authorization: secret-token');
     error.stack =
