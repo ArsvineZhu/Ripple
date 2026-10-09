@@ -32,7 +32,7 @@ function showMacDockForSettings(): void {
   void app.dock?.show();
 }
 
-/** macOS: leave the Dock again after Settings closes (LSUIElement + accessory). */
+/** macOS: leave the Dock again after Settings closes. */
 function hideMacDockAfterSettings(): void {
   if (process.platform !== 'darwin') return;
   app.setActivationPolicy('accessory');
@@ -75,6 +75,7 @@ export function openSettingsWindow(): BrowserWindow {
   }
 
   const { diagnostics, onLoadError } = configured;
+  showMacDockForSettings();
   const window = new BrowserWindow({
     width: 720,
     height: 800,
@@ -106,7 +107,6 @@ export function openSettingsWindow(): BrowserWindow {
     webContentsId: window.webContents.id,
   });
 
-  showMacDockForSettings();
   window.once('ready-to-show', () => {
     if (!window.isDestroyed()) bringSettingsWindowForward(window);
   });
