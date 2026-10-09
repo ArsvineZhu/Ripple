@@ -107,6 +107,97 @@ it('keeps paging in either direction through long runs and circular boundaries',
     [0, -1],
   ]);
 });
+it('does not turn a second page from a spike inside one swipe', async () => {
+  const x = await gestureHarness();
+  // A single swipe whose samples dip and then spike back up. The tail never decayed deeply, so this
+  // is still one page: a fresh push needs the tail down at a quarter of the peak or less.
+  for (const delta of [300, 150, 200, 400]) await x.send(delta);
+  expect(x.onSelect.mock.calls).toEqual([[1, 1]]);
+});
+it('keeps a sideways swipe on the rail through its own cross-axis drift', async () => {
+  const x = await gestureHarness();
+  // A real trackpad swipe carries a few pixels of vertical drift per sample; only a real
+  // diagonal may take the stroke over.
+  const samples: [number, number][] = [
+    [3, 1],
+    [9, 2],
+    [18, 3],
+    [30, 5],
+    [38, 4],
+    [40, 6],
+    [30, 3],
+    [18, 2],
+    [9, 1],
+    [4, 1],
+  ];
+  for (const [deltaX, deltaY] of samples) {
+    const event = await x.send(deltaX, deltaY);
+    expect(event.defaultPrevented).toBe(true);
+  }
+  expect(x.onSelect.mock.calls).toEqual([[1, 1]]);
+});
+it('turns a page for every quick swipe instead of every other one', async () => {
+  const x = await gestureHarness();
+  // Four swipes in a row, each starting while the previous momentum tail is still strong, so the
+  // input never goes quiet between them.
+  const swipes = [
+    [4, 10, 20, 32, 40],
+    [5, 12, 22, 34, 42],
+    [5, 12, 22, 34, 42],
+    [5, 12, 22, 34, 42],
+  ];
+  for (const swipe of swipes) for (const delta of swipe) await x.send(delta);
+  expect(x.onSelect.mock.calls).toEqual([
+    [1, 1],
+    [2, 1],
+    [3, 1],
+    [0, 1],
+  ]);
+});
+it('keeps fast swipes with drift on the rail instead of locking them away', async () => {
+  const x = await gestureHarness();
+  // A fast swipe whose early samples carry a few pixels of drift, four times in a row. A stroke
+  // that latches on the first sample leaves every one of these events to the content.
+  const swipe: [number, number][] = [
+    [9, 3],
+    [21, 4],
+    [33, 5],
+    [45, 4],
+    [30, 3],
+    [16, 2],
+    [8, 1],
+  ];
+  for (let index = 0; index < 4; index += 1)
+    for (const [deltaX, deltaY] of swipe) await x.send(deltaX, deltaY);
+  expect(x.onSelect.mock.calls).toEqual([
+    [1, 1],
+    [2, 1],
+    [3, 1],
+    [0, 1],
+  ]);
+});
+
+it('keeps short quick flicks paging instead of swallowing all but the first', async () => {
+  const x = await gestureHarness();
+  // A quick flick leaves no room for the tail to decay twice, so the resumed push has to be read
+  // from the tail it follows rather than from the previous sample.
+  const flick: [number, number][] = [
+    [30, 4],
+    [80, 5],
+    [120, 4],
+    [88, 3],
+  ];
+  for (let index = 0; index < 6; index += 1)
+    for (const [deltaX, deltaY] of flick) await x.send(deltaX, deltaY);
+  expect(x.onSelect.mock.calls).toEqual([
+    [1, 1],
+    [2, 1],
+    [3, 1],
+    [0, 1],
+    [1, 1],
+    [2, 1],
+  ]);
+});
 
 it('triggers on tiny directional input and bounds a long gesture with elastic return', async () => {
   vi.useFakeTimers();
