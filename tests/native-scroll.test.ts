@@ -107,6 +107,28 @@ it('keeps paging in either direction through long runs and circular boundaries',
     [0, -1],
   ]);
 });
+it('keeps a sideways swipe on the rail through its own cross-axis drift', async () => {
+  const x = await gestureHarness();
+  // A real trackpad swipe carries a few pixels of vertical drift per sample; only a real
+  // diagonal may take the stroke over.
+  const samples: [number, number][] = [
+    [3, 1],
+    [9, 2],
+    [18, 3],
+    [30, 5],
+    [38, 4],
+    [40, 6],
+    [30, 3],
+    [18, 2],
+    [9, 1],
+    [4, 1],
+  ];
+  for (const [deltaX, deltaY] of samples) {
+    const event = await x.send(deltaX, deltaY);
+    expect(event.defaultPrevented).toBe(true);
+  }
+  expect(x.onSelect.mock.calls).toEqual([[1, 1]]);
+});
 
 it('triggers on tiny directional input and bounds a long gesture with elastic return', async () => {
   vi.useFakeTimers();
