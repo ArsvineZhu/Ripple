@@ -30,41 +30,22 @@ import styles from './SettingsTab.module.css';
 
 const repositoryUrl = repository.url.replace(/\.git$/, '');
 const licenseUrl = `${repositoryUrl}/blob/main/LICENSE`;
-interface SectionProps {
-  title: string;
-  children: ReactNode;
-}
-function Section({ title, children }: SectionProps) {
-  return (
-    <section className={styles.section}>
-      <h3 className={styles.sectionHeading}>{title}</h3>
-      {children}
-    </section>
-  );
-}
-function Field({
-  label,
-  children,
-  stacked = false,
-}: {
-  label: string;
-  children: ReactNode;
-  stacked?: boolean;
-}) {
-  return (
-    <div className={`${styles.row} ${stacked ? styles.stacked : ''}`}>
-      <span className={styles.label}>{label}</span>
-      {children}
-    </div>
-  );
-}
-
 /** Continuous preference card: rows share one surface with hairline dividers. */
 function PrefGroup({ caption, children }: { caption?: string; children: ReactNode }) {
   return (
     <div className={styles.prefGroupBlock}>
       {caption ? <h3 className={styles.prefGroupCaption}>{caption}</h3> : null}
       <div className={styles.prefGroup}>{children}</div>
+    </div>
+  );
+}
+
+/** Standalone preference card for complex editors (colors, lists, secrets, forms). */
+function PrefCard({ caption, children }: { caption?: string; children: ReactNode }) {
+  return (
+    <div className={styles.prefGroupBlock}>
+      {caption ? <h3 className={styles.prefGroupCaption}>{caption}</h3> : null}
+      <div className={styles.prefCard}>{children}</div>
     </div>
   );
 }
@@ -305,8 +286,8 @@ export function SettingsTab(p: Props & { category: SettingsCategoryId }) {
       )}
       {p.category === 'appearance' && (
         <>
-          <Section title={t('islandStyle')}>
-            <Field label={t('theme')}>
+          <PrefGroup>
+            <PrefRow label={t('theme')}>
               <Select
                 label={t('theme')}
                 value={p.theme === 'default' ? 'none' : p.theme}
@@ -317,9 +298,32 @@ export function SettingsTab(p: Props & { category: SettingsCategoryId }) {
                   { value: 'win95', label: 'Windows 95' },
                 ]}
               />
-            </Field>
+            </PrefRow>
+            <PrefRow label={t('islandBorder')}>
+              <Select
+                label={t('islandBorder')}
+                value={String(p.islandBorderEnabled)}
+                onValueChange={p.handleIslandBorderChange}
+                options={[
+                  { value: 'true', label: t('show') },
+                  { value: 'false', label: t('hide') },
+                ]}
+              />
+            </PrefRow>
+            <PrefRow label={t('hideInactive')}>
+              <Select
+                label={t('hideInactive')}
+                value={String(p.hideNotActiveIslandEnabled)}
+                onValueChange={p.handlehideNotActiveIslandChange}
+                options={[
+                  { value: 'true', label: t('yes') },
+                  { value: 'false', label: t('no') },
+                ]}
+              />
+            </PrefRow>
+          </PrefGroup>
+          <PrefCard caption={t('positionMode')}>
             <div className={styles.positionCard}>
-              <span className={styles.positionHeading}>{t('positionMode')}</span>
               <div className={styles.positionGrid}>
                 {positions.map((position) => (
                   <label key={position.value} className={styles.radioLabel}>
@@ -347,161 +351,145 @@ export function SettingsTab(p: Props & { category: SettingsCategoryId }) {
                 <span className={styles.radioCustom} />
                 <span>{t('free')}</span>
               </label>
+              <AnimatePresence propagate>
+                {p.isFree && (
+                  <motion.div
+                    className={styles.manualPosition}
+                    initial={{ opacity: 0, height: 0 }}
+                    animate={{ opacity: 1, height: 'auto' }}
+                    exit={{ opacity: 0, height: 0 }}
+                    transition={{ duration: 0.15 }}
+                  >
+                    <PrefRow label={t('positionX', { value: number(p.islandX, 1) })} stacked>
+                      <input
+                        className={styles.range}
+                        aria-label={t('positionX', { value: number(p.islandX, 1) })}
+                        type="range"
+                        min="0"
+                        max="100"
+                        step="0.1"
+                        value={p.islandX}
+                        style={rangeStyle(p.islandX, 100)}
+                        onPointerDown={(event) => {
+                          event.stopPropagation();
+                          p.updateDragging(true);
+                        }}
+                        onChange={p.handleIslandXChange}
+                        onPointerUp={(event) => {
+                          event.stopPropagation();
+                          p.savePosition();
+                          p.handleDragEndChecks();
+                          event.currentTarget.blur();
+                        }}
+                      />
+                    </PrefRow>
+                    <PrefRow label={t('positionY', { value: number(p.islandY) })} stacked>
+                      <input
+                        className={styles.range}
+                        aria-label={t('positionY', { value: number(p.islandY) })}
+                        type="range"
+                        min="0"
+                        max="500"
+                        value={p.islandY}
+                        style={rangeStyle(p.islandY, 500)}
+                        onPointerDown={(event) => {
+                          event.stopPropagation();
+                          p.updateDragging(true);
+                        }}
+                        onChange={p.handleIslandYChange}
+                        onPointerUp={(event) => {
+                          event.stopPropagation();
+                          p.savePosition();
+                          p.handleDragEndChecks();
+                          event.currentTarget.blur();
+                        }}
+                      />
+                    </PrefRow>
+                  </motion.div>
+                )}
+              </AnimatePresence>
             </div>
-            <AnimatePresence propagate>
-              {p.isFree && (
-                <motion.div
-                  className={styles.manualPosition}
-                  initial={{ opacity: 0, height: 0 }}
-                  animate={{ opacity: 1, height: 'auto' }}
-                  exit={{ opacity: 0, height: 0 }}
-                  transition={{ duration: 0.15 }}
-                >
-                  <Field label={t('positionX', { value: number(p.islandX, 1) })}>
-                    <input
-                      className={styles.range}
-                      aria-label={t('positionX', { value: number(p.islandX, 1) })}
-                      type="range"
-                      min="0"
-                      max="100"
-                      step="0.1"
-                      value={p.islandX}
-                      style={rangeStyle(p.islandX, 100)}
-                      onPointerDown={(event) => {
-                        event.stopPropagation();
-                        p.updateDragging(true);
-                      }}
-                      onChange={p.handleIslandXChange}
-                      onPointerUp={(event) => {
-                        event.stopPropagation();
-                        p.savePosition();
-                        p.handleDragEndChecks();
-                        event.currentTarget.blur();
-                      }}
-                    />
-                  </Field>
-                  <Field label={t('positionY', { value: number(p.islandY) })}>
-                    <input
-                      className={styles.range}
-                      aria-label={t('positionY', { value: number(p.islandY) })}
-                      type="range"
-                      min="0"
-                      max="500"
-                      value={p.islandY}
-                      style={rangeStyle(p.islandY, 500)}
-                      onPointerDown={(event) => {
-                        event.stopPropagation();
-                        p.updateDragging(true);
-                      }}
-                      onChange={p.handleIslandYChange}
-                      onPointerUp={(event) => {
-                        event.stopPropagation();
-                        p.savePosition();
-                        p.handleDragEndChecks();
-                        event.currentTarget.blur();
-                      }}
-                    />
-                  </Field>
-                </motion.div>
-              )}
-            </AnimatePresence>
-            <Field label={t('islandBorder')}>
-              <Select
-                label={t('islandBorder')}
-                value={String(p.islandBorderEnabled)}
-                onValueChange={p.handleIslandBorderChange}
-                options={[
-                  { value: 'true', label: t('show') },
-                  { value: 'false', label: t('hide') },
-                ]}
-              />
-            </Field>
-            <Field label={t('hideInactive')}>
-              <Select
-                label={t('hideInactive')}
-                value={String(p.hideNotActiveIslandEnabled)}
-                onValueChange={p.handlehideNotActiveIslandChange}
-                options={[
-                  { value: 'true', label: t('yes') },
-                  { value: 'false', label: t('no') },
-                ]}
-              />
-            </Field>
-          </Section>
-          <Section title={t('colorsAssets')}>
-            <Field label={t('islandColor')}>
-              <input
-                className={`${styles.input} ${styles.colorInput}`}
-                aria-label={t('islandColor')}
-                placeholder="#000000"
-                value={p.bgColor}
-                onChange={p.handleBgColorChange}
-              />
-            </Field>
-            <Field label={t('textColor')}>
-              <input
-                className={`${styles.input} ${styles.colorInput}`}
-                aria-label={t('textColor')}
-                placeholder="#FAFAFA"
-                value={p.textColor}
-                onChange={p.handleTextColorChange}
-              />
-            </Field>
-            <Field label={t('backgroundImage')} stacked>
-              <input
-                className={styles.input}
-                aria-label={t('backgroundImage')}
-                placeholder={t('backgroundImageHint')}
-                value={p.bgImage}
-                onChange={p.handleBgImageChange}
-                aria-invalid={p.backgroundImageError}
-                aria-describedby={p.backgroundImageError ? 'background-image-error' : undefined}
-              />
-              {p.backgroundImageError && (
-                <p id="background-image-error" className={styles.fieldError} role="alert">
-                  {t('backgroundImageFailed')}
-                </p>
-              )}
-            </Field>
-          </Section>
+          </PrefCard>
+          <PrefCard caption={t('colorsAssets')}>
+            <div className={styles.prefStack}>
+              <PrefRow label={t('islandColor')}>
+                <input
+                  className={`${styles.input} ${styles.colorInput}`}
+                  aria-label={t('islandColor')}
+                  placeholder="#000000"
+                  value={p.bgColor}
+                  onChange={p.handleBgColorChange}
+                />
+              </PrefRow>
+              <PrefRow label={t('textColor')}>
+                <input
+                  className={`${styles.input} ${styles.colorInput}`}
+                  aria-label={t('textColor')}
+                  placeholder="#FAFAFA"
+                  value={p.textColor}
+                  onChange={p.handleTextColorChange}
+                />
+              </PrefRow>
+              <PrefRow label={t('backgroundImage')} hint={t('backgroundImageHint')} stacked>
+                <input
+                  className={styles.input}
+                  aria-label={t('backgroundImage')}
+                  placeholder={t('backgroundImageHint')}
+                  value={p.bgImage}
+                  onChange={p.handleBgImageChange}
+                  aria-invalid={p.backgroundImageError}
+                  aria-describedby={p.backgroundImageError ? 'background-image-error' : undefined}
+                />
+                {p.backgroundImageError && (
+                  <p id="background-image-error" className={styles.fieldError} role="alert">
+                    {t('backgroundImageFailed')}
+                  </p>
+                )}
+              </PrefRow>
+            </div>
+          </PrefCard>
         </>
       )}
       {p.category === 'behavior' && (
         <>
-          <Section title={t('features')}>
-            <Field label={t('batteryAlerts')}>
+          <PrefGroup>
+            <PrefRow label={t('batteryAlerts')}>
               <Select
                 label={t('batteryAlerts')}
                 value={String(p.batteryAlertsEnabled)}
                 onValueChange={p.handleBatteryAlertsChange}
                 options={boolOptions}
               />
-            </Field>
-            <Field label={t('standby')}>
+            </PrefRow>
+            <PrefRow label={t('standby')}>
               <Select
                 label={t('standby')}
                 value={String(p.standbyBorderEnabled)}
                 onValueChange={p.handleStandbyChange}
                 options={boolOptions}
               />
-            </Field>
-            <Field label={t('largeStandby')}>
+            </PrefRow>
+            <PrefRow label={t('largeStandby')}>
               <Select
                 label={t('largeStandby')}
                 value={String(p.largeStandbyEnabled)}
                 onValueChange={p.handleLargeStandbyChange}
                 options={boolOptions}
               />
-            </Field>
-            <Field label={t('idleInfo')}>
+            </PrefRow>
+            <PrefRow label={t('idleInfo')}>
               <Select
                 label={t('idleInfo')}
                 value={String(p.showInfoWhenIdleEnabled)}
                 onValueChange={p.handleShowInfoWhenIdleChange}
                 options={boolOptions}
               />
-            </Field>
-            <Field label={t('mouseLeaveDelay', { value: number(p.leaveDelayMs) })} stacked>
+            </PrefRow>
+            <PrefRow
+              label={t('mouseLeaveDelay', { value: number(p.leaveDelayMs) })}
+              hint={t('mouseLeaveDelayHint')}
+              stacked
+            >
               <input
                 className={styles.range}
                 aria-label={t('mouseLeaveDelay', { value: number(p.leaveDelayMs) })}
@@ -513,15 +501,14 @@ export function SettingsTab(p: Props & { category: SettingsCategoryId }) {
                 style={rangeStyle(p.leaveDelayMs, 2000)}
                 onChange={(event) => p.handleLeaveDelayChange(event.target.value)}
               />
-              <p className={styles.hint}>{t('mouseLeaveDelayHint')}</p>
-            </Field>
-          </Section>
+            </PrefRow>
+          </PrefGroup>
         </>
       )}
       {p.category === 'pages' && (
         <>
-          <Section title={t('tabManagement')}>
-            <p className={styles.hint}>{t('tabInstructions')}</p>
+          <PrefCard caption={t('tabManagement')}>
+            <p className={styles.prefCardHint}>{t('tabInstructions')}</p>
             <div className={styles.tabList}>
               {p.tabOrder.map((id, index) => {
                 const tab = TABS.find((item) => item.id === id);
@@ -601,35 +588,36 @@ export function SettingsTab(p: Props & { category: SettingsCategoryId }) {
                 );
               })}
             </div>
-          </Section>
-          <Section title={t('browserSearchSettings')}>
-            <Field label={t('searchEngineUrl')} stacked>
-              <input
-                className={`${styles.input} ${!validSearchUrlTemplate ? styles.invalidInput : ''}`}
-                aria-label={t('searchEngineUrl')}
-                aria-invalid={!validSearchUrlTemplate}
-                value={p.searchUrlTemplate}
-                onChange={(event) => p.setSearchUrlTemplate(event.target.value)}
-              />
-              <p className={styles.hint}>{t('searchEngineUrlHint')}</p>
-              <AnimatePresence initial={false}>
-                {!validSearchUrlTemplate && (
-                  <motion.p
-                    className={styles.fieldError}
-                    role="alert"
-                    initial={{ opacity: 0, filter: 'blur(10px)' }}
-                    animate={{ opacity: 1, filter: 'blur(0px)' }}
-                    exit={{ opacity: 0, filter: 'blur(10px)' }}
-                    transition={{ duration: 0.2 }}
-                  >
-                    {t('invalidSearchUrlTemplate')}
-                  </motion.p>
-                )}
-              </AnimatePresence>
-            </Field>
-          </Section>
-          <Section title={t('weather')}>
-            <Field label={t('location')}>
+          </PrefCard>
+          <PrefCard caption={t('browserSearchSettings')}>
+            <div className={styles.prefStack}>
+              <PrefRow label={t('searchEngineUrl')} hint={t('searchEngineUrlHint')} stacked>
+                <input
+                  className={`${styles.input} ${!validSearchUrlTemplate ? styles.invalidInput : ''}`}
+                  aria-label={t('searchEngineUrl')}
+                  aria-invalid={!validSearchUrlTemplate}
+                  value={p.searchUrlTemplate}
+                  onChange={(event) => p.setSearchUrlTemplate(event.target.value)}
+                />
+                <AnimatePresence initial={false}>
+                  {!validSearchUrlTemplate && (
+                    <motion.p
+                      className={styles.fieldError}
+                      role="alert"
+                      initial={{ opacity: 0, filter: 'blur(10px)' }}
+                      animate={{ opacity: 1, filter: 'blur(0px)' }}
+                      exit={{ opacity: 0, filter: 'blur(10px)' }}
+                      transition={{ duration: 0.2 }}
+                    >
+                      {t('invalidSearchUrlTemplate')}
+                    </motion.p>
+                  )}
+                </AnimatePresence>
+              </PrefRow>
+            </div>
+          </PrefCard>
+          <PrefGroup caption={t('weather')}>
+            <PrefRow label={t('location')}>
               <input
                 className={styles.input}
                 aria-label={t('location')}
@@ -639,8 +627,8 @@ export function SettingsTab(p: Props & { category: SettingsCategoryId }) {
                   p.setWeatherLocation(event.target.value);
                 }}
               />
-            </Field>
-            <Field label={t('unit')}>
+            </PrefRow>
+            <PrefRow label={t('unit')}>
               <Select
                 label={t('unit')}
                 value={p.weatherUnit}
@@ -650,188 +638,195 @@ export function SettingsTab(p: Props & { category: SettingsCategoryId }) {
                   { value: 'c', label: t('celsius') },
                 ]}
               />
-            </Field>
-          </Section>
+            </PrefRow>
+          </PrefGroup>
         </>
       )}
       {p.category === 'shortcuts' && (
         <>
-          <Section title={t('quickApps')}>
-            <Field label={t('quickApps')}>
-              <Select
-                label={t('quickApps')}
-                value={p.quickAppMode}
-                onValueChange={p.setQuickAppMode}
-                options={[
-                  { value: 'installed', label: t('installedApps') },
-                  { value: 'command', label: t('customCommand') },
-                  { value: 'url', label: t('urlShortcut') },
-                ]}
-              />
-            </Field>
-            <div className={styles.appSearch}>
-              <div className={styles.row}>
+          <PrefCard caption={t('quickApps')}>
+            <div className={styles.prefStack}>
+              <PrefRow label={t('quickApps')}>
+                <Select
+                  label={t('quickApps')}
+                  value={p.quickAppMode}
+                  onValueChange={p.setQuickAppMode}
+                  options={[
+                    { value: 'installed', label: t('installedApps') },
+                    { value: 'command', label: t('customCommand') },
+                    { value: 'url', label: t('urlShortcut') },
+                  ]}
+                />
+              </PrefRow>
+              <div className={styles.appSearch}>
+                <div className={styles.row}>
+                  <input
+                    className={styles.input}
+                    aria-label={t('quickAppNameHint')}
+                    value={p.newQuickApp}
+                    placeholder={t('quickAppNameHint')}
+                    onChange={(event) => p.handleQuickAppInput(event.target.value)}
+                    onKeyDown={(event) => {
+                      if (event.key === 'Enter') p.addQuickApp();
+                      if (event.key === 'Escape') p.setShowSuggestions(false);
+                    }}
+                  />
+                  <button
+                    className={styles.primaryButton}
+                    aria-label={t('addApp')}
+                    onClick={p.addQuickApp}
+                  >
+                    <Plus size={18} />
+                  </button>
+                </div>
+                {p.quickAppMode === 'installed' &&
+                  p.showSuggestions &&
+                  p.appSuggestions.length > 0 && (
+                    <div className={styles.suggestions} data-island-interactive>
+                      {p.appSuggestions.map((app) => (
+                        <button
+                          key={`${app.name}-${JSON.stringify(app.target)}`}
+                          className={styles.suggestion}
+                          onPointerDown={(event) => {
+                            event.preventDefault();
+                            p.selectQuickApp(app);
+                          }}
+                        >
+                          <span>{app.name}</span>
+                          <span className={styles.launchHint}>{t('installedApps')}</span>
+                        </button>
+                      ))}
+                    </div>
+                  )}
+              </div>
+              {p.quickAppMode === 'command' && (
+                <div className={styles.quickAppFields}>
+                  <input
+                    className={styles.input}
+                    aria-label={t('executablePath')}
+                    placeholder={t('executablePath')}
+                    value={p.executable}
+                    onChange={(event) => p.setExecutable(event.target.value)}
+                  />
+                  <textarea
+                    className={`${styles.input} ${styles.argumentInput}`}
+                    aria-label={t('arguments')}
+                    placeholder={t('argumentsHint')}
+                    value={p.argumentLines}
+                    onChange={(event) => p.setArgumentLines(event.target.value)}
+                  />
+                  <input
+                    className={styles.input}
+                    aria-label={t('workingDirectory')}
+                    placeholder={t('workingDirectory')}
+                    value={p.workingDirectory}
+                    onChange={(event) => p.setWorkingDirectory(event.target.value)}
+                  />
+                </div>
+              )}
+              {p.quickAppMode === 'url' && (
                 <input
                   className={styles.input}
-                  aria-label={t('quickAppNameHint')}
-                  value={p.newQuickApp}
-                  placeholder={t('quickAppNameHint')}
-                  onChange={(event) => p.handleQuickAppInput(event.target.value)}
-                  onKeyDown={(event) => {
-                    if (event.key === 'Enter') p.addQuickApp();
-                    if (event.key === 'Escape') p.setShowSuggestions(false);
-                  }}
+                  aria-label={t('applicationUrl')}
+                  placeholder="https://example.com"
+                  value={p.appUrl}
+                  onChange={(event) => p.setAppUrl(event.target.value)}
                 />
-                <button
-                  className={styles.primaryButton}
-                  aria-label={t('addApp')}
-                  onClick={p.addQuickApp}
-                >
-                  <Plus size={18} />
+              )}
+              <InlineNotices area="quick-apps" />
+              <div className={styles.appList}>
+                <AnimatePresence propagate>
+                  {p.quickApps.map((app, index) => (
+                    <motion.div
+                      key={app.id}
+                      className={styles.appRow}
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: 'auto' }}
+                      exit={{ opacity: 0, x: -20, height: 0, padding: 0 }}
+                      transition={{ duration: 0.2 }}
+                    >
+                      <input
+                        className={styles.appName}
+                        aria-label={t('appName')}
+                        value={app.name}
+                        onChange={(event) => p.handleQaChange(index, event.target.value)}
+                      />
+                      <button
+                        className={styles.dangerButton}
+                        aria-label={t('removeApp', { name: app.name })}
+                        onClick={() => p.removeQuickApp(index)}
+                      >
+                        <Trash2 size={16} />
+                      </button>
+                    </motion.div>
+                  ))}
+                </AnimatePresence>
+              </div>
+            </div>
+          </PrefCard>
+          <PrefCard caption={t('manageWorkflows')}>
+            <div className={styles.prefStack}>
+              <div id="add-workflow-form" className={styles.workflowForm}>
+                <label className={styles.label} htmlFor="workflow-name">
+                  {t('workflowName')}
+                </label>
+                <input
+                  id="workflow-name"
+                  className={styles.input}
+                  placeholder={t('workflowNameHint')}
+                  value={p.workflowName}
+                  onChange={(event) => p.setWorkflowName(event.target.value)}
+                />
+                <label className={styles.workflowLabel} htmlFor="workflow-apps">
+                  {t('workflowApps')}
+                </label>
+                <textarea
+                  id="workflow-apps"
+                  className={`${styles.input} ${styles.workflowInput}`}
+                  placeholder={t('workflowAppsHint')}
+                  value={p.workflowUrls}
+                  onChange={(event) => p.setWorkflowUrls(event.target.value)}
+                />
+                <button className={styles.primaryButton} onClick={p.addWorkflow}>
+                  {t('saveWorkflow')}
                 </button>
               </div>
-              {p.quickAppMode === 'installed' &&
-                p.showSuggestions &&
-                p.appSuggestions.length > 0 && (
-                  <div className={styles.suggestions} data-island-interactive>
-                    {p.appSuggestions.map((app) => (
-                      <button
-                        key={`${app.name}-${JSON.stringify(app.target)}`}
-                        className={styles.suggestion}
-                        onPointerDown={(event) => {
-                          event.preventDefault();
-                          p.selectQuickApp(app);
-                        }}
-                      >
-                        <span>{app.name}</span>
-                        <span className={styles.launchHint}>{t('installedApps')}</span>
-                      </button>
-                    ))}
-                  </div>
-                )}
-            </div>
-            {p.quickAppMode === 'command' && (
-              <div className={styles.quickAppFields}>
-                <input
-                  className={styles.input}
-                  aria-label={t('executablePath')}
-                  placeholder={t('executablePath')}
-                  value={p.executable}
-                  onChange={(event) => p.setExecutable(event.target.value)}
-                />
-                <textarea
-                  className={`${styles.input} ${styles.argumentInput}`}
-                  aria-label={t('arguments')}
-                  placeholder={t('argumentsHint')}
-                  value={p.argumentLines}
-                  onChange={(event) => p.setArgumentLines(event.target.value)}
-                />
-                <input
-                  className={styles.input}
-                  aria-label={t('workingDirectory')}
-                  placeholder={t('workingDirectory')}
-                  value={p.workingDirectory}
-                  onChange={(event) => p.setWorkingDirectory(event.target.value)}
-                />
-              </div>
-            )}
-            {p.quickAppMode === 'url' && (
-              <input
-                className={styles.input}
-                aria-label={t('applicationUrl')}
-                placeholder="https://example.com"
-                value={p.appUrl}
-                onChange={(event) => p.setAppUrl(event.target.value)}
-              />
-            )}
-            <InlineNotices area="quick-apps" />
-            <div className={styles.appList}>
-              <AnimatePresence propagate>
-                {p.quickApps.map((app, index) => (
-                  <motion.div
-                    key={app.id}
-                    className={styles.appRow}
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: 'auto' }}
-                    exit={{ opacity: 0, x: -20, height: 0, padding: 0 }}
-                    transition={{ duration: 0.2 }}
-                  >
-                    <input
-                      className={styles.appName}
-                      aria-label={t('appName')}
-                      value={app.name}
-                      onChange={(event) => p.handleQaChange(index, event.target.value)}
-                    />
-                    <button
-                      className={styles.dangerButton}
-                      aria-label={t('removeApp', { name: app.name })}
-                      onClick={() => p.removeQuickApp(index)}
+              <div id="workflows-list" className={styles.workflowList}>
+                <AnimatePresence propagate>
+                  {p.workflows.map((workflow, index) => (
+                    <motion.div
+                      key={`wf-${workflow.name}-${index}`}
+                      className={styles.workflowRow}
+                      initial={{ opacity: 0, height: 0 }}
+                      animate={{ opacity: 1, height: 'auto' }}
+                      exit={{ opacity: 0, x: -20, height: 0, padding: 0 }}
+                      transition={{ duration: 0.2 }}
                     >
-                      <Trash2 size={16} />
-                    </button>
-                  </motion.div>
-                ))}
-              </AnimatePresence>
+                      <div className={styles.workflowSummary}>
+                        <strong>{workflow.name}</strong>
+                        <span className={styles.itemCount}>
+                          {t('items', { count: workflow.urls.length })}
+                        </span>
+                      </div>
+                      <button
+                        className={styles.dangerButton}
+                        onClick={() => p.removeWorkflow(index)}
+                      >
+                        <Trash2 size={14} />
+                        <span>{t('remove')}</span>
+                      </button>
+                    </motion.div>
+                  ))}
+                </AnimatePresence>
+              </div>
             </div>
-          </Section>
-          <Section title={t('manageWorkflows')}>
-            <div id="add-workflow-form" className={styles.workflowForm}>
-              <label className={styles.label} htmlFor="workflow-name">
-                {t('workflowName')}
-              </label>
-              <input
-                id="workflow-name"
-                className={styles.input}
-                placeholder={t('workflowNameHint')}
-                value={p.workflowName}
-                onChange={(event) => p.setWorkflowName(event.target.value)}
-              />
-              <label className={styles.workflowLabel} htmlFor="workflow-apps">
-                {t('workflowApps')}
-              </label>
-              <textarea
-                id="workflow-apps"
-                className={`${styles.input} ${styles.workflowInput}`}
-                placeholder={t('workflowAppsHint')}
-                value={p.workflowUrls}
-                onChange={(event) => p.setWorkflowUrls(event.target.value)}
-              />
-              <button className={styles.primaryButton} onClick={p.addWorkflow}>
-                {t('saveWorkflow')}
-              </button>
-            </div>
-            <div id="workflows-list" className={styles.workflowList}>
-              <AnimatePresence propagate>
-                {p.workflows.map((workflow, index) => (
-                  <motion.div
-                    key={`wf-${workflow.name}-${index}`}
-                    className={styles.workflowRow}
-                    initial={{ opacity: 0, height: 0 }}
-                    animate={{ opacity: 1, height: 'auto' }}
-                    exit={{ opacity: 0, x: -20, height: 0, padding: 0 }}
-                    transition={{ duration: 0.2 }}
-                  >
-                    <div className={styles.workflowSummary}>
-                      <strong>{workflow.name}</strong>
-                      <span className={styles.itemCount}>
-                        {t('items', { count: workflow.urls.length })}
-                      </span>
-                    </div>
-                    <button className={styles.dangerButton} onClick={() => p.removeWorkflow(index)}>
-                      <Trash2 size={14} />
-                      <span>{t('remove')}</span>
-                    </button>
-                  </motion.div>
-                ))}
-              </AnimatePresence>
-            </div>
-          </Section>
+          </PrefCard>
         </>
       )}
       {p.category === 'integrations' && (
         <>
-          <Section title={t('integrations')}>
-            <Field label={t('aiBaseUrl')} stacked>
+          <PrefCard caption={t('aiBaseUrl')}>
+            <div className={styles.prefStack}>
               <input
                 className={styles.input}
                 aria-label={t('aiBaseUrl')}
@@ -839,8 +834,10 @@ export function SettingsTab(p: Props & { category: SettingsCategoryId }) {
                 placeholder="https://api.openai.com/v1"
                 onChange={(event) => p.handleApiBaseUrlChange(event.target.value)}
               />
-            </Field>
-            <Field label={t('aiModel')} stacked>
+            </div>
+          </PrefCard>
+          <PrefCard caption={t('aiModel')}>
+            <div className={styles.prefStack}>
               <input
                 className={styles.input}
                 aria-label={t('aiModel')}
@@ -848,8 +845,10 @@ export function SettingsTab(p: Props & { category: SettingsCategoryId }) {
                 placeholder="model-name"
                 onChange={(event) => p.handleAiModelChange(event.target.value)}
               />
-            </Field>
-            <Field label={t('apiKey')} stacked>
+            </div>
+          </PrefCard>
+          <PrefCard caption={t('apiKey')}>
+            <div className={styles.prefStack}>
               <div className={styles.keyRow}>
                 <input
                   className={[styles.input, styles.keyInput].join(' ')}
@@ -891,79 +890,77 @@ export function SettingsTab(p: Props & { category: SettingsCategoryId }) {
               </div>
               {p.hasApiKey && <p className={styles.keyHint}>{t('apiKeyConfigured')}</p>}
               <InlineNotices area="settings" codes={['secretStorageUnavailable']} />
-            </Field>
-          </Section>
+            </div>
+          </PrefCard>
         </>
       )}
       {p.category === 'about' && (
         <>
-          <Section title={t('aboutSystem')}>
-            <div className={styles.aboutRows}>
-              <Field label={t('applicationName')}>
-                <span className={styles.aboutValue}>{productName}</span>
-              </Field>
-              <Field label={t('appVersion')}>
-                <span className={styles.aboutValue}>{version}</span>
-              </Field>
-              <Field label={t('developer')}>
-                <span className={styles.aboutValue}>{author.name}</span>
-              </Field>
-              <Field label={t('license')}>
-                <button
-                  type="button"
-                  className={styles.aboutLink}
-                  onClick={() => void window.electronAPI.openExternal(licenseUrl)}
-                >
-                  {license}
-                  <ExternalLink size={13} aria-hidden="true" />
-                </button>
-              </Field>
-              <Field label={t('repository')}>
-                <button
-                  type="button"
-                  className={styles.aboutLink}
-                  onClick={() => void window.electronAPI.openExternal(repositoryUrl)}
-                >
-                  {repositoryUrl.replace(/^https:\/\//, '')}
-                  <ExternalLink size={13} aria-hidden="true" />
-                </button>
-              </Field>
-              <Field label={t('feedback')}>
-                <button
-                  type="button"
-                  className={styles.aboutLink}
-                  onClick={() => void window.electronAPI.openExternal(bugs.url)}
-                >
-                  {t('reportIssue')}
-                  <ExternalLink size={13} aria-hidden="true" />
-                </button>
-              </Field>
-              <div className={styles.aboutDiagnostic}>
-                <Field label={t('diagnostics')}>
-                  <button
-                    type="button"
-                    className={styles.primaryButton}
-                    onClick={() => {
-                      void window.electronAPI.openDiagnosticsFolder().catch(() => {});
-                    }}
-                  >
-                    {t('openDiagnosticsFolder')}
-                  </button>
-                </Field>
-                <InlineNotices area="settings" codes={['diagnosticsFolderOpenFailed']} />
-              </div>
-              <div className={styles.aboutQuit}>
-                <p className={styles.hint}>{t('quitRippleHint')}</p>
-                <button
-                  type="button"
-                  className={styles.dangerButton}
-                  onClick={() => void window.electronAPI.quitApp()}
-                >
-                  {t('quitRipple')}
-                </button>
-              </div>
+          <PrefGroup caption={t('aboutSystem')}>
+            <PrefRow label={t('applicationName')}>
+              <span className={styles.aboutValue}>{productName}</span>
+            </PrefRow>
+            <PrefRow label={t('appVersion')}>
+              <span className={styles.aboutValue}>{version}</span>
+            </PrefRow>
+            <PrefRow label={t('developer')}>
+              <span className={styles.aboutValue}>{author.name}</span>
+            </PrefRow>
+            <PrefRow label={t('license')}>
+              <button
+                type="button"
+                className={styles.aboutLink}
+                onClick={() => void window.electronAPI.openExternal(licenseUrl)}
+              >
+                {license}
+                <ExternalLink size={13} aria-hidden="true" />
+              </button>
+            </PrefRow>
+            <PrefRow label={t('repository')}>
+              <button
+                type="button"
+                className={styles.aboutLink}
+                onClick={() => void window.electronAPI.openExternal(repositoryUrl)}
+              >
+                {repositoryUrl.replace(/^https:\/\//, '')}
+                <ExternalLink size={13} aria-hidden="true" />
+              </button>
+            </PrefRow>
+            <PrefRow label={t('feedback')}>
+              <button
+                type="button"
+                className={styles.aboutLink}
+                onClick={() => void window.electronAPI.openExternal(bugs.url)}
+              >
+                {t('reportIssue')}
+                <ExternalLink size={13} aria-hidden="true" />
+              </button>
+            </PrefRow>
+            <PrefRow label={t('diagnostics')}>
+              <button
+                type="button"
+                className={styles.primaryButton}
+                onClick={() => {
+                  void window.electronAPI.openDiagnosticsFolder().catch(() => {});
+                }}
+              >
+                {t('openDiagnosticsFolder')}
+              </button>
+            </PrefRow>
+          </PrefGroup>
+          <InlineNotices area="settings" codes={['diagnosticsFolderOpenFailed']} />
+          <PrefCard>
+            <div className={styles.aboutQuit}>
+              <p className={styles.hint}>{t('quitRippleHint')}</p>
+              <button
+                type="button"
+                className={`${styles.dangerButton} ${styles.quitButton}`}
+                onClick={() => void window.electronAPI.quitApp()}
+              >
+                {t('quitRipple')}
+              </button>
             </div>
-          </Section>
+          </PrefCard>
         </>
       )}
     </ElasticScrollArea>

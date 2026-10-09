@@ -99,6 +99,63 @@
   min-width: 0;
 }
 
+.prefCard {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
+  background: var(--settings-card, var(--settings-panel, #fff));
+  border: 1px solid var(--settings-border, rgba(60, 60, 67, 0.12));
+  border-radius: var(--settings-radius-lg, 10px);
+}
+
+.prefCardHint {
+  margin: 0;
+  padding: 12px 16px 0;
+  color: var(--settings-muted, inherit);
+  font-size: var(--settings-font-caption, 12px);
+  line-height: 1.4;
+}
+
+.prefStack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--settings-space-3, 12px);
+  min-width: 0;
+  padding: 12px 16px 14px;
+}
+
+.prefStack > .prefRow {
+  margin: 0 -16px;
+  padding-left: 16px;
+  padding-right: 16px;
+  border-bottom: 1px solid var(--settings-divider, rgba(60, 60, 67, 0.1));
+}
+
+.prefStack > .prefRow:last-child {
+  border-bottom: none;
+}
+
+.prefStack > .prefRow:first-child {
+  margin-top: -12px;
+}
+
+.prefStack > .prefRow:last-child {
+  margin-bottom: -14px;
+}
+
+.quitButton {
+  min-height: 36px;
+  padding: 8px 14px;
+  color: #ffffff;
+  background: var(--settings-danger, #ff3b30);
+  border-radius: var(--settings-radius-md, 8px);
+}
+
+.quitButton:hover {
+  filter: brightness(1.05);
+}
+
 .section {
   display: flex;
   flex-direction: column;
@@ -117,8 +174,8 @@
   min-width: 0;
   max-width: 70%;
   overflow-wrap: anywhere;
-  font-size: 12px;
-  opacity: 0.7;
+  color: var(--settings-muted, inherit);
+  font-size: var(--settings-font-caption, 12px);
   text-align: right;
 }
 
@@ -228,7 +285,7 @@
 }
 
 .input::placeholder {
-  color: var(--island-text-color);
+  color: var(--settings-fg, var(--island-text-color));
   opacity: 0.45;
 }
 
@@ -253,18 +310,25 @@
 .tabList {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 0;
+  margin: 8px 0 0;
+  border-top: 1px solid var(--settings-divider, rgba(60, 60, 67, 0.1));
 }
 
 .tabItem {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 10px 12px;
-  border-radius: 14px;
-  background: var(--control-bg);
-  border: 1px solid var(--control-border);
+  padding: 10px 16px;
+  border-radius: 0;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--settings-divider, rgba(60, 60, 67, 0.1));
   cursor: grab;
+}
+
+.tabItem:last-child {
+  border-bottom: none;
 }
 
 .tabItem svg {
@@ -279,7 +343,6 @@
 
 .hidden {
   opacity: 0.45;
-  border-style: dashed;
 }
 
 .tabItem[data-dragging] {
@@ -333,10 +396,9 @@
   flex-direction: column;
   align-items: center;
   gap: 12px;
-  padding: 15px;
-  border-radius: 18px;
-  border: 1px solid var(--control-border);
-  background: var(--control-bg);
+  padding: 14px 16px 16px;
+  border: none;
+  background: transparent;
 }
 
 .positionHeading {
@@ -402,8 +464,17 @@
 .manualPosition {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 4px;
+  width: 100%;
   overflow: hidden;
+}
+
+.positionCard .prefRow {
+  width: 100%;
+  min-height: 0;
+  padding-left: 0;
+  padding-right: 0;
+  border-bottom: none;
 }
 
 .range {
@@ -595,7 +666,7 @@
   background: none;
   border: 0;
   border-bottom: 1px solid var(--control-border);
-  color: var(--island-text-color);
+  color: var(--settings-fg, var(--island-text-color));
   text-align: left;
   font-size: 13px;
   cursor: pointer;
@@ -617,7 +688,9 @@
 .appList {
   display: flex;
   flex-direction: column;
-  gap: 5px;
+  gap: 0;
+  margin: 0 -16px -14px;
+  border-top: 1px solid var(--settings-divider, rgba(60, 60, 67, 0.1));
 }
 
 .appRow {
@@ -625,18 +698,23 @@
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  padding: 5px 12px;
-  border: 1px solid var(--control-border);
-  border-radius: var(--control-radius);
-  background: var(--control-bg);
+  padding: 8px 16px;
+  border: none;
+  border-bottom: 1px solid var(--settings-divider, rgba(60, 60, 67, 0.1));
+  border-radius: 0;
+  background: transparent;
   min-width: 0;
+}
+
+.appRow:last-child {
+  border-bottom: none;
 }
 
 .appName {
   flex: 1;
   min-width: 0;
   padding: 6px 0;
-  color: var(--island-text-color);
+  color: var(--settings-fg, var(--island-text-color));
   border: 0;
   background: none;
   font-size: 14px;
@@ -681,7 +759,12 @@
   justify-content: space-between;
   gap: 10px;
   padding: 10px 0;
-  border-bottom: 1px solid var(--control-border);
+  border-bottom: 1px solid var(--settings-divider, var(--control-border));
+}
+
+.workflowRow:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
 }
 
 .workflowSummary {
@@ -706,7 +789,5 @@
   flex-direction: column;
   align-items: flex-start;
   gap: 10px;
-  margin-top: 8px;
-  padding-top: 16px;
-  border-top: 1px solid var(--settings-border, color-mix(in srgb, currentColor 16%, transparent));
+  padding: 14px 16px 16px;
 }
