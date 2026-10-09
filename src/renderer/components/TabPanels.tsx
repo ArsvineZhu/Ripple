@@ -10,7 +10,7 @@ import {
 } from 'motion/react';
 import type { MotionValue } from 'motion/react';
 import { nextTabId } from '../lib/navigation';
-import { isResumedWheelPush, wheelEventAxis } from '../lib/wheelGesture';
+import { isResumedWheelPush, isVerticalTakeover, wheelEventAxis } from '../lib/wheelGesture';
 import styles from './TabPanels.module.css';
 
 interface Props {
@@ -217,10 +217,11 @@ export function TabPanels(props: Props) {
       if (!axis.current)
         axis.current = { value: inputAxis, startedAt: now, lastWheelAt: now, lastInput: inputAxis };
       const lane = axis.current;
-      if (inputAxis === 'vertical' && lane.value === 'horizontal') {
+      if (isVerticalTakeover(delta, event.deltaY * unit) && lane.value === 'horizontal') {
         lane.value = 'vertical';
-        // Meaningful vertical movement takes ownership. Cancel a horizontal request
-        // from this stroke rather than letting a diagonal gesture flip a tab.
+        // A real diagonal takes ownership. Cancel a horizontal request from this stroke rather
+        // than letting a diagonal gesture flip a tab. Drift below the takeover threshold keeps
+        // the stroke on the rail.
         const current = gesture.current;
         if (current && propsRef.current.activeId === current.intent)
           propsRef.current.onSelect(current.anchor, -current.direction);
