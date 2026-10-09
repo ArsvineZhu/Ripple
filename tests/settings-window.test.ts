@@ -13,6 +13,7 @@ type MockWindow = {
   restore: ReturnType<typeof vi.fn>;
   show: ReturnType<typeof vi.fn>;
   focus: ReturnType<typeof vi.fn>;
+  moveTop: ReturnType<typeof vi.fn>;
   once: (event: string, cb: () => void) => void;
   on: (event: string, cb: () => void) => void;
   loadURL: ReturnType<typeof vi.fn>;
@@ -31,6 +32,7 @@ const mock = vi.hoisted(() => {
     restore = vi.fn();
     show = vi.fn();
     focus = vi.fn();
+    moveTop = vi.fn();
     webContents = {
       id: this.id + 100,
       isDestroyed: () => this.#destroyed,
@@ -75,6 +77,7 @@ const mock = vi.hoisted(() => {
 
 vi.mock('electron', () => ({
   BrowserWindow: mock.BrowserWindow,
+  app: { focus: vi.fn() },
 }));
 vi.mock('../src/main/assets', () => ({ getIconPath: () => '/tmp/icon.png' }));
 vi.mock('../src/main/services/windowDiagnostics', () => ({

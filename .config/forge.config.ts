@@ -31,6 +31,8 @@ const config: ForgeConfig = {
           extendInfo: {
             NSAppleEventsUsageDescription:
               'Ripple Next needs to control media players like Spotify and Apple Music.',
+            // Agent app: packaged builds never take a Dock tile (dev uses setActivationPolicy).
+            LSUIElement: true,
           },
         }
       : {}),

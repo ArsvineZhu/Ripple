@@ -30,6 +30,8 @@ import {
 registerBackgroundImageScheme();
 app.setName('Ripple Next');
 if (process.platform === 'win32') app.setAppUserModelId('com.arsvinezhu.ripple-next');
+// Keep macOS out of the Dock in both packaged (LSUIElement) and `pnpm start` runs.
+if (process.platform === 'darwin') app.setActivationPolicy('accessory');
 
 if (!app.requestSingleInstanceLock()) {
   app.quit();
@@ -128,14 +130,6 @@ async function startApplication() {
       setTrayVisible(!enabled);
     } catch (error) {
       reportBackgroundModeError(error);
-    }
-    if (process.platform === 'darwin' && app.dock) {
-      try {
-        if (enabled) app.dock.hide();
-        else void app.dock.show().catch(reportBackgroundModeError);
-      } catch (error) {
-        reportBackgroundModeError(error);
-      }
     }
   };
 

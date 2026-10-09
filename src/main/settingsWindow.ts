@@ -1,5 +1,5 @@
 import path from 'node:path';
-import { BrowserWindow } from 'electron';
+import { app, BrowserWindow } from 'electron';
 import { getIconPath } from './assets';
 import type { DiagnosticsService } from './services/diagnostics';
 import { attachWindowDiagnostics } from './services/windowDiagnostics';
@@ -42,13 +42,19 @@ export function clearSettingsWindow(): void {
   settingsWindow = null;
 }
 
+function bringSettingsWindowForward(window: BrowserWindow): void {
+  if (window.isMinimized()) window.restore();
+  if (process.platform === 'darwin') app.focus({ steal: true });
+  window.show();
+  window.focus();
+  if (process.platform === 'darwin') window.moveTop();
+}
+
 /** One settings window: create on demand, focus if it already exists, destroy on close. */
 export function openSettingsWindow(): BrowserWindow {
   if (!configured) throw new Error('Settings window is not configured');
   if (settingsWindow && !settingsWindow.isDestroyed()) {
-    if (settingsWindow.isMinimized()) settingsWindow.restore();
-    settingsWindow.show();
-    settingsWindow.focus();
+    bringSettingsWindowForward(settingsWindow);
     return settingsWindow;
   }
 
@@ -83,10 +89,7 @@ export function openSettingsWindow(): BrowserWindow {
   });
 
   window.once('ready-to-show', () => {
-    if (!window.isDestroyed()) {
-      window.show();
-      window.focus();
-    }
+    if (!window.isDestroyed()) bringSettingsWindowForward(window);
   });
   window.on('closed', () => {
     if (settingsWindow === window) settingsWindow = null;
