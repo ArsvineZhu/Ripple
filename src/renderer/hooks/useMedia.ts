@@ -1,76 +1,108 @@
-import { useState, useEffect, useRef } from 'react';
-
-import type { MediaTrack } from '../../shared/contracts';
+import { useState, useEffect, useRef, useCallback } from 'react';
+import type { MediaCommand, MediaError, MediaSnapshot } from '../../shared/contracts';
+import { emptyMediaSnapshot } from '../../shared/media';
 import { recordRendererError } from '../lib/diagnostics';
 
-const MEDIA_POLL_INTERVAL_MS = 5000;
-
-function hasSameVisibleTrack(current: MediaTrack | null, next: MediaTrack | null): boolean {
-  if (current === next) return true;
-  if (!current || !next) return current === next;
-  return (
-    current.name === next.name &&
-    current.artist === next.artist &&
-    current.album === next.album &&
-    current.state === next.state &&
-    current.source === next.source &&
-    Boolean(current.artwork_url) === Boolean(next.artwork_url)
-  );
-}
-
 export function useMedia() {
-  const [spotifyTrack, setSpotifyTrack] = useState<MediaTrack | null>(null);
+  const [mediaSnapshot, setMediaSnapshot] = useState<MediaSnapshot>(emptyMediaSnapshot);
+  const [mediaActionError, setMediaActionError] = useState<MediaError | null>(null);
+  const [mediaBusy, setMediaBusy] = useState(false);
   const [albumHovered, setAlbumHovered] = useState(false);
   const [albumRotation, setAlbumRotation] = useState({ x: 0, y: 0 });
   const [showPausedQuickView, setShowPausedQuickView] = useState(false);
-  const pausedTimeout = useRef<ReturnType<typeof setTimeout> | null>(null);
-  useEffect(() => {
-    if (spotifyTrack?.state === 'paused') {
-      setShowPausedQuickView(true);
-      if (pausedTimeout.current) clearTimeout(pausedTimeout.current);
-      pausedTimeout.current = setTimeout(() => {
-        setShowPausedQuickView(false);
-      }, 3000);
-    } else {
-      setShowPausedQuickView(false);
-      if (pausedTimeout.current) clearTimeout(pausedTimeout.current);
-    }
-  }, [spotifyTrack?.state]);
+  const mounted = useRef(false);
+  const busy = useRef(false);
+  const requestVersion = useRef(0);
+  const mediaTrack =
+    mediaSnapshot.sessions.find((session) => session.id === mediaSnapshot.activeSessionId) ?? null;
   const albumRef = useRef<HTMLImageElement | null>(null);
   useEffect(() => {
-    const resetArtworkHover = () => {
+    setShowPausedQuickView(mediaTrack?.state === 'paused');
+    const timer = setTimeout(() => setShowPausedQuickView(false), 3000);
+    return () => clearTimeout(timer);
+  }, [mediaTrack?.state, mediaTrack?.id]);
+  useEffect(() => {
+    const reset = () => {
       setAlbumHovered(false);
       setAlbumRotation({ x: 0, y: 0 });
     };
-    window.addEventListener('blur', resetArtworkHover);
-    return () => window.removeEventListener('blur', resetArtworkHover);
+    window.addEventListener('blur', reset);
+    return () => window.removeEventListener('blur', reset);
   }, []);
   useEffect(() => {
+    mounted.current = true;
     let active = true;
-    let timer: ReturnType<typeof setTimeout> | undefined;
-    const pollMedia = async () => {
+    let timer: ReturnType<typeof setTimeout>;
+    const poll = async () => {
+      if (!busy.current) {
+        const version = requestVersion.current;
+        try {
+          const snapshot = await window.electronAPI.getSystemMedia();
+          if (active && version === requestVersion.current) setMediaSnapshot(snapshot);
+        } catch (error) {
+          recordRendererError('media', error);
+          if (active && version === requestVersion.current)
+            setMediaSnapshot((current) => ({
+              ...current,
+              status: 'error',
+              error: 'mediaReadFailed',
+              sessions: current.sessions.map((session) => ({ ...session, stale: true })),
+            }));
+        }
+      }
+      if (active) timer = setTimeout(() => void poll(), 5000);
+    };
+    void poll();
+    return () => {
+      mounted.current = false;
+      active = false;
+      clearTimeout(timer);
+    };
+  }, []);
+  const perform = useCallback(
+    async (operation: () => ReturnType<typeof window.electronAPI.selectMediaSession>) => {
+      if (busy.current) return;
+      busy.current = true;
+      requestVersion.current++;
+      setMediaBusy(true);
+      setMediaActionError(null);
       try {
-        const track = await window.electronAPI?.getSystemMedia();
-        if (active) {
-          setSpotifyTrack((current) =>
-            hasSameVisibleTrack(current, track ?? null) ? current : (track ?? null),
-          );
+        const result = await operation();
+        if (mounted.current) {
+          setMediaSnapshot(result.snapshot);
+          setMediaActionError(result.error);
         }
       } catch (error) {
         recordRendererError('media', error);
+        if (mounted.current) setMediaActionError('mediaCommandFailed');
       } finally {
-        if (active) timer = setTimeout(() => void pollMedia(), MEDIA_POLL_INTERVAL_MS);
+        busy.current = false;
+        if (mounted.current) setMediaBusy(false);
       }
-    };
-
-    void pollMedia();
-    return () => {
-      active = false;
-      if (timer) clearTimeout(timer);
-    };
-  }, []);
+    },
+    [],
+  );
+  const controlMedia = useCallback(
+    (command: MediaCommand, id: string) =>
+      perform(() => window.electronAPI.controlSystemMedia(command, id)),
+    [perform],
+  );
+  const selectMediaSession = useCallback(
+    (id: string | null) => perform(() => window.electronAPI.selectMediaSession(id)),
+    [perform],
+  );
+  const openMediaSession = useCallback(
+    (id: string) => perform(() => window.electronAPI.openMediaSession(id)),
+    [perform],
+  );
   return {
-    spotifyTrack,
+    mediaTrack,
+    mediaSnapshot,
+    mediaActionError,
+    mediaBusy,
+    controlMedia,
+    selectMediaSession,
+    openMediaSession,
     albumHovered,
     setAlbumHovered,
     albumRotation,

@@ -2,6 +2,8 @@
 
 # Main process
 
+`services/media.ts` owns media-session selection, serialized queries/commands and stale/error snapshots. Automatic mode prefers an actively playing system session, then preserves a playing or paused selection; manual choice lasts for this run until the session disappears. Commands carry the displayed session ID and never fall back to another player. Windows reads GSMTC controls and artwork through a cached typed CLR bridge; macOS queries only running Spotify/Music dictionaries independently; Linux uses the bundled D-Bus client and MPRIS unique owner names, including capabilities and local artwork. Opening a session uses its cached main-owned application identity/path on Windows, the running application on macOS, or MPRIS Raise on Linux; it does not wait for another metadata query. No cloud music API is used.
+
 Main owns the app lifecycle, tray, transparent window, IPC validation and system effects. `index.ts` sets Ripple Next's user-data directory and loads typed state and secure credential storage before opening the renderer.
 
 `services/backgroundImage.ts` serves the configured local background through `ripple-background:` in development and packaged builds. It accepts absolute paths and file URLs, encodes filenames through `pathToFileURL`, and limits file requests to the current configured image. Network images remain direct renderer resources.
@@ -16,4 +18,4 @@ On Linux, the window waits for renderer readiness and the first confirmed X11 `S
 
 See the [developer guide](../../docs/development.md) and [repository map](../../INDEX.md).
 
-`services/scrollGestures.ts` forwards Chromium's fresh touchpad gesture boundary (`gestureFlingCancel`) to preload with a timestamp only. Its listeners retain the WebContents reference and are removed on destruction and window closure. It does not forward key contents, pointer coordinates or wheel payloads.
+`services/scrollGestures.ts` forwards Chromium's fresh touchpad gesture boundary (`gestureScrollBegin` / `gestureFlingCancel`, coalescing paired signals) to preload with a timestamp only. Its listeners retain the WebContents reference and are removed on destruction and window closure. It does not forward key contents, pointer coordinates or wheel payloads.

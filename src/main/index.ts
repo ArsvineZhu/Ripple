@@ -45,6 +45,7 @@ async function startApplication() {
   const notices = createNoticeBus();
   let diagnostics: DiagnosticsService | null = null;
   let startupComplete = false;
+  let closeMedia = () => {};
   function reportWindowLoadError(error: unknown) {
     diagnostics?.recordError('window', error);
     const detail = error instanceof Error ? error.message : String(error);
@@ -153,7 +154,7 @@ async function startApplication() {
           ? 'winrt'
           : process.platform === 'darwin'
             ? 'applescript'
-            : 'playerctl',
+            : 'mpris',
       inputBackend:
         process.platform === 'linux'
           ? 'x11-shape'
@@ -212,7 +213,7 @@ async function startApplication() {
     }
 
     applyBackgroundMode(initialState.settings.backgroundMode);
-    registerIPC({
+    closeMedia = registerIPC({
       stateStore,
       secretStore,
       assistant,
@@ -228,6 +229,7 @@ async function startApplication() {
   app.on('before-quit', () => {
     diagnosticsService.record({ kind: 'app-lifecycle', phase: 'before-quit' });
     closeInputConnection();
+    closeMedia();
     stateStore.close();
   });
   app.on('window-all-closed', () => {

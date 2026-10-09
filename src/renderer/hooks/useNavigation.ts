@@ -8,12 +8,14 @@ import { useState, useEffect, useRef, useCallback, useMemo } from 'react';
 import { TABS } from '../lib/tabs';
 import { useAppState } from '../components/AppStateProvider';
 export function useNavigation({
-  spotifyTrack,
+  mediaTrack,
+  mediaAvailable = !!mediaTrack,
   mode,
   isDragging,
   setMode,
 }: {
-  spotifyTrack: MediaTrack | null;
+  mediaTrack: MediaTrack | null;
+  mediaAvailable?: boolean;
   mode: IslandMode;
   isDragging: boolean;
   setMode: Dispatch<SetStateAction<IslandMode>>;
@@ -36,7 +38,7 @@ export function useNavigation({
       : [...currentHiddenTabs, id];
     if (newHidden.length < TABS.length) updateState({ settings: { hiddenTabs: newHidden } });
   };
-  const isMusicActive = !!spotifyTrack;
+  const isMusicActive = mediaAvailable;
   const visibleTabs = useMemo(
     () => visibleTabIds(tabOrder, hiddenTabs, isMusicActive),
     [tabOrder, hiddenTabs, isMusicActive],

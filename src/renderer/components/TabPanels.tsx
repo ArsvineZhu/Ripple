@@ -10,6 +10,7 @@ import {
 } from 'motion/react';
 import type { MotionValue } from 'motion/react';
 import { nextTabId } from '../lib/navigation';
+import { isResumedWheelPush, wheelEventAxis } from '../lib/wheelGesture';
 import styles from './TabPanels.module.css';
 
 interface Props {
@@ -106,6 +107,8 @@ export function TabPanels(props: Props) {
     previousIntent: number;
     lastDirection: number;
     lastDelta: number;
+    quietSince: number | null;
+    risingSamples: number;
   } | null>(null);
   const reducedMotion = useReducedMotion();
 
@@ -189,6 +192,8 @@ export function TabPanels(props: Props) {
         current.startedAt = at;
         current.distance = current.lastDelta;
         current.peak = current.lastDelta;
+        current.quietSince = null;
+        current.risingSamples = 0;
       } else {
         gesture.current = null;
       }
@@ -204,13 +209,17 @@ export function TabPanels(props: Props) {
     const wheel = (event: WheelEvent) => {
       if (propsRef.current.disabled || (!event.deltaX && !event.deltaY)) return;
       const now = Date.now();
-      const inputAxis = event.deltaY !== 0 ? 'vertical' : 'horizontal';
+      const pageWidth = Math.max(1, propsRef.current.width.get());
+      const unit = event.deltaMode === 1 ? 40 : event.deltaMode === 2 ? pageWidth : 1;
+      const delta = event.deltaX * unit;
+      const inputAxis = wheelEventAxis(delta, event.deltaY * unit);
+      if (inputAxis === 'none') return;
       if (!axis.current)
         axis.current = { value: inputAxis, startedAt: now, lastWheelAt: now, lastInput: inputAxis };
       const lane = axis.current;
       if (inputAxis === 'vertical' && lane.value === 'horizontal') {
         lane.value = 'vertical';
-        // Any vertical component takes ownership. Cancel a horizontal request
+        // Meaningful vertical movement takes ownership. Cancel a horizontal request
         // from this stroke rather than letting a diagonal gesture flip a tab.
         const current = gesture.current;
         if (current && propsRef.current.activeId === current.intent)
@@ -239,11 +248,29 @@ export function TabPanels(props: Props) {
         child = child.parentElement;
       }
       event.preventDefault();
-      const pageWidth = Math.max(1, propsRef.current.width.get());
-      const delta =
-        event.deltaX * (event.deltaMode === 1 ? 40 : event.deltaMode === 2 ? pageWidth : 1);
       const direction = Math.sign(delta);
       const magnitude = Math.abs(delta);
+      const previous = gesture.current;
+      if (previous) {
+        if (direction !== previous.direction && magnitude < Math.min(2, previous.peak * 0.2))
+          return;
+        previous.risingSamples = magnitude > previous.lastDelta ? previous.risingSamples + 1 : 0;
+        if (magnitude <= Math.min(6, previous.peak * 0.25)) previous.quietSince ??= now;
+        if (
+          direction !== previous.direction ||
+          isResumedWheelPush({
+            magnitude,
+            lastMagnitude: previous.lastDelta,
+            quietForMs: previous.quietSince === null ? 0 : now - previous.quietSince,
+            risingSamples: previous.risingSamples,
+          })
+        ) {
+          clearTimeout(wheelTimer.current);
+          endGesture();
+        } else if (magnitude > Math.min(6, previous.peak * 0.25) && !previous.risingSamples) {
+          previous.quietSince = null;
+        }
+      }
       if (!gesture.current) {
         const anchor = propsRef.current.activeId;
         const next = nextTabId(propsRef.current.tabs, anchor, direction);
@@ -260,6 +287,8 @@ export function TabPanels(props: Props) {
           previousIntent: anchor,
           lastDirection: direction,
           lastDelta: magnitude,
+          quietSince: null,
+          risingSamples: 0,
         };
       }
       const current = gesture.current;

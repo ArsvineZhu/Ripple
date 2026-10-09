@@ -42,20 +42,3 @@ export async function openApp(app: string): Promise<void> {
   // 5. Everything else — treat as a command or app name
   await window.electronAPI?.launchApp(trimmedApp);
 }
-export function openMusicPlayer(source: string): Promise<void> {
-  if (!source) return Promise.resolve();
-  if (window.electronAPI?.platform === 'win32' && source.includes('!')) {
-    return openApp('shell:AppsFolder\\' + source);
-  }
-
-  if (source === 'Spotify') {
-    return openApp('Spotify');
-  } else if (source === 'Music') {
-    return openApp('Music');
-  } else if (source === 'music.apple.com' || source.includes('Apple')) {
-    return openApp('Music');
-  } else {
-    // Fallback: try to open by source name
-    return openApp(source);
-  }
-}

@@ -82,7 +82,13 @@ export function useIslandController() {
   const mode = resolveMode(requestedMode, standbyBorderEnabled, largeStandbyEnabled);
   const backgroundImage = useBackgroundImage(bgImage);
   const {
-    spotifyTrack,
+    mediaTrack,
+    mediaSnapshot,
+    mediaActionError,
+    mediaBusy,
+    controlMedia,
+    selectMediaSession,
+    openMediaSession,
     albumHovered,
     setAlbumHovered,
     albumRotation,
@@ -187,16 +193,23 @@ export function useIslandController() {
     handlePointerDown,
     handlePointerMove,
     handlePointerUp,
-  } = useNavigation({ spotifyTrack, mode, isDragging, setMode });
+  } = useNavigation({
+    mediaTrack,
+    mediaAvailable:
+      mediaSnapshot.status !== 'idle' || mediaActionError !== null || mediaSnapshot.error !== null,
+    mode,
+    isDragging,
+    setMode,
+  });
   useLayoutEffect(() => {
     setAssistantActive(currentTab === 4 && asked);
   }, [asked, currentTab, setAssistantActive]);
   const { islandElementRef, syncWindowInputRegion, trackPointerPosition } =
     useWindowInput(geometryExited);
-  let isPlaying = spotifyTrack?.state === 'playing';
-  const trackTitle = spotifyTrack ? spotifyTrack.name || t('unknownSong') : '';
-  const trackArtist = spotifyTrack ? spotifyTrack.artist || t('unknownArtist') : '';
-  const nowPlayingText = spotifyTrack ? `${trackTitle} • ${trackArtist}` : '';
+  let isPlaying = mediaTrack?.state === 'playing';
+  const trackTitle = mediaTrack ? mediaTrack.name || t('unknownSong') : '';
+  const trackArtist = mediaTrack ? mediaTrack.artist || t('unknownArtist') : '';
+  const nowPlayingText = mediaTrack ? `${trackTitle} • ${trackArtist}` : '';
   const textWidth = measureTextWidth(nowPlayingText) || nowPlayingText.length * 7;
   const nowPlayingWidth = Math.min(300, Math.max(122, Math.ceil(textWidth + 24 + 6 + 20)));
   const getExpandedTabSize = (id: number) =>
@@ -314,8 +327,14 @@ export function useIslandController() {
     showPausedQuickView,
     cameraAlert,
     microphoneAlert,
-    spotifyTrack,
+    mediaTrack,
     trackTitle,
+    mediaSnapshot,
+    mediaActionError,
+    mediaBusy,
+    controlMedia,
+    selectMediaSession,
+    openMediaSession,
     trackArtist,
     setAlbumHovered,
     setAlbumRotation,

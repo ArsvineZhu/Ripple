@@ -10,6 +10,37 @@ import type { ScrollGestureStart } from '../src/shared/contracts';
 
 let host: HTMLDivElement;
 let root: Root;
+async function gestureHarness() {
+  vi.useFakeTimers();
+  const onSelect = vi.fn();
+  function Harness() {
+    const [[activeId, direction], setSelection] = useState([0, 0]);
+    return createElement(TabPanels, {
+      tabs: [0, 1, 2, 3],
+      activeId,
+      direction,
+      width: motionValue(400),
+      disabled: false,
+      onSelect: (id, dir = 1) => {
+        onSelect(id, dir);
+        setSelection([id, dir]);
+      },
+      onProgress: vi.fn(),
+      renderTab: (id) => String(id),
+    });
+  }
+  await act(async () => root.render(createElement(Harness)));
+  const viewport = host.querySelector<HTMLElement>('[data-tab-viewport]')!;
+  const send = async (deltaX: number, deltaY = 0, elapsed = 16) => {
+    const event = new WheelEvent('wheel', { deltaX, deltaY, bubbles: true, cancelable: true });
+    await act(async () => {
+      viewport.dispatchEvent(event);
+      await vi.advanceTimersByTimeAsync(elapsed);
+    });
+    return event;
+  };
+  return { onSelect, send, viewport };
+}
 beforeEach(() => {
   vi.stubGlobal('IS_REACT_ACT_ENVIRONMENT', true);
   host = document.createElement('div');
@@ -23,6 +54,58 @@ afterEach(async () => {
   vi.useRealTimers();
   vi.unstubAllGlobals();
   Reflect.deleteProperty(window, 'electronAPI');
+});
+it('does not interpret a single-stroke magnitude fluctuation as a second page', async () => {
+  const x = await gestureHarness();
+  for (const delta of [100, 40, 60, 30, 15, 5]) await x.send(delta);
+  expect(x.onSelect).toHaveBeenCalledTimes(1);
+});
+it('ignores a tiny opposite-sign tick instead of oscillating between pages', async () => {
+  const x = await gestureHarness();
+  for (const delta of [100, -0.1, 80, 40]) await x.send(delta);
+  expect(x.onSelect).toHaveBeenCalledTimes(1);
+});
+it('keeps a vertical stroke vertical through a horizontal-only momentum tail', async () => {
+  const x = await gestureHarness();
+  await x.send(2, 120);
+  expect((await x.send(10)).defaultPrevented).toBe(false);
+  expect(x.onSelect).not.toHaveBeenCalled();
+});
+it('accepts tiny vertical noise in a horizontal stroke, then gives a diagonal to vertical content', async () => {
+  const x = await gestureHarness();
+  expect((await x.send(40, 1)).defaultPrevented).toBe(true);
+  expect(x.onSelect).toHaveBeenLastCalledWith(1, 1);
+  expect((await x.send(30, 32)).defaultPrevented).toBe(false);
+  expect(x.onSelect).toHaveBeenLastCalledWith(0, -1);
+  expect((await x.send(40)).defaultPrevented).toBe(false);
+  expect(x.onSelect).toHaveBeenCalledTimes(2);
+});
+it('accepts a fresh rising push after a sustained tail before the previous animation ends', async () => {
+  const x = await gestureHarness();
+  for (const delta of [200, 60, 30, 12, 5, 4, 2, 3, 9, 18]) await x.send(delta);
+  expect(x.onSelect.mock.calls).toEqual([
+    [1, 1],
+    [2, 1],
+  ]);
+  expect(Number(x.viewport.dataset.tabPosition)).toBeLessThan(2);
+});
+it('keeps paging in either direction through long runs and circular boundaries', async () => {
+  const x = await gestureHarness();
+  const swipe = [3, 9, 18, 30, 38, 40, 36, 30, 22, 15, 9, 5, 2];
+  for (let i = 0; i < 4; i++) for (const delta of swipe) await x.send(delta);
+  expect(x.onSelect.mock.calls).toEqual([
+    [1, 1],
+    [2, 1],
+    [3, 1],
+    [0, 1],
+  ]);
+  for (let i = 0; i < 4; i++) for (const delta of swipe) await x.send(-delta);
+  expect(x.onSelect.mock.calls.slice(4)).toEqual([
+    [3, -1],
+    [2, -1],
+    [1, -1],
+    [0, -1],
+  ]);
 });
 
 it('triggers on tiny directional input and bounds a long gesture with elastic return', async () => {
@@ -338,7 +421,7 @@ it('keeps vertical wheel input native and routes horizontal input at nested scro
   expect(parentWheel).not.toHaveBeenCalled();
   const diagonal = new WheelEvent('wheel', {
     deltaX: 200,
-    deltaY: 1,
+    deltaY: 60,
     bubbles: true,
     cancelable: true,
   });
@@ -393,7 +476,7 @@ it('prioritizes vertical input even when X is larger and ignores its horizontal 
   const viewport = host.querySelector<HTMLElement>('[data-tab-viewport]')!;
   const diagonal = new WheelEvent('wheel', {
     deltaX: 200,
-    deltaY: 1,
+    deltaY: 60,
     bubbles: true,
     cancelable: true,
   });

@@ -2,6 +2,8 @@
 
 # Preload bridge
 
+Media reads return a session snapshot. `selectMediaSession` chooses Automatic or a known session, and `controlSystemMedia` requires that displayed session's ID; both return refreshed state and an operation error. `openMediaSession` uses the known session identity to activate its player without waiting for another metadata read, and returns the current snapshot plus an operation error. The renderer has no raw D-Bus or PowerShell access.
+
 Preload exposes the isolated `electronAPI` through explicit `contextBridge` methods. It maps typed calls and events to named IPC channels from [shared contracts](../shared/README.md); renderer code never receives raw `ipcRenderer` access.
 
 The bridge covers app-state bootstrap and patches, secure API-key save/removal, quick-app discovery and launch, AI stream events and cancellation, notices, locale, media, autostart, display and window input shape. API-key material is sent to main for storage and is absent from the bootstrap response.

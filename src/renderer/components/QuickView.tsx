@@ -3,8 +3,6 @@ import typography from '../styles/typography.module.css';
 import { useTranslation } from 'react-i18next';
 import { AnimatePresence } from 'motion/react';
 import { motion } from 'motion/react';
-import { openMusicPlayer } from '../lib/launch';
-import { useMediaAction } from '../hooks/useMediaAction';
 import { Music } from 'lucide-react';
 import { Pause } from 'lucide-react';
 import { Play } from 'lucide-react';
@@ -14,6 +12,7 @@ import { Mic } from 'lucide-react';
 import { Headphones } from 'lucide-react';
 import { WeatherIcon } from '../components/WeatherIcon';
 import type { IslandController } from '../hooks/useIslandController';
+import { mediaCommandSupported } from '../../shared/media';
 type Props = Pick<
   IslandController,
   | 'mode'
@@ -27,7 +26,12 @@ type Props = Pick<
   | 'microphoneAlert'
   | 'trackTitle'
   | 'trackArtist'
-  | 'spotifyTrack'
+  | 'mediaTrack'
+  | 'mediaSnapshot'
+  | 'mediaActionError'
+  | 'mediaBusy'
+  | 'controlMedia'
+  | 'openMediaSession'
   | 'hideNotActiveIslandEnabled'
   | 'setAlbumHovered'
   | 'setAlbumRotation'
@@ -52,7 +56,12 @@ export function QuickView({
   bluetoothAlert,
   cameraAlert,
   microphoneAlert,
-  spotifyTrack,
+  mediaTrack,
+  mediaSnapshot,
+  mediaActionError,
+  mediaBusy,
+  controlMedia,
+  openMediaSession,
   trackTitle,
   trackArtist,
   hideNotActiveIslandEnabled,
@@ -70,7 +79,6 @@ export function QuickView({
   weather,
 }: Props) {
   const { t, i18n } = useTranslation();
-  const mediaAction = useMediaAction();
   const number = (value: number | string | null) =>
     value === null || value === ''
       ? '??'
@@ -95,11 +103,7 @@ export function QuickView({
           !microphoneAlert ? (
             <motion.div
               className={styles['playing']}
-              key={
-                spotifyTrack?.name
-                  ? `playing-${spotifyTrack.name}-${spotifyTrack.artist}`
-                  : 'playing'
-              }
+              key={mediaTrack?.name ? `playing-${mediaTrack.name}-${mediaTrack.artist}` : 'playing'}
               initial={{ opacity: 0, filter: 'blur(4px)', scale: 0.98 }}
               animate={{ opacity: 1, filter: 'blur(0px)', scale: 1 }}
               exit={{ opacity: 0, filter: 'blur(4px)', scale: 0.98 }}
@@ -110,17 +114,12 @@ export function QuickView({
               }}
             >
               <div className={styles['trackRow']}>
-                {spotifyTrack?.artwork_url ? (
+                {mediaTrack?.artwork_url ? (
                   <div className={styles['artworkFrame']}>
                     <img
                       className={styles['artwork']}
-                      src={spotifyTrack.artwork_url}
-                      onClick={() =>
-                        void mediaAction.perform(
-                          () => openMusicPlayer(spotifyTrack.source),
-                          'appLaunchFailed',
-                        )
-                      }
+                      src={mediaTrack.artwork_url}
+                      onClick={() => void openMediaSession(mediaTrack.id)}
                       onMouseEnter={() => setAlbumHovered(true)}
                       onMouseLeave={() => {
                         setAlbumHovered(false);
@@ -199,22 +198,26 @@ export function QuickView({
                       className={styles['playButton']}
                       key="play-pause-hover"
                       aria-label={t('playPause')}
+                      disabled={
+                        !mediaTrack ||
+                        mediaBusy ||
+                        mediaSnapshot.status === 'error' ||
+                        !mediaCommandSupported(mediaTrack, 'playpause')
+                      }
                       initial={{ opacity: 0, width: 0 }}
                       animate={{ opacity: 1, width: 30 }}
                       exit={{ opacity: 0, width: 0 }}
                       transition={{ duration: 0.25, ease: 'easeInOut' }}
                       onClick={(e) => {
                         e.stopPropagation();
-                        void mediaAction.perform(() =>
-                          window.electronAPI.controlSystemMedia('playpause'),
-                        );
+                        if (mediaTrack) void controlMedia('playpause', mediaTrack.id);
                       }}
                       onMouseEnter={() => {
                         if (window.electronAPI)
                           window.electronAPI.setIgnoreMouseEvents(false, false);
                       }}
                     >
-                      {spotifyTrack?.state === 'playing' ? (
+                      {mediaTrack?.state === 'playing' ? (
                         <Pause size={15} color="#FFFFFF" fill="#FFFFFF" />
                       ) : (
                         <Play size={15} color="#FFFFFF" fill="#FFFFFF" />
@@ -223,9 +226,13 @@ export function QuickView({
                   )}
                 </AnimatePresence>
               </div>
-              {mediaAction.error && (
-                <p className={styles.actionError} role="alert">
-                  {t(mediaAction.error)}
+              {(mediaActionError || mediaSnapshot.error) && (
+                <p
+                  className={styles.actionError}
+                  role="alert"
+                  title={t(mediaActionError ?? mediaSnapshot.error!)}
+                >
+                  {t(mediaActionError ?? mediaSnapshot.error!)}
                 </p>
               )}
             </motion.div>

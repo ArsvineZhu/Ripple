@@ -10,12 +10,22 @@ interface ScrollGestureSource {
 
 export function installScrollGestureBridge(contents: ScrollGestureSource): () => void {
   let closed = false;
+  let lastBoundary: { type: string; at: number } | null = null;
   const input = (_event: unknown, value: unknown) => {
     if (closed || contents.isDestroyed() || !value || typeof value !== 'object') return;
-    // Chromium sends this when a fresh touchpad gesture takes over a fling.
-    // Forward only its boundary, never keys, pointer coordinates or wheel data.
-    if ('type' in value && value.type === 'gestureFlingCancel') {
-      contents.send('scroll-gesture-start', { at: Date.now() });
+    // ScrollBegin also covers fresh gestures without a prior fling. Chromium
+    // may emit FlingCancel + ScrollBegin as one pair; forward that boundary once.
+    if (
+      'type' in value &&
+      (value.type === 'gestureFlingCancel' || value.type === 'gestureScrollBegin')
+    ) {
+      const now = Date.now();
+      if (lastBoundary && lastBoundary.type !== value.type && now - lastBoundary.at <= 50) {
+        lastBoundary = null;
+        return;
+      }
+      lastBoundary = { type: value.type, at: now };
+      contents.send('scroll-gesture-start', { at: now });
     }
   };
   const close = () => {

@@ -16,3 +16,23 @@ it('forwards fresh gesture boundaries only and removes its listener once', () =>
   contents.emit('input-event', {}, { type: 'gestureFlingCancel' });
   expect(contents.send).toHaveBeenCalledTimes(1);
 });
+it('forwards ScrollBegin without a fling and coalesces the paired FlingCancel boundary', () => {
+  vi.useFakeTimers();
+  const contents = Object.assign(new EventEmitter(), { isDestroyed: () => false, send: vi.fn() });
+  const close = installScrollGestureBridge(contents);
+  contents.emit('input-event', {}, { type: 'gestureScrollBegin' });
+  expect(contents.send).toHaveBeenCalledTimes(1);
+  vi.advanceTimersByTime(100);
+  contents.emit('input-event', {}, { type: 'gestureFlingCancel' });
+  vi.advanceTimersByTime(16);
+  contents.emit('input-event', {}, { type: 'gestureScrollBegin' });
+  expect(contents.send).toHaveBeenCalledTimes(2);
+  vi.advanceTimersByTime(16);
+  contents.emit('input-event', {}, { type: 'gestureScrollBegin' });
+  expect(contents.send).toHaveBeenCalledTimes(3);
+  vi.advanceTimersByTime(16);
+  contents.emit('input-event', {}, { type: 'gestureFlingCancel' });
+  expect(contents.send).toHaveBeenCalledTimes(3);
+  close();
+  vi.useRealTimers();
+});

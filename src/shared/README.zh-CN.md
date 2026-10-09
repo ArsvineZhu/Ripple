@@ -2,6 +2,8 @@
 
 # Shared 契约
 
+`MediaSnapshot` 描述会话列表、自动／手动选择、时效和错误；`MediaSession` 包含播放状态及允许未知值的控制能力。`media.ts` 定义纯选择与能力规则。控制 IPC 必须携带会话 ID，选择和控制返回刷新后的快照及领域错误，不将失败当成空播放器列表。
+
 `backgroundImage.ts` 规范背景设置，将本地路径编码为专用图片 URL，避免 CSS 反斜杠转义；它不执行文件访问。
 
 Shared 定义可序列化的 IPC 与领域契约、用于持久化状态和快捷应用目标的 Zod schema，以及纯输入区域计算。Main、preload 和 renderer 共用这些定义，运行时服务放在各自所属层。

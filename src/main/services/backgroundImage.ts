@@ -6,18 +6,7 @@ import {
   BACKGROUND_IMAGE_SCHEME,
   normalizeBackgroundImageInput,
 } from '../../shared/backgroundImage';
-
-const imageTypes: Record<string, string> = {
-  '.png': 'image/png',
-  '.jpg': 'image/jpeg',
-  '.jpeg': 'image/jpeg',
-  '.gif': 'image/gif',
-  '.webp': 'image/webp',
-  '.avif': 'image/avif',
-  '.bmp': 'image/bmp',
-  '.svg': 'image/svg+xml',
-  '.ico': 'image/x-icon',
-};
+import { imageContentType } from './imageFiles';
 
 export function registerBackgroundImageScheme() {
   protocol.registerSchemesAsPrivileged([
@@ -47,7 +36,7 @@ export function installBackgroundImageProtocol(
         : /^~[\\/]/.test(source)
           ? path.join(os.homedir(), source.slice(2))
           : source;
-      const contentType = imageTypes[path.extname(filePath).toLowerCase()];
+      const contentType = imageContentType(filePath);
       if (!path.isAbsolute(filePath) || !contentType) {
         return new Response(null, { status: 415 });
       }

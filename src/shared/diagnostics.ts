@@ -131,7 +131,7 @@ export type DiagnosticEvent =
       packaged: boolean;
       displayCount: number;
       scaleFactors: number[];
-      mediaBackend: 'winrt' | 'playerctl' | 'applescript';
+      mediaBackend: 'winrt' | 'mpris' | 'applescript';
       inputBackend: 'mouse-passthrough' | 'x11-shape' | 'windows-cursor-region';
       sessionType: 'wayland' | 'x11' | 'windows' | 'macos' | 'unknown';
       secureStorage: boolean;

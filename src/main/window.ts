@@ -14,6 +14,9 @@ declare const MAIN_WINDOW_VITE_NAME: string;
 if (process.platform === 'linux') {
   app.commandLine.appendSwitch('enable-transparent-visuals');
 }
+if (process.platform === 'darwin') {
+  app.commandLine.appendSwitch('disable-features', 'OverscrollHistoryNavigation');
+}
 let mainWindow: BrowserWindow | null = null;
 let activeDiagnostics: DiagnosticsService | null = null;
 let mainWindowReady = false;

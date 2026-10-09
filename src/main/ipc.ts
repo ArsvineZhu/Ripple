@@ -12,11 +12,10 @@ import { applyWindowInputRegion, getMainWindow, markRendererReady, showMainWindo
 import { getWindowBoundsForDisplay } from './windowBounds';
 import { discoverApps, buildAppCache, launchApp, launchQuickApp } from './services/apps';
 import { setAutoLaunch } from './services/autostart';
-import { getSystemMedia } from './services/getSystemMedia';
+import { createMediaService } from './services/media';
 import { getBluetoothStatus } from './services/getBluetoothStatus';
 import { getCameraStatus } from './services/getCameraStatus';
 import { getMicrophoneStatus } from './services/getMicrophoneStatus';
-import { controlSystemMedia } from './services/mediaControl';
 import { serializeDiagnosticError } from '../shared/diagnostics';
 import type { AssistantEvent } from '../shared/contracts';
 
@@ -160,6 +159,9 @@ function isInputRect(value: unknown): value is InputRect {
 }
 
 export function registerIPC(services: IPCServices) {
+  const media = createMediaService(undefined, (error) =>
+    services.diagnostics.recordError('media', error),
+  );
   handle(services, 'get-app-bootstrap', async () => ({
     state: await services.stateStore.load(),
     hasApiKey: await services.secretStore.hasApiKey(),
@@ -235,15 +237,22 @@ export function registerIPC(services: IPCServices) {
   });
   handle(services, 'launch-app', (name) => launchApp(getText(name, 'Application name')));
   handle(services, 'build-app-cache', buildAppCache);
-  handle(services, 'get-system-media', getSystemMedia);
+  handle(services, 'get-system-media', media.getSnapshot);
+  handle(services, 'open-media-session', (id) =>
+    media.openSession(getText(id, 'Media session', 512)),
+  );
+  handle(services, 'select-media-session', (id) => {
+    if (id !== null) getText(id, 'Media session', 512);
+    return media.selectSession(id);
+  });
   handle(services, 'get-bluetooth-status', getBluetoothStatus);
   handle(services, 'get-camera-status', getCameraStatus);
   handle(services, 'get-microphone-status', getMicrophoneStatus);
-  handle(services, 'control-system-media', (command) => {
+  handle(services, 'control-system-media', (command, sessionId) => {
     if (!['previous', 'playpause', 'next'].includes(command)) {
       throw new TypeError('Invalid media command');
     }
-    return controlSystemMedia(command);
+    return media.control(command, getText(sessionId, 'Media session', 512));
   });
   handle(services, 'get-displays', () =>
     screen.getAllDisplays().map((display) => ({
@@ -264,4 +273,5 @@ export function registerIPC(services: IPCServices) {
     if (typeof enable !== 'boolean') throw new TypeError('Expected boolean');
     await setAutoLaunch(enable);
   });
+  return media.close;
 }

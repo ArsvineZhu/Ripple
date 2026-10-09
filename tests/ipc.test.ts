@@ -41,8 +41,14 @@ vi.mock('../src/main/window', () => ({
   showMainWindow: vi.fn(),
   applyWindowInputRegion: mock.shape,
 }));
-vi.mock('../src/main/services/mediaControl', () => ({
-  controlSystemMedia: vi.fn(),
+vi.mock('../src/main/services/media', () => ({
+  createMediaService: () => ({
+    getSnapshot: vi.fn(),
+    selectSession: vi.fn(),
+    openSession: vi.fn(),
+    control: vi.fn(),
+    close: vi.fn(),
+  }),
 }));
 vi.mock('../src/main/tray', () => ({ setTrayLocale: vi.fn() }));
 import { setTrayLocale } from '../src/main/tray';
