@@ -107,6 +107,13 @@ it('keeps paging in either direction through long runs and circular boundaries',
     [0, -1],
   ]);
 });
+it('does not turn a second page from a spike inside one swipe', async () => {
+  const x = await gestureHarness();
+  // A single swipe whose samples dip and then spike back up. The tail never decayed deeply, so this
+  // is still one page: a fresh push needs the tail down at a quarter of the peak or less.
+  for (const delta of [300, 150, 200, 400]) await x.send(delta);
+  expect(x.onSelect.mock.calls).toEqual([[1, 1]]);
+});
 it('keeps a sideways swipe on the rail through its own cross-axis drift', async () => {
   const x = await gestureHarness();
   // A real trackpad swipe carries a few pixels of vertical drift per sample; only a real

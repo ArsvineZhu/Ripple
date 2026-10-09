@@ -291,12 +291,16 @@ export function TabPanels(props: Props) {
         if (magnitude < previous.tailMin) previous.tailMin = magnitude;
         if (
           direction !== previous.direction ||
-          isResumedWheelPush({
-            magnitude,
-            tailMagnitude: previous.tailMin,
-            risingSamples: previous.risingSamples,
-            decayed: previous.decayed,
-          })
+          // The tail has to have decayed deeply, not merely dipped: a single swipe whose samples
+          // spike back up (300 -> 150 -> 200 -> 400) otherwise reads as a fresh push and turns two
+          // pages.
+          (previous.tailMin <= previous.peak * 0.25 &&
+            isResumedWheelPush({
+              magnitude,
+              tailMagnitude: previous.tailMin,
+              risingSamples: previous.risingSamples,
+              decayed: previous.decayed,
+            }))
         ) {
           clearTimeout(wheelTimer.current);
           endGesture();
