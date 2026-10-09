@@ -1,20 +1,32 @@
-// Deltas are normalized to CSS pixels before classification. Cross-axis noise is tolerated as a
-// share of the horizontal movement, never less than a couple of pixels, so a long sideways swipe
-// keeps its axis while a diagonal still belongs to vertical scrolling.
-const NOISE_FLOOR = 2;
-const NOISE_SHARE = 0.08;
-// A horizontal stroke only hands over to vertical movement on a real diagonal, not on the few
-// pixels of drift every sideways swipe carries.
+// Deltas are normalized to CSS pixels before classification. A sideways swipe carries a few pixels
+// of drift per sample, so a sample stays on the rail while its vertical part is a small share of
+// the horizontal movement.
+const AXIS_FLOOR = 2;
+const AXIS_SHARE = 0.25;
+// A diagonal cancels a pending page instead of flipping the tab, and a stroke whose movement is
+// dominated by the vertical axis keeps the content until the input stops.
 const TAKEOVER_SHARE = 0.5;
+const VERTICAL_DOMINANCE = 2;
+const VERTICAL_DISTANCE = 12;
 export function wheelEventAxis(deltaX: number, deltaY: number): 'horizontal' | 'vertical' | 'none' {
   if (!deltaX && !deltaY) return 'none';
-  const noise = Math.max(NOISE_FLOOR, Math.abs(deltaX) * NOISE_SHARE);
-  return Math.abs(deltaX) > 0 && Math.abs(deltaY) <= noise ? 'horizontal' : 'vertical';
+  const tolerance = Math.max(AXIS_FLOOR, Math.abs(deltaX) * AXIS_SHARE);
+  return Math.abs(deltaX) > 0 && Math.abs(deltaY) <= tolerance ? 'horizontal' : 'vertical';
 }
 
-/** Whether a sample carries enough vertical movement to take a horizontal stroke over. */
+/** Whether a sample is diagonal enough to cancel a pending page and hand the stroke to the content. */
 export function isVerticalTakeover(deltaX: number, deltaY: number): boolean {
-  return Math.abs(deltaY) > Math.max(NOISE_FLOOR, Math.abs(deltaX) * TAKEOVER_SHARE);
+  return Math.abs(deltaY) > Math.max(AXIS_FLOOR, Math.abs(deltaX) * TAKEOVER_SHARE);
+}
+
+/** Whether the movement seen so far is dominated by the vertical axis, so the content owns it. */
+export function isVerticalStroke(accumulatedX: number, accumulatedY: number): boolean {
+  return accumulatedY >= VERTICAL_DISTANCE && accumulatedY >= accumulatedX * VERTICAL_DOMINANCE;
+}
+
+/** Whether a sample is clearly vertical, so the content owns the rest of the stroke. */
+export function isClearVerticalSample(deltaX: number, deltaY: number): boolean {
+  return wheelEventAxis(deltaX, deltaY) === 'vertical' && Math.abs(deltaY) >= VERTICAL_DISTANCE;
 }
 
 // A single dip or rise is not a gesture boundary. A resumed push needs a rising run that clears
