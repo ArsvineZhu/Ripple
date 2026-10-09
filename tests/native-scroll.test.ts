@@ -147,6 +147,28 @@ it('turns a page for every quick swipe instead of every other one', async () => 
     [0, 1],
   ]);
 });
+it('keeps fast swipes with drift on the rail instead of locking them away', async () => {
+  const x = await gestureHarness();
+  // A fast swipe whose early samples carry a few pixels of drift, four times in a row. A stroke
+  // that latches on the first sample leaves every one of these events to the content.
+  const swipe: [number, number][] = [
+    [9, 3],
+    [21, 4],
+    [33, 5],
+    [45, 4],
+    [30, 3],
+    [16, 2],
+    [8, 1],
+  ];
+  for (let index = 0; index < 4; index += 1)
+    for (const [deltaX, deltaY] of swipe) await x.send(deltaX, deltaY);
+  expect(x.onSelect.mock.calls).toEqual([
+    [1, 1],
+    [2, 1],
+    [3, 1],
+    [0, 1],
+  ]);
+});
 
 it('triggers on tiny directional input and bounds a long gesture with elastic return', async () => {
   vi.useFakeTimers();

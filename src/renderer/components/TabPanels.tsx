@@ -10,7 +10,13 @@ import {
 } from 'motion/react';
 import type { MotionValue } from 'motion/react';
 import { nextTabId } from '../lib/navigation';
-import { isResumedWheelPush, isVerticalTakeover, wheelEventAxis } from '../lib/wheelGesture';
+import {
+  isClearVerticalSample,
+  isResumedWheelPush,
+  isVerticalStroke,
+  isVerticalTakeover,
+  wheelEventAxis,
+} from '../lib/wheelGesture';
 import styles from './TabPanels.module.css';
 
 interface Props {
@@ -89,10 +95,11 @@ export function TabPanels(props: Props) {
   const wheelTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const axisTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
   const axis = useRef<{
-    value: 'horizontal' | 'vertical';
     startedAt: number;
     lastWheelAt: number;
-    lastInput: 'horizontal' | 'vertical';
+    accumulatedX: number;
+    accumulatedY: number;
+    vertical: boolean;
   } | null>(null);
   const gesture = useRef<{
     anchor: number;
@@ -170,7 +177,9 @@ export function TabPanels(props: Props) {
         clearTimeout(axisTimer.current);
         if (lane.lastWheelAt >= at) {
           lane.startedAt = at;
-          lane.value = lane.lastInput;
+          lane.accumulatedX = 0;
+          lane.accumulatedY = 0;
+          lane.vertical = false;
           axisTimer.current = setTimeout(
             () => {
               axis.current = null;
@@ -210,29 +219,46 @@ export function TabPanels(props: Props) {
       const pageWidth = Math.max(1, propsRef.current.width.get());
       const unit = event.deltaMode === 1 ? 40 : event.deltaMode === 2 ? pageWidth : 1;
       const delta = event.deltaX * unit;
-      const inputAxis = wheelEventAxis(delta, event.deltaY * unit);
-      if (inputAxis === 'none') return;
+      const deltaY = event.deltaY * unit;
       if (!axis.current)
-        axis.current = { value: inputAxis, startedAt: now, lastWheelAt: now, lastInput: inputAxis };
+        axis.current = {
+          startedAt: now,
+          lastWheelAt: now,
+          accumulatedX: 0,
+          accumulatedY: 0,
+          vertical: false,
+        };
       const lane = axis.current;
-      if (isVerticalTakeover(delta, event.deltaY * unit) && lane.value === 'horizontal') {
-        lane.value = 'vertical';
-        // A real diagonal takes ownership. Cancel a horizontal request from this stroke rather
-        // than letting a diagonal gesture flip a tab. Drift below the takeover threshold keeps
-        // the stroke on the rail.
-        const current = gesture.current;
-        if (current && propsRef.current.activeId === current.intent)
-          propsRef.current.onSelect(current.anchor, -current.direction);
-        clearTimeout(wheelTimer.current);
-        endGesture();
-      }
       lane.lastWheelAt = now;
-      lane.lastInput = inputAxis;
+      lane.accumulatedX += Math.abs(delta);
+      lane.accumulatedY += Math.abs(deltaY);
+      const diagonal = isVerticalTakeover(delta, deltaY);
+      // A diagonal hands the stroke to the content, and a clearly vertical sample or a stroke
+      // dominated by vertical movement keeps it until the input stops. Small drift never qualifies,
+      // so one noisy tick cannot lock a sideways swipe away from the rail.
+      if (
+        diagonal ||
+        isClearVerticalSample(delta, deltaY) ||
+        isVerticalStroke(lane.accumulatedX, lane.accumulatedY)
+      )
+        lane.vertical = true;
       clearTimeout(axisTimer.current);
       axisTimer.current = setTimeout(() => {
         axis.current = null;
       }, 150);
-      if (lane.value === 'vertical' || !event.deltaX) return;
+      if (lane.vertical) {
+        if (diagonal) {
+          // Cancel a horizontal request from this stroke rather than letting a diagonal gesture
+          // flip a tab.
+          const current = gesture.current;
+          if (current && propsRef.current.activeId === current.intent)
+            propsRef.current.onSelect(current.anchor, -current.direction);
+          clearTimeout(wheelTimer.current);
+          endGesture();
+        }
+        return;
+      }
+      if (wheelEventAxis(delta, deltaY) !== 'horizontal') return;
       // Native vertical areas and nested horizontal controls keep their input.
       let child = event.target instanceof HTMLElement ? event.target : null;
       while (child && child !== viewport) {
