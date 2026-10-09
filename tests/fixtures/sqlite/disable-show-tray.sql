@@ -1,3 +1,3 @@
 INSERT INTO app_settings (key, value)
-VALUES ('backgroundMode', 'true')
+VALUES ('showTray', 'false')
 ON CONFLICT(key) DO UPDATE SET value = excluded.value;

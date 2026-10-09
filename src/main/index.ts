@@ -9,7 +9,6 @@ import {
   createWindow,
   getMainWindow,
   initializeLinuxInputShape,
-  setWindowBackgroundMode,
 } from './window';
 import { hasTray, setTrayVisible } from './tray';
 import { shouldQuitAfterLastWindow } from './appLifecycle';
@@ -58,10 +57,10 @@ async function startApplication() {
     const detail = error instanceof Error ? error.message : String(error);
     notices.report('inputShapeFailed', detail);
   }
-  function reportBackgroundModeError(error: unknown) {
+  function reportShowTrayError(error: unknown) {
     diagnostics?.recordError('application', error);
     const detail = error instanceof Error ? error.message : String(error);
-    notices.report('backgroundModeFailed', detail, 'warning', 'settings');
+    notices.report('showTrayFailed', detail, 'warning', 'settings');
   }
 
   app.on('second-instance', () => {
@@ -119,18 +118,12 @@ async function startApplication() {
   const assistant = createAssistantService(stateStore, secretStore, {
     getAppVersion: () => app.getVersion(),
   });
-  // backgroundMode still persists in settings until step 5; it no longer hides the tray
-  // or puts the island on the taskbar.
-  const applyBackgroundMode = (_enabled: boolean) => {
+  // macOS honors showTray; Windows/Linux always keep the tray.
+  const applyShowTray = (visible: boolean) => {
     try {
-      setWindowBackgroundMode(_enabled);
+      setTrayVisible(process.platform === 'darwin' ? visible : true);
     } catch (error) {
-      reportBackgroundModeError(error);
-    }
-    try {
-      setTrayVisible(true);
-    } catch (error) {
-      reportBackgroundModeError(error);
+      reportShowTrayError(error);
     }
   };
 
@@ -179,13 +172,22 @@ async function startApplication() {
       diagnosticsService.record({ kind: 'app-lifecycle', phase: 'resume' }),
     );
     screen.on('display-added', () =>
-      diagnosticsService.record({ kind: 'app-lifecycle', phase: 'display-added' }),
+      diagnosticsService.record({
+        kind: 'app-lifecycle',
+        phase: 'display-added',
+      }),
     );
     screen.on('display-removed', () =>
-      diagnosticsService.record({ kind: 'app-lifecycle', phase: 'display-removed' }),
+      diagnosticsService.record({
+        kind: 'app-lifecycle',
+        phase: 'display-removed',
+      }),
     );
     screen.on('display-metrics-changed', () =>
-      diagnosticsService.record({ kind: 'app-lifecycle', phase: 'display-metrics-changed' }),
+      diagnosticsService.record({
+        kind: 'app-lifecycle',
+        phase: 'display-metrics-changed',
+      }),
     );
     let initialState = defaultAppState;
     try {
@@ -208,7 +210,7 @@ async function startApplication() {
       );
     }
 
-    applyBackgroundMode(initialState.settings.backgroundMode);
+    applyShowTray(initialState.settings.showTray);
     configureSettingsWindow({
       diagnostics: diagnosticsService,
       onLoadError: reportWindowLoadError,
@@ -219,7 +221,7 @@ async function startApplication() {
       assistant,
       notices,
       diagnostics: diagnosticsService,
-      applyBackgroundMode,
+      applyShowTray,
     });
     initializeLinuxInputShape(diagnosticsService, reportInputShapeError);
     createWindow(diagnosticsService, reportWindowLoadError);
@@ -233,8 +235,17 @@ async function startApplication() {
     stateStore.close();
   });
   app.on('window-all-closed', () => {
-    diagnosticsService.record({ kind: 'app-lifecycle', phase: 'window-all-closed' });
+    diagnosticsService.record({
+      kind: 'app-lifecycle',
+      phase: 'window-all-closed',
+    });
     // Island stays alive in the background; quit only when nothing is left to interact with.
-    if (shouldQuitAfterLastWindow({ platform: process.platform, hasTray: hasTray() })) app.quit();
+    if (
+      shouldQuitAfterLastWindow({
+        platform: process.platform,
+        hasTray: hasTray(),
+      })
+    )
+      app.quit();
   });
 }

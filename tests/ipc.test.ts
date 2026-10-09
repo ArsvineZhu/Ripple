@@ -86,7 +86,7 @@ const services = {
     openFolder: mock.openDiagnosticsFolder,
     recordError: mock.recordApplicationError,
   },
-  applyBackgroundMode: vi.fn(),
+  applyShowTray: vi.fn(),
 };
 
 describe('IPC boundary', () => {
@@ -133,12 +133,12 @@ describe('IPC boundary', () => {
   it('broadcasts persisted app state to every registered window', async () => {
     const next = {
       ...defaultAppState,
-      settings: { ...defaultAppState.settings, backgroundMode: true },
+      settings: { ...defaultAppState.settings, showTray: false },
     };
     services.stateStore.update = async () => next;
     await mock.handlers.get('update-app-state')!(
       { sender: mock.settings },
-      { settings: { backgroundMode: true } },
+      { settings: { showTray: false } },
     );
     expect(mock.island.send).toHaveBeenCalledWith('app-state-changed', next);
     expect(mock.settings.send).toHaveBeenCalledWith('app-state-changed', next);
@@ -160,12 +160,12 @@ describe('IPC boundary', () => {
     await mock.handlers.get('set-ui-locale')!(event, 'ja');
     expect(setTrayLocale).toHaveBeenCalledWith('ja');
   });
-  it('applies background presence changes after persisting the setting', async () => {
+  it('applies menu bar icon visibility after persisting the setting', async () => {
     const event = { sender: mock.island };
     await mock.handlers.get('update-app-state')!(event, {
-      settings: { backgroundMode: true },
+      settings: { showTray: false },
     });
-    expect(services.applyBackgroundMode).toHaveBeenCalledWith(true);
+    expect(services.applyShowTray).toHaveBeenCalledWith(false);
   });
   it('rejects commands outside the media contract before executing platform code', async () => {
     await expect(
@@ -191,7 +191,9 @@ describe('IPC boundary', () => {
   it('records a polled failure once, counts repeats, and records recovery', async () => {
     mock.recordDiagnostic.mockClear();
     const event = { sender: mock.island };
-    const error = Object.assign(new Error('private clipboard message'), { code: 'EACCES' });
+    const error = Object.assign(new Error('private clipboard message'), {
+      code: 'EACCES',
+    });
     mock.readClipboard
       .mockImplementationOnce(() => {
         throw error;
@@ -213,7 +215,9 @@ describe('IPC boundary', () => {
   });
   it('records IPC failure channel and system code without recording arguments', async () => {
     mock.recordDiagnostic.mockClear();
-    const error = Object.assign(new Error('private arguments'), { code: 'EACCES' });
+    const error = Object.assign(new Error('private arguments'), {
+      code: 'EACCES',
+    });
     mock.openDiagnosticsFolder.mockRejectedValueOnce(error);
     await expect(
       mock.handlers.get('open-diagnostics-folder')!({ sender: mock.island }),
@@ -248,7 +252,10 @@ describe('IPC boundary', () => {
       'settings',
     );
     expect(mock.recordDiagnostic).toHaveBeenCalledWith(
-      expect.objectContaining({ channel: 'open-diagnostics-folder', phase: 'failed' }),
+      expect.objectContaining({
+        channel: 'open-diagnostics-folder',
+        phase: 'failed',
+      }),
     );
   });
 });

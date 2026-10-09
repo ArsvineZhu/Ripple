@@ -50,8 +50,7 @@ export function useSettings(initialHasApiKey: boolean) {
       });
     }
   };
-  const handleBackgroundModeChange = (input: string) =>
-    updateSettings({ backgroundMode: input === 'true' });
+  const handleShowTrayChange = (input: string) => updateSettings({ showTray: input === 'true' });
   const handlehideNotActiveIslandChange = (input: string) =>
     updateSettings({ hideIslandWhenInactive: input === 'true' });
   const handleShowInfoWhenIdleChange = (input: string) =>
@@ -67,9 +66,15 @@ export function useSettings(initialHasApiKey: boolean) {
     void window.electronAPI?.setDisplay(displayId).catch(() => {});
   };
   const handleIslandXChange = (event: ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
-    setManualPosition((position) => ({ ...position, x: Number(event.target.value) }));
+    setManualPosition((position) => ({
+      ...position,
+      x: Number(event.target.value),
+    }));
   const handleIslandYChange = (event: ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
-    setManualPosition((position) => ({ ...position, y: Number(event.target.value) }));
+    setManualPosition((position) => ({
+      ...position,
+      y: Number(event.target.value),
+    }));
   const savePosition = () =>
     updateSettings({ islandX: manualPosition.x, islandY: manualPosition.y });
   const handleBgImageChange = (event: ChangeEvent<HTMLInputElement | HTMLSelectElement>) =>
@@ -88,7 +93,11 @@ export function useSettings(initialHasApiKey: boolean) {
         textColor: 'rgba(0, 0, 0)',
       });
     } else {
-      updateSettings({ theme: 'default', backgroundColor: '#000000', textColor: '#FFFFFF' });
+      updateSettings({
+        theme: 'default',
+        backgroundColor: '#000000',
+        textColor: '#FFFFFF',
+      });
     }
   };
   const setPositionMode = (positionMode: string) =>
@@ -137,8 +146,8 @@ export function useSettings(initialHasApiKey: boolean) {
     weatherLocation: settings.weatherLocation,
     setWeatherLocation: (weatherLocation: string) => updateSettings({ weatherLocation }),
     autoLaunchEnabled: settings.autoLaunch,
-    backgroundModeEnabled: settings.backgroundMode,
-    handleBackgroundModeChange,
+    showTrayEnabled: settings.showTray,
+    handleShowTrayChange,
     positionMode: settings.positionMode,
     setPositionMode,
     islandX: manualPosition.x,
@@ -151,7 +160,9 @@ export function useSettings(initialHasApiKey: boolean) {
     handleApiBaseUrlChange,
     handleAiModelChange,
     handleLeaveDelayChange: (input: string) =>
-      updateSettings({ leaveDelayMs: Math.max(0, Math.min(2000, Number(input))) }),
+      updateSettings({
+        leaveDelayMs: Math.max(0, Math.min(2000, Number(input))),
+      }),
     handleBatteryAlertsChange,
     handleIslandBorderChange,
     handleStandbyChange,

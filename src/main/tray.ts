@@ -48,6 +48,7 @@ function destroyTray() {
   tray = null;
 }
 
+/** macOS reads settings.showTray; Windows/Linux callers always pass true. */
 export function setTrayVisible(visible: boolean) {
   if (visible) createTray();
   else destroyTray();

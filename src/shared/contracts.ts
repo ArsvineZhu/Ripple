@@ -111,7 +111,7 @@ export type ScrollGestureStart = z.infer<typeof ScrollGestureStartSchema>;
 export type NoticeCode =
   | 'appLaunchFailed'
   | 'autoLaunchFailed'
-  | 'backgroundModeFailed'
+  | 'showTrayFailed'
   | 'stateSaveFailed'
   | 'stateLoadFailed'
   | 'diagnosticsFolderOpenFailed'
@@ -147,7 +147,7 @@ export function noticeAreaForCode(code: NoticeCode): NoticeArea {
     case 'searchOpenFailed':
       return 'browser-search';
     case 'autoLaunchFailed':
-    case 'backgroundModeFailed':
+    case 'showTrayFailed':
     case 'stateSaveFailed':
     case 'diagnosticsFolderOpenFailed':
     case 'secretStorageUnavailable':
@@ -204,7 +204,10 @@ export interface InvokeMap {
     result: void;
   };
   'get-system-media': { args: []; result: MediaSnapshot };
-  'select-media-session': { args: [id: string | null]; result: MediaOperationResult };
+  'select-media-session': {
+    args: [id: string | null];
+    result: MediaOperationResult;
+  };
   'open-media-session': { args: [id: string]; result: MediaOperationResult };
   'get-bluetooth-status': { args: []; result: boolean };
   'get-camera-status': { args: []; result: boolean };

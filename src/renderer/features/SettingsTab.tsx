@@ -149,7 +149,7 @@ type Props = Pick<
 >;
 export function SettingsTab(p: Props) {
   const { t, i18n } = useTranslation();
-  const { language, handleLanguageChange, backgroundModeEnabled, handleBackgroundModeChange } =
+  const { language, handleLanguageChange, showTrayEnabled, handleShowTrayChange } =
     useSettingsContext();
   const [apiKeyDraft, setApiKeyDraft] = useState('');
   const boolOptions = [
@@ -232,18 +232,20 @@ export function SettingsTab(p: Props) {
           </Field>
           <InlineNotices area="settings" codes={['autoLaunchFailed']} />
         </div>
-        <div>
-          <Field label={t('backgroundMode')}>
-            <Select
-              label={t('backgroundMode')}
-              value={String(backgroundModeEnabled)}
-              onValueChange={handleBackgroundModeChange}
-              options={boolOptions}
-            />
-          </Field>
-          <p className={styles.hint}>{t('backgroundModeHint')}</p>
-          <InlineNotices area="settings" codes={['backgroundModeFailed']} />
-        </div>
+        {window.electronAPI?.platform === 'darwin' && (
+          <div>
+            <Field label={t('showTray')}>
+              <Select
+                label={t('showTray')}
+                value={String(showTrayEnabled)}
+                onValueChange={handleShowTrayChange}
+                options={boolOptions}
+              />
+            </Field>
+            <p className={styles.hint}>{t('showTrayHint')}</p>
+            <InlineNotices area="settings" codes={['showTrayFailed']} />
+          </div>
+        )}
         <InlineNotices area="system" />
         <InlineNotices area="settings" codes={['stateSaveFailed']} />
         {p.displays.length > 0 && (

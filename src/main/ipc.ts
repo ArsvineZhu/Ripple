@@ -58,7 +58,7 @@ interface IPCServices {
   assistant: AssistantService;
   notices: NoticeService;
   diagnostics: Pick<DiagnosticsService, 'openFolder' | 'recordError' | 'record'>;
-  applyBackgroundMode(enabled: boolean): void;
+  applyShowTray(visible: boolean): void;
 }
 
 function getText(value: unknown, field: string, maximum = 4096) {
@@ -179,8 +179,8 @@ export function registerIPC(services: IPCServices) {
   handle(services, 'update-app-state', async (_event, patch) => {
     if (!isAppStatePatch(patch)) throw new TypeError('Invalid app state update');
     const state = await services.stateStore.update(patch);
-    if (typeof patch.settings?.backgroundMode === 'boolean') {
-      services.applyBackgroundMode(patch.settings.backgroundMode);
+    if (typeof patch.settings?.showTray === 'boolean') {
+      services.applyShowTray(patch.settings.showTray);
     }
     broadcastToRegisteredWindows('app-state-changed', state);
     return state;

@@ -173,10 +173,6 @@ export const createWindow = (
 };
 
 export const getMainWindow = () => mainWindow;
-/** Kept until backgroundMode is removed; island taskbar visibility no longer follows it. */
-export const setWindowBackgroundMode = (_enabled: boolean) => {
-  applySkipTaskbar();
-};
 const inputShape = createLinuxInputShape(() => mainWindow, showMainWindow);
 export const initializeLinuxInputShape = (
   diagnostics: DiagnosticsService,
