@@ -46,6 +46,7 @@ export const zhCN: Messages = {
   backgroundImageFailed: '无法加载背景图片，请检查地址和文件。',
   mediaPlayer: '播放器',
   mediaAutomatic: '自动选择',
+  mediaOpenPlayer: '打开 {{player}}',
   mediaReadFailed: '暂时无法更新播放信息。',
   mediaSessionGone: '所选播放器已退出或不可用。',
   mediaCommandUnsupported: '播放器当前不支持此操作。',

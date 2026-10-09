@@ -46,6 +46,7 @@ export const ja: Messages = {
   backgroundImageFailed: '背景画像を読み込めません。アドレスとファイルを確認してください。',
   mediaPlayer: 'プレーヤー',
   mediaAutomatic: '自動選択',
+  mediaOpenPlayer: '{{player}}を開く',
   mediaReadFailed: '再生情報を一時的に更新できません。',
   mediaSessionGone: '選択したプレーヤーは終了したか、利用できません。',
   mediaCommandUnsupported: 'プレーヤーは現在この操作に対応していません。',

@@ -1,268 +1,169 @@
-import styles from './NowPlayingTab.module.css';
+import { useLayoutEffect, useRef, useState } from 'react';
+import { motion, useReducedMotion } from 'motion/react';
 import { useTranslation } from 'react-i18next';
-import { AnimatePresence } from 'motion/react';
-import { motion } from 'motion/react';
-import { Music } from 'lucide-react';
-import { measureTextWidth } from '../lib/text';
-import { SkipBackIcon } from 'lucide-react';
-import { Pause } from 'lucide-react';
-import { Play } from 'lucide-react';
-import { SkipForwardIcon } from 'lucide-react';
+import { Pause, Play, SkipBackIcon, SkipForwardIcon } from 'lucide-react';
 import type { IslandController } from '../hooks/useIslandController';
-import { mediaCommandSupported } from '../../shared/media';
-import { Select } from '../components/Select';
+import type { MediaSession } from '../../shared/contracts';
+import { mediaCommandSupported, selectAutomaticSession } from '../../shared/media';
+import { measureTextWidth } from '../lib/text';
+import { MediaArtwork } from '../components/MediaArtwork';
+import { MediaSessionCarousel } from '../components/MediaSessionCarousel';
+import styles from './NowPlayingTab.module.css';
+
 type Props = Pick<
   IslandController,
   | 'mediaTrack'
   | 'mediaSnapshot'
   | 'mediaActionError'
   | 'mediaBusy'
+  | 'mediaPageId'
   | 'controlMedia'
   | 'selectMediaSession'
   | 'openMediaSession'
-  | 'albumRef'
-  | 'setAlbumHovered'
-  | 'setAlbumRotation'
-  | 'albumHovered'
-  | 'albumRotation'
   | 'textColor'
 >;
-export function NowPlayingTab({
-  mediaTrack,
-  mediaSnapshot,
-  mediaActionError,
-  mediaBusy,
-  controlMedia,
-  selectMediaSession,
-  openMediaSession,
-  albumRef,
-  setAlbumHovered,
-  setAlbumRotation,
-  albumHovered,
-  albumRotation,
-  textColor,
-}: Props) {
+function useClipWidth() {
+  const ref = useRef<HTMLDivElement>(null);
+  const [width, setWidth] = useState(150);
+  useLayoutEffect(() => {
+    const node = ref.current;
+    if (!node) return;
+    const measure = () => {
+      if (node.clientWidth > 0) setWidth(node.clientWidth);
+    };
+    measure();
+    const observer = new ResizeObserver(measure);
+    observer.observe(node);
+    return () => observer.disconnect();
+  }, []);
+  return { ref, width };
+}
+function TrackText({
+  text,
+  artist = false,
+  active,
+}: {
+  text: string;
+  artist?: boolean;
+  active: boolean;
+}) {
+  const { ref, width } = useClipWidth();
+  const reduced = useReducedMotion();
+  const distance = measureTextWidth(text, artist ? 13 : 18);
+  const scroll = distance > width && !reduced;
+  return (
+    <div ref={ref} className={styles.textClip} data-marquee={scroll}>
+      <motion.div
+        className={artist ? styles.artist : styles.title}
+        animate={scroll && active ? { x: [0, -(distance + 30)] } : { x: 0 }}
+        transition={
+          scroll && active ? { duration: 10, repeat: Infinity, ease: 'linear' } : { duration: 0 }
+        }
+      >
+        <span>{text}</span>
+        {scroll && <span aria-hidden="true">{text}</span>}
+      </motion.div>
+    </div>
+  );
+}
+function TrackCard({
+  session,
+  active,
+  showPlayer,
+  props,
+}: {
+  session: MediaSession | null;
+  active: boolean;
+  showPlayer: boolean;
+  props: Props;
+}) {
+  const { t } = useTranslation();
+  if (!session)
+    return (
+      <div className={styles.emptyState} style={{ color: props.textColor }}>
+        <h3 className={styles.emptyTitle}>
+          {t(props.mediaSnapshot.status === 'error' ? 'mediaReadFailed' : 'nothingPlaying')}
+        </h3>
+        <p className={styles.emptyHint}>{t('playMusicHint')}</p>
+      </div>
+    );
+  const disabled = !active || props.mediaBusy;
+  return (
+    <div
+      className={styles.track}
+      data-playback-state={session.state}
+      data-media-session={session.id}
+      style={{ color: props.textColor }}
+    >
+      <MediaArtwork
+        session={session}
+        disabled={disabled}
+        textColor={props.textColor}
+        onOpen={(id) => void props.openMediaSession(id)}
+      />
+      <div className={styles.details}>
+        {showPlayer && (
+          <p className={styles.playerName} title={session.playerName}>
+            {session.playerName}
+          </p>
+        )}
+        <TrackText text={session.name || t('unknownSong')} active={active} />
+        <TrackText text={session.artist || t('unknownArtist')} artist active={active} />
+        <div className={styles.controls}>
+          {(['previous', 'playpause', 'next'] as const).map((command) => (
+            <button
+              key={command}
+              type="button"
+              className={styles['media-btn']}
+              aria-label={t(command === 'playpause' ? 'playPause' : command)}
+              data-media-command={command}
+              disabled={disabled || !mediaCommandSupported(session, command)}
+              onClick={() => void props.controlMedia(command, session.id)}
+            >
+              {command === 'previous' ? (
+                <SkipBackIcon size={20} fill="currentColor" />
+              ) : command === 'next' ? (
+                <SkipForwardIcon size={20} fill="currentColor" />
+              ) : session.state === 'playing' ? (
+                <Pause size={24} fill="currentColor" />
+              ) : (
+                <Play size={24} fill="currentColor" />
+              )}
+            </button>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+export function NowPlayingTab(props: Props) {
   const { t } = useTranslation();
   return (
-    <div className={styles['container']}>
-      {(mediaSnapshot.sessions.length > 1 || mediaSnapshot.manualSessionId) && (
-        <div className={styles.sessionSelector}>
-          <Select
-            label={t('mediaPlayer')}
-            value={mediaSnapshot.manualSessionId ?? 'auto'}
-            disabled={mediaBusy}
-            options={[
-              { value: 'auto', label: t('mediaAutomatic') },
-              ...mediaSnapshot.sessions.map((session) => ({
-                value: session.id,
-                label: session.playerName,
-              })),
-            ]}
-            onValueChange={(id) => void selectMediaSession(id === 'auto' ? null : id)}
+    <div className={styles.container}>
+      <MediaSessionCarousel
+        sessions={props.mediaSnapshot.sessions}
+        selectedId={props.mediaPageId}
+        onSelect={(id) => void props.selectMediaSession(id)}
+        textColor={props.textColor}
+        renderPage={(session, active, showPlayer) => (
+          <TrackCard
+            session={
+              session ??
+              selectAutomaticSession(
+                props.mediaSnapshot.sessions,
+                props.mediaSnapshot.activeSessionId,
+              ) ??
+              props.mediaTrack
+            }
+            active={active}
+            showPlayer={showPlayer}
+            props={props}
           />
-        </div>
-      )}
-      <AnimatePresence propagate mode="wait">
-        {mediaTrack ? (
-          <motion.div
-            className={styles['track']}
-            data-playback-state={mediaTrack.state}
-            key={mediaTrack.name + mediaTrack.artist}
-            initial={{ opacity: 0, filter: 'blur(10px)', scale: 0.95 }}
-            animate={{ opacity: 1, filter: 'blur(0px)', scale: 1 }}
-            exit={{ opacity: 0, filter: 'blur(10px)', scale: 0.95 }}
-            transition={{ duration: 0.2, ease: [0.4, 0, 0.2, 1] }}
-            style={{
-              opacity: mediaTrack.state === 'playing' ? 1 : 0.5,
-              filter: mediaTrack.state === 'playing' ? 'none' : 'grayscale(1)',
-            }}
-          >
-            {mediaTrack.artwork_url ? (
-              <img
-                className={styles['artwork']}
-                ref={albumRef}
-                src={mediaTrack.artwork_url}
-                onClick={() => void openMediaSession(mediaTrack.id)}
-                onMouseEnter={() => setAlbumHovered(true)}
-                onMouseLeave={() => {
-                  setAlbumHovered(false);
-                  setAlbumRotation({ x: 0, y: 0 });
-                }}
-                onMouseMove={(e) => {
-                  if (albumRef.current) {
-                    const rect = albumRef.current.getBoundingClientRect();
-                    const centerX = rect.left + rect.width / 2;
-                    const centerY = rect.top + rect.height / 2;
-                    const deltaX = e.clientX - centerX;
-                    const deltaY = e.clientY - centerY;
-                    const maxDistance =
-                      Math.sqrt(rect.width * rect.width + rect.height * rect.height) / 2;
-                    const angleX = (deltaY / maxDistance) * 15;
-                    const angleY = (deltaX / maxDistance) * -15;
-                    setAlbumRotation({ x: angleX, y: angleY });
-                  }
-                }}
-                style={{
-                  boxShadow: albumHovered
-                    ? '0 8px 24px rgba(0,0,0,0.35)'
-                    : '0 4px 12px rgba(0,0,0,0.2)',
-                  transform: `perspective(600px) rotateX(${albumRotation.x}deg) rotateY(${albumRotation.y}deg) scale(${albumHovered ? 1.08 : 1})`,
-                }}
-              />
-            ) : (
-              <div className={styles['artworkPlaceholder']}>
-                <Music size={40} color={textColor} />
-              </div>
-            )}
-
-            <div className={styles['details']}>
-              <div
-                className={styles['titleClip']}
-                style={{
-                  WebkitMaskImage:
-                    measureTextWidth(mediaTrack.name, 18) > 175
-                      ? 'linear-gradient(to right, transparent, black 15px, black 160px, transparent)'
-                      : 'none',
-                  maskImage:
-                    measureTextWidth(mediaTrack.name, 18) > 175
-                      ? 'linear-gradient(to right, transparent, black 15px, black 160px, transparent)'
-                      : 'none',
-                }}
-              >
-                <motion.h2
-                  className={styles['title']}
-                  animate={
-                    measureTextWidth(mediaTrack.name, 18) > 175
-                      ? { x: [0, -(measureTextWidth(mediaTrack.name, 18) + 30)] }
-                      : {}
-                  }
-                  transition={{ duration: 10, repeat: Infinity, ease: 'linear' }}
-                  style={{ color: textColor }}
-                >
-                  <span
-                    style={{ paddingRight: measureTextWidth(mediaTrack.name, 18) > 175 ? 30 : 0 }}
-                  >
-                    {mediaTrack.name || t('unknownSong')}
-                  </span>
-                  {measureTextWidth(mediaTrack.name, 18) > 175 && (
-                    <span className={styles['titleRepeat']}>
-                      {mediaTrack.name || t('unknownSong')}
-                    </span>
-                  )}
-                </motion.h2>
-              </div>
-              <div
-                className={styles['artistClip']}
-                style={{
-                  WebkitMaskImage:
-                    measureTextWidth(mediaTrack.artist, 13) > 175
-                      ? 'linear-gradient(to right, transparent, black 15px, black 160px, transparent)'
-                      : 'none',
-                  maskImage:
-                    measureTextWidth(mediaTrack.artist, 13) > 175
-                      ? 'linear-gradient(to right, transparent, black 15px, black 160px, transparent)'
-                      : 'none',
-                }}
-              >
-                <motion.p
-                  className={styles['artist']}
-                  animate={
-                    measureTextWidth(mediaTrack.artist, 13) > 175
-                      ? { x: [0, -(measureTextWidth(mediaTrack.artist, 13) + 30)] }
-                      : {}
-                  }
-                  transition={{ duration: 10, repeat: Infinity, ease: 'linear' }}
-                  style={{ color: textColor }}
-                >
-                  <span
-                    style={{
-                      paddingRight: measureTextWidth(mediaTrack.artist, 13) > 175 ? 30 : 0,
-                    }}
-                  >
-                    {mediaTrack.artist || t('unknownArtist')}
-                  </span>
-                  {measureTextWidth(mediaTrack.artist, 13) > 175 && (
-                    <span className={styles['artistRepeat']}>
-                      {mediaTrack.artist || t('unknownArtist')}
-                    </span>
-                  )}
-                </motion.p>
-              </div>
-              <div className={styles['controls']}>
-                <button
-                  className={[styles['media-btn'], styles['previousButton']].join(' ')}
-                  aria-label={t('previous')}
-                  data-media-command="previous"
-                  disabled={
-                    mediaBusy ||
-                    mediaSnapshot.status === 'error' ||
-                    !mediaCommandSupported(mediaTrack, 'previous')
-                  }
-                  onClick={() => {
-                    void controlMedia('previous', mediaTrack.id);
-                  }}
-                  style={{ color: textColor }}
-                >
-                  <SkipBackIcon size={20} color={textColor} fill={textColor} />
-                </button>
-                <button
-                  className={[styles['media-btn'], styles['playButton']].join(' ')}
-                  aria-label={t('playPause')}
-                  data-media-command="playpause"
-                  disabled={
-                    mediaBusy ||
-                    mediaSnapshot.status === 'error' ||
-                    !mediaCommandSupported(mediaTrack, 'playpause')
-                  }
-                  onClick={() => {
-                    void controlMedia('playpause', mediaTrack.id);
-                  }}
-                  style={{ color: textColor }}
-                >
-                  {mediaTrack.state === 'playing' ? (
-                    <Pause size={24} color={textColor} fill={textColor} />
-                  ) : (
-                    <Play size={24} color={textColor} fill={textColor} />
-                  )}
-                </button>
-                <button
-                  className={[styles['media-btn'], styles['nextButton']].join(' ')}
-                  aria-label={t('next')}
-                  data-media-command="next"
-                  disabled={
-                    mediaBusy ||
-                    mediaSnapshot.status === 'error' ||
-                    !mediaCommandSupported(mediaTrack, 'next')
-                  }
-                  onClick={() => {
-                    void controlMedia('next', mediaTrack.id);
-                  }}
-                  style={{ color: textColor }}
-                >
-                  <SkipForwardIcon size={20} color={textColor} fill={textColor} />
-                </button>
-              </div>
-            </div>
-          </motion.div>
-        ) : (
-          <motion.div
-            className={styles['emptyState']}
-            key="nothing"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            style={{ color: textColor }}
-          >
-            <h3 className={styles['emptyTitle']}>
-              {t(mediaSnapshot.status === 'error' ? 'mediaReadFailed' : 'nothingPlaying')}
-            </h3>
-            <p className={styles['emptyHint']}>{t('playMusicHint')}</p>
-          </motion.div>
         )}
-      </AnimatePresence>
-      {(mediaActionError || (mediaTrack && mediaSnapshot.error)) && (
+      />
+      {(props.mediaActionError || (props.mediaTrack && props.mediaSnapshot.error)) && (
         <p className={styles.actionError} role="alert">
-          {t(mediaActionError ?? mediaSnapshot.error!)}
+          {t(props.mediaActionError ?? props.mediaSnapshot.error!)}
         </p>
       )}
     </div>

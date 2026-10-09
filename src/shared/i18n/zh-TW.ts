@@ -46,6 +46,7 @@ export const zhTW: Messages = {
   backgroundImageFailed: '無法載入背景圖片，請檢查位址和檔案。',
   mediaPlayer: '播放器',
   mediaAutomatic: '自動選擇',
+  mediaOpenPlayer: '開啟 {{player}}',
   mediaReadFailed: '暫時無法更新播放資訊。',
   mediaSessionGone: '所選播放器已結束或無法使用。',
   mediaCommandUnsupported: '播放器目前不支援此操作。',
