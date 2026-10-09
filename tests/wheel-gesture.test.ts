@@ -2,6 +2,7 @@ import { expect, it } from 'vitest';
 import {
   isClearVerticalSample,
   isResumedWheelPush,
+  isTailDecay,
   isVerticalStroke,
   isVerticalTakeover,
   wheelEventAxis,
@@ -43,18 +44,28 @@ it('only hands a horizontal stroke over to a real diagonal', () => {
 it('resumes only after a decayed tail and a clear rising run', () => {
   // A momentum tail only decays, so nothing in it may look like a new push.
   expect(
-    isResumedWheelPush({ magnitude: 12, lastMagnitude: 40, peakMagnitude: 40, risingSamples: 3 }),
+    isResumedWheelPush({ magnitude: 12, tailMagnitude: 40, risingSamples: 3, decayed: false }),
   ).toBe(false);
-  // A rise inside the stroke's own ramp is not a gesture boundary either.
+  // A rise inside the stroke's own ramp has not seen a decayed tail yet.
   expect(
-    isResumedWheelPush({ magnitude: 30, lastMagnitude: 18, peakMagnitude: 30, risingSamples: 2 }),
+    isResumedWheelPush({ magnitude: 40, tailMagnitude: 20, risingSamples: 2, decayed: false }),
   ).toBe(false);
-  // A single rise is not enough, and the tail must have decayed against the peak.
+  // A single rise is not a fresh push either.
   expect(
-    isResumedWheelPush({ magnitude: 20, lastMagnitude: 10, peakMagnitude: 40, risingSamples: 1 }),
+    isResumedWheelPush({ magnitude: 20, tailMagnitude: 10, risingSamples: 1, decayed: true }),
   ).toBe(false);
-  // A smooth climb after the tail has decayed is the next push, even without an input gap.
+  // A rise that does not clear the tail is still part of the same stroke.
   expect(
-    isResumedWheelPush({ magnitude: 20, lastMagnitude: 10, peakMagnitude: 40, risingSamples: 2 }),
+    isResumedWheelPush({ magnitude: 12, tailMagnitude: 10, risingSamples: 2, decayed: true }),
+  ).toBe(false);
+  // A rising run that clears a decayed tail is the next push, even without an input gap.
+  expect(
+    isResumedWheelPush({ magnitude: 20, tailMagnitude: 10, risingSamples: 2, decayed: true }),
   ).toBe(true);
+});
+it('marks the momentum tail once a sample drops well below the peak', () => {
+  // A quick flick decays once and then rises again; the mark has to survive the rise.
+  expect(isTailDecay(30, 120)).toBe(true);
+  expect(isTailDecay(88, 120)).toBe(false);
+  expect(isTailDecay(120, 120)).toBe(false);
 });

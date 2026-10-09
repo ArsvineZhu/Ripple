@@ -13,6 +13,7 @@ import { nextTabId } from '../lib/navigation';
 import {
   isClearVerticalSample,
   isResumedWheelPush,
+  isTailDecay,
   isVerticalStroke,
   isVerticalTakeover,
   wheelEventAxis,
@@ -114,6 +115,8 @@ export function TabPanels(props: Props) {
     previousIntent: number;
     lastDirection: number;
     lastDelta: number;
+    tailMin: number;
+    decayed: boolean;
     risingSamples: number;
   } | null>(null);
   const reducedMotion = useReducedMotion();
@@ -200,6 +203,8 @@ export function TabPanels(props: Props) {
         current.startedAt = at;
         current.distance = current.lastDelta;
         current.peak = current.lastDelta;
+        current.tailMin = current.lastDelta;
+        current.decayed = false;
         current.risingSamples = 0;
       } else {
         gesture.current = null;
@@ -280,13 +285,17 @@ export function TabPanels(props: Props) {
         if (direction !== previous.direction && magnitude < Math.min(2, previous.peak * 0.2))
           return;
         previous.risingSamples = magnitude > previous.lastDelta ? previous.risingSamples + 1 : 0;
+        // The tail is measured against the stroke peak and the lowest sample since the last page,
+        // not against the previous sample: a quick flick has no room to decay twice.
+        if (isTailDecay(magnitude, previous.peak)) previous.decayed = true;
+        if (magnitude < previous.tailMin) previous.tailMin = magnitude;
         if (
           direction !== previous.direction ||
           isResumedWheelPush({
             magnitude,
-            lastMagnitude: previous.lastDelta,
-            peakMagnitude: previous.peak,
+            tailMagnitude: previous.tailMin,
             risingSamples: previous.risingSamples,
+            decayed: previous.decayed,
           })
         ) {
           clearTimeout(wheelTimer.current);
@@ -309,6 +318,8 @@ export function TabPanels(props: Props) {
           previousIntent: anchor,
           lastDirection: direction,
           lastDelta: magnitude,
+          tailMin: magnitude,
+          decayed: false,
           risingSamples: 0,
         };
       }
@@ -320,6 +331,8 @@ export function TabPanels(props: Props) {
         current.lastIntentAt = now;
         current.distance = 0;
         current.peak = magnitude;
+        current.tailMin = magnitude;
+        current.decayed = false;
         // Direction is the trigger. Distance changes only the bounded elastic
         // response; it never decides whether another page should be selected.
         propsRef.current.onSelect(intent, direction);

@@ -170,6 +170,28 @@ it('keeps fast swipes with drift on the rail instead of locking them away', asyn
   ]);
 });
 
+it('keeps short quick flicks paging instead of swallowing all but the first', async () => {
+  const x = await gestureHarness();
+  // A quick flick leaves no room for the tail to decay twice, so the resumed push has to be read
+  // from the tail it follows rather than from the previous sample.
+  const flick: [number, number][] = [
+    [30, 4],
+    [80, 5],
+    [120, 4],
+    [88, 3],
+  ];
+  for (let index = 0; index < 6; index += 1)
+    for (const [deltaX, deltaY] of flick) await x.send(deltaX, deltaY);
+  expect(x.onSelect.mock.calls).toEqual([
+    [1, 1],
+    [2, 1],
+    [3, 1],
+    [0, 1],
+    [1, 1],
+    [2, 1],
+  ]);
+});
+
 it('triggers on tiny directional input and bounds a long gesture with elastic return', async () => {
   vi.useFakeTimers();
   const onSelect = vi.fn();
