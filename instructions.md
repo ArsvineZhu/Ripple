@@ -76,7 +76,7 @@ Settings groups appearance, interaction and feature configuration in one scrolla
 
 - Choose **Default**, **Sleek Black** or **Windows 95**, then adjust text/background colors, a local or remote background image, and the border.
 - Choose the display and snap/free positioning. Position changes keep Settings open. In free mode, save your edited coordinates.
-- **Standby** keeps Quick mode visible; **Large Standby** keeps the expanded view. Inactive hiding conceals the idle Island. On macOS you can hide the menu bar icon; Windows and Linux always keep the tray. The Island stays off the Dock and taskbar; open Settings from the Island, tray, or a second launch.
+- **Standby** keeps Quick mode visible; **Large Standby** keeps the expanded view. Inactive hiding conceals the idle Island. On macOS you can hide the menu bar icon; Windows and Linux always keep the tray. The Island stays off the Dock and taskbar; on macOS a Dock icon appears only while the Settings window is open. Open Settings from the Island, tray, or a second launch.
 - Set the pointer-leave delay from **0–2000 ms**. Re-entering, focusing an input, opening a menu or dragging prevents an unintended collapse.
 - Configure launch at login, battery alerts, idle information, weather, search, workflows, quick apps and AI.
 - In **General → Language**, choose Follow system, 简体中文, English, 繁體中文 or 日本語. The interface and tray update immediately; preferences and input drafts survive a language switch. User text and AI responses are not translated.

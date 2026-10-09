@@ -30,7 +30,7 @@ import {
 registerBackgroundImageScheme();
 app.setName('Ripple Next');
 if (process.platform === 'win32') app.setAppUserModelId('com.arsvinezhu.ripple-next');
-// Keep macOS out of the Dock in both packaged (LSUIElement) and `pnpm start` runs.
+// Packaged builds are LSUIElement agents; start accessory so the Dock stays empty until Settings opens.
 if (process.platform === 'darwin') app.setActivationPolicy('accessory');
 
 if (!app.requestSingleInstanceLock()) {

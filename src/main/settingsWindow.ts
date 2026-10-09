@@ -25,6 +25,20 @@ export function getSettingsWindow(): BrowserWindow | null {
   return settingsWindow;
 }
 
+/** macOS: appear in the Dock while Settings is open so the window can be switched to. */
+function showMacDockForSettings(): void {
+  if (process.platform !== 'darwin') return;
+  app.setActivationPolicy('regular');
+  void app.dock?.show();
+}
+
+/** macOS: leave the Dock again after Settings closes (LSUIElement + accessory). */
+function hideMacDockAfterSettings(): void {
+  if (process.platform !== 'darwin') return;
+  app.setActivationPolicy('accessory');
+  app.dock?.hide();
+}
+
 /**
  * Attach an existing BrowserWindow as the settings window (tests and step-1 seam).
  * Production code should call openSettingsWindow() instead.
@@ -34,6 +48,7 @@ export function attachSettingsWindow(window: BrowserWindow): void {
   registerWindowRole(window.webContents, 'settings');
   window.on('closed', () => {
     if (settingsWindow === window) settingsWindow = null;
+    hideMacDockAfterSettings();
   });
 }
 
@@ -54,6 +69,7 @@ function bringSettingsWindowForward(window: BrowserWindow): void {
 export function openSettingsWindow(): BrowserWindow {
   if (!configured) throw new Error('Settings window is not configured');
   if (settingsWindow && !settingsWindow.isDestroyed()) {
+    showMacDockForSettings();
     bringSettingsWindowForward(settingsWindow);
     return settingsWindow;
   }
@@ -90,11 +106,13 @@ export function openSettingsWindow(): BrowserWindow {
     webContentsId: window.webContents.id,
   });
 
+  showMacDockForSettings();
   window.once('ready-to-show', () => {
     if (!window.isDestroyed()) bringSettingsWindowForward(window);
   });
   window.on('closed', () => {
     if (settingsWindow === window) settingsWindow = null;
+    hideMacDockAfterSettings();
   });
 
   const devServerUrl =

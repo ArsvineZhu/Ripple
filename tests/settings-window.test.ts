@@ -25,6 +25,14 @@ const mock = vi.hoisted(() => {
   const windows: MockWindow[] = [];
   let nextId = 1;
   let lastOptions: Record<string, unknown> | undefined;
+  const app = {
+    focus: vi.fn(),
+    setActivationPolicy: vi.fn(),
+    dock: {
+      show: vi.fn(async () => undefined),
+      hide: vi.fn(),
+    },
+  };
   class MockBrowserWindow {
     id = nextId++;
     #destroyed = false;
@@ -77,6 +85,7 @@ const mock = vi.hoisted(() => {
   return {
     windows,
     BrowserWindow: MockBrowserWindow,
+    app,
     get lastOptions() {
       return lastOptions;
     },
@@ -85,7 +94,7 @@ const mock = vi.hoisted(() => {
 
 vi.mock('electron', () => ({
   BrowserWindow: mock.BrowserWindow,
-  app: { focus: vi.fn() },
+  app: mock.app,
 }));
 vi.mock('../src/main/assets', () => ({ getIconPath: () => '/tmp/icon.png' }));
 vi.mock('../src/main/services/windowDiagnostics', () => ({
@@ -106,6 +115,10 @@ describe('settings window singleton', () => {
     mock.windows.length = 0;
     clearSettingsWindow();
     clearWindowRoles();
+    mock.app.focus.mockClear();
+    mock.app.setActivationPolicy.mockClear();
+    mock.app.dock.show.mockClear();
+    mock.app.dock.hide.mockClear();
     configureSettingsWindow({
       diagnostics: {
         record: vi.fn(),
@@ -139,5 +152,35 @@ describe('settings window singleton', () => {
     expect(getSettingsWindow()).toBeNull();
     openSettingsWindow();
     expect(mock.windows).toHaveLength(2);
+  });
+
+  it('shows the macOS Dock while Settings is open and hides it again on close', () => {
+    const previousPlatform = process.platform;
+    Object.defineProperty(process, 'platform', { configurable: true, value: 'darwin' });
+    try {
+      const first = openSettingsWindow() as unknown as { destroy: () => void };
+      expect(mock.app.setActivationPolicy).toHaveBeenCalledWith('regular');
+      expect(mock.app.dock.show).toHaveBeenCalled();
+
+      mock.app.setActivationPolicy.mockClear();
+      mock.app.dock.show.mockClear();
+      mock.app.dock.hide.mockClear();
+
+      openSettingsWindow();
+      expect(mock.app.setActivationPolicy).toHaveBeenCalledWith('regular');
+      expect(mock.app.dock.show).toHaveBeenCalled();
+
+      mock.app.setActivationPolicy.mockClear();
+      mock.app.dock.hide.mockClear();
+      first.destroy();
+      expect(getSettingsWindow()).toBeNull();
+      expect(mock.app.setActivationPolicy).toHaveBeenCalledWith('accessory');
+      expect(mock.app.dock.hide).toHaveBeenCalled();
+    } finally {
+      Object.defineProperty(process, 'platform', {
+        configurable: true,
+        value: previousPlatform,
+      });
+    }
   });
 });
