@@ -8,6 +8,8 @@ const AXIS_SHARE = 0.25;
 const TAKEOVER_SHARE = 0.5;
 const VERTICAL_DOMINANCE = 2;
 const VERTICAL_DISTANCE = 12;
+// A single sample needs far more vertical movement than drift before it hands the stroke over.
+const VERTICAL_SAMPLE_DISTANCE = 32;
 export function wheelEventAxis(deltaX: number, deltaY: number): 'horizontal' | 'vertical' | 'none' {
   if (!deltaX && !deltaY) return 'none';
   const tolerance = Math.max(AXIS_FLOOR, Math.abs(deltaX) * AXIS_SHARE);
@@ -26,26 +28,32 @@ export function isVerticalStroke(accumulatedX: number, accumulatedY: number): bo
 
 /** Whether a sample is clearly vertical, so the content owns the rest of the stroke. */
 export function isClearVerticalSample(deltaX: number, deltaY: number): boolean {
-  return wheelEventAxis(deltaX, deltaY) === 'vertical' && Math.abs(deltaY) >= VERTICAL_DISTANCE;
+  return (
+    wheelEventAxis(deltaX, deltaY) === 'vertical' && Math.abs(deltaY) >= VERTICAL_SAMPLE_DISTANCE
+  );
 }
 
-// A single dip or rise is not a gesture boundary. A resumed push needs a rising run that clears
-// the tail it follows, and that tail must itself have decayed against the stroke peak: neither a
-// stroke's own ramp nor a decaying momentum tail satisfies both. Native boundaries stay the fast
-// path.
-const RESUME_FADE = 0.6;
+// A single dip or rise is not a gesture boundary. A resumed push needs the tail to have decayed
+// against the stroke peak and two rising samples that clear that tail, so neither a stroke's own
+// ramp nor a decaying momentum tail can page twice. Native boundaries stay the fast path.
+const TAIL_DECAY = 0.6;
 const RESUME_RATIO = 1.5;
 const RESUME_MARGIN = 8;
+/** Whether a sample has dropped far enough below the stroke peak to mark a momentum tail. */
+export function isTailDecay(magnitude: number, peakMagnitude: number): boolean {
+  return magnitude <= peakMagnitude * TAIL_DECAY;
+}
+
 export function isResumedWheelPush(input: {
   magnitude: number;
-  lastMagnitude: number;
-  peakMagnitude: number;
+  tailMagnitude: number;
   risingSamples: number;
+  decayed: boolean;
 }): boolean {
   return (
+    input.decayed &&
     input.risingSamples >= 2 &&
-    input.lastMagnitude < input.peakMagnitude * RESUME_FADE &&
     input.magnitude >=
-      Math.max(input.lastMagnitude * RESUME_RATIO, input.lastMagnitude + RESUME_MARGIN)
+      Math.max(input.tailMagnitude * RESUME_RATIO, input.tailMagnitude + RESUME_MARGIN)
   );
 }
