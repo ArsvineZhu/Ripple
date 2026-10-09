@@ -8,6 +8,7 @@ import { attachWindowDiagnostics, recordRendererReady } from './services/windowD
 import { createWindowsInputRegion } from './platform/windows/inputRegion';
 import type { InputRect } from '../shared/contracts';
 import { getWindowBoundsForDisplay } from './windowBounds';
+import { registerWindowRole } from './windowRoles';
 import { installScrollGestureBridge } from './services/scrollGestures';
 declare const MAIN_WINDOW_VITE_DEV_SERVER_URL: string | undefined;
 declare const MAIN_WINDOW_VITE_NAME: string;
@@ -131,6 +132,7 @@ export const createWindow = (
     show: false,
   });
   attachWindowDiagnostics(mainWindow, diagnostics);
+  registerWindowRole(mainWindow.webContents, 'island');
   const closeScrollGestureBridge = installScrollGestureBridge(mainWindow.webContents);
   diagnostics.record({
     kind: 'window-lifecycle',

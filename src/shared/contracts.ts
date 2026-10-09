@@ -234,6 +234,7 @@ export interface ElectronAPI {
   startAssistant(requestId: string, prompt: string): Promise<string | null>;
   cancelAssistant(requestId: string): Promise<void>;
   onAppNotice(callback: (notice: AppNotice) => void): () => void;
+  onAppStateChanged(callback: (state: AppState) => void): () => void;
   onAssistantEvent(callback: (event: AssistantEvent) => void): () => void;
   onScrollGestureStart(callback: (event: ScrollGestureStart) => void): () => void;
   getSystemLocale(): Promise<string>;

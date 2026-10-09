@@ -1,4 +1,5 @@
 import type { AppNotice, AssistantEvent, ElectronAPI, InvokeMap } from '../shared/contracts';
+import type { AppState } from '../shared/appState';
 import { ScrollGestureStartSchema } from '../shared/contracts';
 import { contextBridge, ipcRenderer } from 'electron';
 
@@ -26,6 +27,11 @@ const api: ElectronAPI = {
     const listener = (_event: Electron.IpcRendererEvent, notice: AppNotice) => callback(notice);
     ipcRenderer.on('app-notice', listener);
     return () => ipcRenderer.removeListener('app-notice', listener);
+  },
+  onAppStateChanged: (callback: (state: AppState) => void) => {
+    const listener = (_event: Electron.IpcRendererEvent, state: AppState) => callback(state);
+    ipcRenderer.on('app-state-changed', listener);
+    return () => ipcRenderer.removeListener('app-state-changed', listener);
   },
   onAssistantEvent: (callback: (event: AssistantEvent) => void) => {
     const listener = (_event: Electron.IpcRendererEvent, payload: AssistantEvent) =>

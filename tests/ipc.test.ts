@@ -1,6 +1,8 @@
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 const mock = vi.hoisted(() => ({
-  sender: {},
+  sender: { id: 99, isDestroyed: () => false, send: vi.fn(), once: vi.fn() },
+  island: { id: 1, isDestroyed: () => false, send: vi.fn(), once: vi.fn() },
+  settings: { id: 2, isDestroyed: () => false, send: vi.fn(), once: vi.fn() },
   handlers: new Map<string, (event: { sender: unknown }, ...args: unknown[]) => unknown>(),
   events: new Map<string, (event: { sender: unknown }, ...args: unknown[]) => unknown>(),
   shape: vi.fn(),
@@ -9,13 +11,16 @@ const mock = vi.hoisted(() => ({
   readClipboard: vi.fn(),
   writeClipboard: vi.fn(),
   recordDiagnostic: vi.fn(),
+  markRendererReady: vi.fn(),
+  showMainWindow: vi.fn(),
   window: {
-    webContents: {},
+    webContents: null as unknown,
     focus: vi.fn(),
     setBounds: vi.fn(),
     setIgnoreMouseEvents: vi.fn(),
   },
 }));
+mock.window.webContents = mock.island;
 vi.mock('electron', () => ({
   clipboard: { readText: mock.readClipboard, writeText: mock.writeClipboard },
   ipcMain: {
@@ -38,7 +43,8 @@ vi.mock('electron', () => ({
 }));
 vi.mock('../src/main/window', () => ({
   getMainWindow: () => mock.window,
-  showMainWindow: vi.fn(),
+  showMainWindow: mock.showMainWindow,
+  markRendererReady: mock.markRendererReady,
   applyWindowInputRegion: mock.shape,
 }));
 vi.mock('../src/main/services/media', () => ({
@@ -54,6 +60,8 @@ vi.mock('../src/main/tray', () => ({ setTrayLocale: vi.fn() }));
 import { setTrayLocale } from '../src/main/tray';
 import { registerIPC } from '../src/main/ipc';
 import { defaultAppState } from '../src/shared/appState';
+import { clearWindowRoles, registerWindowRole } from '../src/main/windowRoles';
+import type { WebContents } from 'electron';
 
 const services = {
   stateStore: {
@@ -85,28 +93,65 @@ describe('IPC boundary', () => {
     mock.handlers.clear();
     mock.events.clear();
     mock.shape.mockClear();
+    mock.island.send.mockClear();
+    mock.settings.send.mockClear();
+    mock.markRendererReady.mockClear();
+    mock.showMainWindow.mockClear();
     mock.openDiagnosticsFolder.mockReset().mockResolvedValue(undefined);
     mock.recordApplicationError.mockClear();
     services.notices.report.mockClear();
+    services.notices.rendererReady.mockClear();
+    clearWindowRoles();
+    registerWindowRole(mock.island as unknown as WebContents, 'island');
+    registerWindowRole(mock.settings as unknown as WebContents, 'settings');
     registerIPC(services);
   });
-  it('rejects invoke messages from another webContents', async () => {
+  it('allows the island and settings windows and rejects every other sender', async () => {
     await expect(mock.handlers.get('focus-window')!({ sender: mock.sender })).rejects.toThrow(
       'Unknown IPC sender',
     );
+    await expect(
+      mock.handlers.get('focus-window')!({ sender: mock.island }),
+    ).resolves.toBeUndefined();
+    await expect(
+      mock.handlers.get('get-app-bootstrap')!({ sender: mock.settings }),
+    ).resolves.toEqual({ state: defaultAppState, hasApiKey: false });
   });
-  it('accepts only valid input rectangles from the owning renderer', () => {
+  it('accepts only valid input rectangles from an allowed renderer', () => {
     const rect = { x: 10, y: 20, width: 170, height: 40, scaleFactor: 1.5 };
     const send = mock.events.get('set-window-input-shape')!;
     send({ sender: mock.sender }, rect);
-    send({ sender: mock.window.webContents }, { ...rect, width: NaN });
-    send({ sender: mock.window.webContents }, { ...rect, scaleFactor: 0 });
+    send({ sender: mock.island }, { ...rect, width: NaN });
+    send({ sender: mock.island }, { ...rect, scaleFactor: 0 });
     expect(mock.shape).not.toHaveBeenCalled();
-    send({ sender: mock.window.webContents }, rect);
+    send({ sender: mock.island }, rect);
     expect(mock.shape).toHaveBeenCalledWith(rect);
+    send({ sender: mock.settings }, { ...rect, x: 40 });
+    expect(mock.shape).toHaveBeenCalledWith({ ...rect, x: 40 });
+  });
+  it('broadcasts persisted app state to every registered window', async () => {
+    const next = {
+      ...defaultAppState,
+      settings: { ...defaultAppState.settings, backgroundMode: true },
+    };
+    services.stateStore.update = async () => next;
+    await mock.handlers.get('update-app-state')!(
+      { sender: mock.settings },
+      { settings: { backgroundMode: true } },
+    );
+    expect(mock.island.send).toHaveBeenCalledWith('app-state-changed', next);
+    expect(mock.settings.send).toHaveBeenCalledWith('app-state-changed', next);
+  });
+  it('marks only the island ready when its renderer reports ready', async () => {
+    await mock.handlers.get('renderer-ready')!({ sender: mock.settings });
+    expect(mock.markRendererReady).not.toHaveBeenCalled();
+    expect(services.notices.rendererReady).toHaveBeenCalledWith('settings');
+    await mock.handlers.get('renderer-ready')!({ sender: mock.island });
+    expect(mock.markRendererReady).toHaveBeenCalledOnce();
+    expect(services.notices.rendererReady).toHaveBeenCalledWith('island');
   });
   it('reads the system locale and accepts only supported resolved tray languages', async () => {
-    const event = { sender: mock.window.webContents };
+    const event = { sender: mock.island };
     await expect(mock.handlers.get('get-system-locale')!(event)).resolves.toBe('zh-HK');
     await expect(mock.handlers.get('set-ui-locale')!(event, 'de')).rejects.toThrow(
       'Invalid locale',
@@ -115,7 +160,7 @@ describe('IPC boundary', () => {
     expect(setTrayLocale).toHaveBeenCalledWith('ja');
   });
   it('applies background presence changes after persisting the setting', async () => {
-    const event = { sender: mock.window.webContents };
+    const event = { sender: mock.island };
     await mock.handlers.get('update-app-state')!(event, {
       settings: { backgroundMode: true },
     });
@@ -123,22 +168,19 @@ describe('IPC boundary', () => {
   });
   it('rejects commands outside the media contract before executing platform code', async () => {
     await expect(
-      mock.handlers.get('control-system-media')!(
-        { sender: mock.window.webContents },
-        'shell-command',
-      ),
+      mock.handlers.get('control-system-media')!({ sender: mock.island }, 'shell-command'),
     ).rejects.toThrow('Invalid media command');
   });
   it('opens the diagnostics directory through the service', async () => {
     await mock.handlers.get('open-diagnostics-folder')!({
-      sender: mock.window.webContents,
+      sender: mock.island,
     });
     expect(mock.openDiagnosticsFolder).toHaveBeenCalledOnce();
   });
   it('reads native clipboard text without recording its contents', async () => {
     mock.readClipboard.mockReturnValue('private clipboard text');
     const result = await mock.handlers.get('read-clipboard-text')!({
-      sender: mock.window.webContents,
+      sender: mock.island,
     });
     expect(result).toBe('private clipboard text');
     expect(JSON.stringify(mock.recordDiagnostic.mock.calls)).not.toContain(
@@ -147,7 +189,7 @@ describe('IPC boundary', () => {
   });
   it('records a polled failure once, counts repeats, and records recovery', async () => {
     mock.recordDiagnostic.mockClear();
-    const event = { sender: mock.window.webContents };
+    const event = { sender: mock.island };
     const error = Object.assign(new Error('private clipboard message'), { code: 'EACCES' });
     mock.readClipboard
       .mockImplementationOnce(() => {
@@ -173,7 +215,7 @@ describe('IPC boundary', () => {
     const error = Object.assign(new Error('private arguments'), { code: 'EACCES' });
     mock.openDiagnosticsFolder.mockRejectedValueOnce(error);
     await expect(
-      mock.handlers.get('open-diagnostics-folder')!({ sender: mock.window.webContents }),
+      mock.handlers.get('open-diagnostics-folder')!({ sender: mock.island }),
     ).rejects.toBe(error);
     expect(mock.recordDiagnostic).toHaveBeenCalledWith(
       expect.objectContaining({
@@ -190,7 +232,7 @@ describe('IPC boundary', () => {
     mock.openDiagnosticsFolder.mockRejectedValueOnce(error);
     await expect(
       mock.handlers.get('open-diagnostics-folder')!({
-        sender: mock.window.webContents,
+        sender: mock.island,
       }),
     ).rejects.toBe(error);
     expect(services.notices.report).toHaveBeenCalledWith(

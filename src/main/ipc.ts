@@ -1,4 +1,5 @@
 import { app, clipboard, ipcMain, screen, shell } from 'electron';
+import type { IpcMainInvokeEvent } from 'electron';
 import { isLocale } from '../shared/i18n';
 import type { AppState, AppStatePatch } from '../shared/appState';
 import { noticeAreaForCode, noticeAreaForPatch } from '../shared/contracts';
@@ -9,6 +10,8 @@ import { QuickAppTargetSchema } from '../shared/contracts';
 import { setTrayLocale } from './tray';
 import type { DiagnosticsService } from './services/diagnostics';
 import { applyWindowInputRegion, getMainWindow, markRendererReady, showMainWindow } from './window';
+import { broadcastToRegisteredWindows, getWindowRole, isAllowedIpcSender } from './windowRoles';
+import type { WindowRole } from './windowRoles';
 import { getWindowBoundsForDisplay } from './windowBounds';
 import { discoverApps, buildAppCache, launchApp, launchQuickApp } from './services/apps';
 import { setAutoLaunch } from './services/autostart';
@@ -45,7 +48,7 @@ interface NoticeService {
     severity?: AppNotice['severity'],
     area?: NoticeArea,
   ): void;
-  rendererReady(): void;
+  rendererReady(role: WindowRole): void;
 }
 
 interface IPCServices {
@@ -85,6 +88,7 @@ function handle<K extends keyof InvokeMap>(
   services: IPCServices,
   channel: K,
   listener: (
+    event: IpcMainInvokeEvent,
     ...args: InvokeMap[K]['args']
   ) => InvokeMap[K]['result'] | Promise<InvokeMap[K]['result']>,
 ) {
@@ -98,10 +102,10 @@ function handle<K extends keyof InvokeMap>(
   let observed = false;
   let failure: { signature: string; loggedAt: number; suppressed: number } | undefined;
   ipcMain.handle(channel, async (event, ...args: unknown[]) => {
-    if (event.sender !== getMainWindow()?.webContents) throw new Error('Unknown IPC sender');
+    if (!isAllowedIpcSender(event.sender)) throw new Error('Unknown IPC sender');
     const started = performance.now();
     try {
-      const result = await listener(...(args as InvokeMap[K]['args']));
+      const result = await listener(event, ...(args as InvokeMap[K]['args']));
       if (!polled || !observed || failure) {
         services.diagnostics.record({
           kind: 'ipc-operation',
@@ -162,27 +166,28 @@ export function registerIPC(services: IPCServices) {
   const media = createMediaService(undefined, (error) =>
     services.diagnostics.recordError('media', error),
   );
-  handle(services, 'get-app-bootstrap', async () => ({
+  handle(services, 'get-app-bootstrap', async (_event) => ({
     state: await services.stateStore.load(),
     hasApiKey: await services.secretStore.hasApiKey(),
   }));
-  handle(services, 'open-diagnostics-folder', () => services.diagnostics.openFolder());
-  handle(services, 'read-clipboard-text', () => clipboard.readText());
-  handle(services, 'write-clipboard-text', (text) =>
+  handle(services, 'open-diagnostics-folder', (_event) => services.diagnostics.openFolder());
+  handle(services, 'read-clipboard-text', (_event) => clipboard.readText());
+  handle(services, 'write-clipboard-text', (_event, text) =>
     clipboard.writeText(getText(text, 'Clipboard text', 1_000_000)),
   );
-  handle(services, 'update-app-state', async (patch) => {
+  handle(services, 'update-app-state', async (_event, patch) => {
     if (!isAppStatePatch(patch)) throw new TypeError('Invalid app state update');
     const state = await services.stateStore.update(patch);
     if (typeof patch.settings?.backgroundMode === 'boolean') {
       services.applyBackgroundMode(patch.settings.backgroundMode);
     }
+    broadcastToRegisteredWindows('app-state-changed', state);
     return state;
   });
-  handle(services, 'save-api-key', (key) => {
+  handle(services, 'save-api-key', (_event, key) => {
     return services.secretStore.setApiKey(getText(key, 'API key', 8192));
   });
-  handle(services, 'launch-quick-app', async (id) => {
+  handle(services, 'launch-quick-app', async (_event, id) => {
     const quickAppId = getText(id, 'Quick app ID', 128);
     const state = await services.stateStore.load();
     const appTarget = state.quickApps.find((quickApp) => quickApp.id === quickAppId)?.target;
@@ -190,29 +195,34 @@ export function registerIPC(services: IPCServices) {
     const target: QuickAppTarget = QuickAppTargetSchema.parse(appTarget);
     await launchQuickApp(target);
   });
-  handle(services, 'discover-apps', (query) =>
+  handle(services, 'discover-apps', (_event, query) =>
     discoverApps(getText(query, 'Application query', 256)),
   );
-  handle(services, 'renderer-ready', () => {
-    markRendererReady();
-    services.notices.rendererReady();
+  handle(services, 'renderer-ready', (event) => {
+    const role = getWindowRole(event.sender);
+    if (role === 'island') {
+      markRendererReady();
+      services.notices.rendererReady('island');
+    } else if (role === 'settings') {
+      services.notices.rendererReady('settings');
+    }
   });
-  handle(services, 'start-assistant', (requestId, prompt) => {
+  handle(services, 'start-assistant', (_event, requestId, prompt) => {
     const id = getText(requestId, 'Request ID', 128);
     const userPrompt = getText(prompt, 'Prompt', 30000);
     return services.assistant.start(id, userPrompt, (payload) => {
       getMainWindow()?.webContents.send('assistant-event', payload);
     });
   });
-  handle(services, 'cancel-assistant', (requestId) => {
+  handle(services, 'cancel-assistant', (_event, requestId) => {
     services.assistant.cancel(getText(requestId, 'Request ID', 128));
   });
-  handle(services, 'get-system-locale', () => app.getLocale());
-  handle(services, 'set-ui-locale', (locale) => {
+  handle(services, 'get-system-locale', (_event) => app.getLocale());
+  handle(services, 'set-ui-locale', (_event, locale) => {
     if (!isLocale(locale)) throw new TypeError('Invalid locale');
     setTrayLocale(locale);
   });
-  handle(services, 'set-ignore-mouse-events', (ignore, forward) => {
+  handle(services, 'set-ignore-mouse-events', (_event, ignore, forward) => {
     if (typeof ignore !== 'boolean' || typeof forward !== 'boolean') {
       throw new TypeError('Invalid mouse passthrough options');
     }
@@ -220,7 +230,7 @@ export function registerIPC(services: IPCServices) {
     if (process.platform === 'darwin' && window) window.setIgnoreMouseEvents(ignore, { forward });
   });
   ipcMain.on('set-window-input-shape', (event, rect: unknown) => {
-    if (event.sender !== getMainWindow()?.webContents || !isInputRect(rect)) return;
+    if (!isAllowedIpcSender(event.sender) || !isInputRect(rect)) return;
     try {
       applyWindowInputRegion(rect);
     } catch (error) {
@@ -228,40 +238,40 @@ export function registerIPC(services: IPCServices) {
       services.notices.report('inputShapeFailed', detail);
     }
   });
-  handle(services, 'focus-window', () => {
+  handle(services, 'focus-window', (_event) => {
     showMainWindow(true);
   });
-  handle(services, 'open-external', async (url) => {
+  handle(services, 'open-external', async (_event, url) => {
     const value = getText(url, 'URL', 8192);
     await shell.openExternal(value);
   });
-  handle(services, 'launch-app', (name) => launchApp(getText(name, 'Application name')));
-  handle(services, 'build-app-cache', buildAppCache);
-  handle(services, 'get-system-media', media.getSnapshot);
-  handle(services, 'open-media-session', (id) =>
+  handle(services, 'launch-app', (_event, name) => launchApp(getText(name, 'Application name')));
+  handle(services, 'build-app-cache', (_event) => buildAppCache());
+  handle(services, 'get-system-media', (_event) => media.getSnapshot());
+  handle(services, 'open-media-session', (_event, id) =>
     media.openSession(getText(id, 'Media session', 512)),
   );
-  handle(services, 'select-media-session', (id) => {
+  handle(services, 'select-media-session', (_event, id) => {
     if (id !== null) getText(id, 'Media session', 512);
     return media.selectSession(id);
   });
-  handle(services, 'get-bluetooth-status', getBluetoothStatus);
-  handle(services, 'get-camera-status', getCameraStatus);
-  handle(services, 'get-microphone-status', getMicrophoneStatus);
-  handle(services, 'control-system-media', (command, sessionId) => {
+  handle(services, 'get-bluetooth-status', (_event) => getBluetoothStatus());
+  handle(services, 'get-camera-status', (_event) => getCameraStatus());
+  handle(services, 'get-microphone-status', (_event) => getMicrophoneStatus());
+  handle(services, 'control-system-media', (_event, command, sessionId) => {
     if (!['previous', 'playpause', 'next'].includes(command)) {
       throw new TypeError('Invalid media command');
     }
     return media.control(command, getText(sessionId, 'Media session', 512));
   });
-  handle(services, 'get-displays', () =>
+  handle(services, 'get-displays', (_event) =>
     screen.getAllDisplays().map((display) => ({
       id: display.id,
       label: display.label || `Display ${display.id}`,
       bounds: display.bounds,
     })),
   );
-  handle(services, 'set-display', (id) => {
+  handle(services, 'set-display', (_event, id) => {
     if (typeof id !== 'string' && typeof id !== 'number') throw new TypeError('Invalid display');
     const target =
       screen.getAllDisplays().find((display) => String(display.id) === String(id)) ||
@@ -269,7 +279,7 @@ export function registerIPC(services: IPCServices) {
     getMainWindow()?.setBounds(getWindowBoundsForDisplay(target));
     showMainWindow();
   });
-  handle(services, 'set-auto-launch', async (enable) => {
+  handle(services, 'set-auto-launch', async (_event, enable) => {
     if (typeof enable !== 'boolean') throw new TypeError('Expected boolean');
     await setAutoLaunch(enable);
   });
