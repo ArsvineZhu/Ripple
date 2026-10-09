@@ -9,7 +9,17 @@ export async function openApp(app: string): Promise<void> {
     return;
   }
 
-  // 2. Launch targets — exe paths, UNC paths, shell: URIs.
+  // 2. IPv4 address or localhost → open in browser via http://
+  //    Match before path separators: localhost:3000/ is a URL, not an executable path.
+  if (
+    /^(\d{1,3}\.){3}\d{1,3}(:\d+)?([/?#].*)?$/.test(trimmedApp) ||
+    /^localhost(:\d+)?([/?#].*)?$/i.test(trimmedApp)
+  ) {
+    await window.electronAPI?.openExternal(`http://${trimmedApp}`);
+    return;
+  }
+
+  // 3. Launch targets — exe paths, UNC paths, shell: URIs.
   //    Checked before any dot-based heuristic so .exe and AppID dots never
   //    trip URL detection.
   const isLaunchTarget =
@@ -19,16 +29,6 @@ export async function openApp(app: string): Promise<void> {
 
   if (isLaunchTarget) {
     await window.electronAPI?.launchApp(trimmedApp);
-    return;
-  }
-
-  // 3. IPv4 address or localhost → open in browser via http://
-  //    (dev servers rarely run https)
-  if (
-    /^(\d{1,3}\.){3}\d{1,3}(:\d+)?(\/.*)?$/.test(trimmedApp) ||
-    /^localhost(:\d+)?(\/.*)?$/i.test(trimmedApp)
-  ) {
-    await window.electronAPI?.openExternal(`http://${trimmedApp}`);
     return;
   }
 
