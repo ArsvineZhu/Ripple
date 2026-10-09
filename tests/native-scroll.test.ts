@@ -129,6 +129,24 @@ it('keeps a sideways swipe on the rail through its own cross-axis drift', async 
   }
   expect(x.onSelect.mock.calls).toEqual([[1, 1]]);
 });
+it('turns a page for every quick swipe instead of every other one', async () => {
+  const x = await gestureHarness();
+  // Four swipes in a row, each starting while the previous momentum tail is still strong, so the
+  // input never goes quiet between them.
+  const swipes = [
+    [4, 10, 20, 32, 40],
+    [5, 12, 22, 34, 42],
+    [5, 12, 22, 34, 42],
+    [5, 12, 22, 34, 42],
+  ];
+  for (const swipe of swipes) for (const delta of swipe) await x.send(delta);
+  expect(x.onSelect.mock.calls).toEqual([
+    [1, 1],
+    [2, 1],
+    [3, 1],
+    [0, 1],
+  ]);
+});
 
 it('triggers on tiny directional input and bounds a long gesture with elastic return', async () => {
   vi.useFakeTimers();

@@ -107,7 +107,6 @@ export function TabPanels(props: Props) {
     previousIntent: number;
     lastDirection: number;
     lastDelta: number;
-    quietSince: number | null;
     risingSamples: number;
   } | null>(null);
   const reducedMotion = useReducedMotion();
@@ -192,7 +191,6 @@ export function TabPanels(props: Props) {
         current.startedAt = at;
         current.distance = current.lastDelta;
         current.peak = current.lastDelta;
-        current.quietSince = null;
         current.risingSamples = 0;
       } else {
         gesture.current = null;
@@ -256,20 +254,17 @@ export function TabPanels(props: Props) {
         if (direction !== previous.direction && magnitude < Math.min(2, previous.peak * 0.2))
           return;
         previous.risingSamples = magnitude > previous.lastDelta ? previous.risingSamples + 1 : 0;
-        if (magnitude <= Math.min(6, previous.peak * 0.25)) previous.quietSince ??= now;
         if (
           direction !== previous.direction ||
           isResumedWheelPush({
             magnitude,
             lastMagnitude: previous.lastDelta,
-            quietForMs: previous.quietSince === null ? 0 : now - previous.quietSince,
+            peakMagnitude: previous.peak,
             risingSamples: previous.risingSamples,
           })
         ) {
           clearTimeout(wheelTimer.current);
           endGesture();
-        } else if (magnitude > Math.min(6, previous.peak * 0.25) && !previous.risingSamples) {
-          previous.quietSince = null;
         }
       }
       if (!gesture.current) {
@@ -288,7 +283,6 @@ export function TabPanels(props: Props) {
           previousIntent: anchor,
           lastDirection: direction,
           lastDelta: magnitude,
-          quietSince: null,
           risingSamples: 0,
         };
       }
