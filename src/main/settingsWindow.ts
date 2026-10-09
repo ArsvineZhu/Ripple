@@ -74,14 +74,14 @@ export function openSettingsWindow(): BrowserWindow {
   const { diagnostics, onLoadError } = configured;
   if (process.platform === 'darwin') app.setActivationPolicy('regular');
   const window = new BrowserWindow({
-    width: 720,
-    height: 800,
-    minWidth: 520,
-    minHeight: 480,
+    width: 920,
+    height: 640,
+    minWidth: 760,
+    minHeight: 520,
     show: false,
     autoHideMenuBar: true,
     title: 'Ripple Next',
-    backgroundColor: '#111111',
+    backgroundColor: '#f2f2f7',
     // Settings is a normal window: on the taskbar while open, never click-through.
     skipTaskbar: false,
     icon: getIconPath(),
