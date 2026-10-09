@@ -1,13 +1,6 @@
 import { useCallback, useLayoutEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
-import {
-  animate,
-  motion,
-  useMotionValue,
-  useReducedMotion,
-  useSpring,
-  useTransform,
-} from 'motion/react';
+import { animate, motion, useMotionValue, useReducedMotion, useTransform } from 'motion/react';
 import type { MotionValue } from 'motion/react';
 import { nextTabId } from '../lib/navigation';
 import {
@@ -33,6 +26,54 @@ interface Props {
 
 function tabAt(tabs: number[], index: number): number {
   return tabs[((index % tabs.length) + tabs.length) % tabs.length] ?? 0;
+}
+
+/**
+ * Island motion. Two different models, because that is what the platform does.
+ *
+ * 1. The rubber band (a swipe running past a page) tracks the finger with a spring, then releases
+ *    along Apple's closed-form curve - the Lion-era fallback that Chromium still ships
+ *    (`ui/events/blink/input_scroll_elasticity_controller.cc`, mirrored from WebKit's
+ *    `ScrollElasticityController.mm`):
+ *
+ *      kRubberbandStiffness = 20     kRubberbandAmplitude = 0.31     kRubberbandPeriod = 1.6
+ *      x(t) = (x0 + v * t * 0.31) * e^(-12.5 * t)      // 12.5 = 20 / 1.6
+ *
+ *    `v` is the stretch velocity in px/s, positive while still pulling outward. The offset is
+ *    rounded toward zero, so the release ends when it reaches zero (24 ms guard). Apple publishes
+ *    no {k, c, m} for this, so the curve is evaluated per frame instead of integrated as a spring.
+ *
+ * 2. The page snap uses the only open WebKit page-transition curve
+ *    (`ViewGestureControllerGtk.cpp`): easeOutCubic with a velocity-scaled duration clamped to
+ *    100-400 ms. macOS Safari hands the same gesture to AppKit, whose curve is not public; the
+ *    velocity multiplier is not in the WebKit source either, so 1 is used here.
+ */
+const REBOUND_SPRING = { stiffness: 500, damping: 35, mass: 0.5 };
+const RUBBER_BAND_AMPLITUDE = 0.31;
+const RUBBER_BAND_DECAY = 20 / 1.6;
+const RUBBER_BAND_STOP = 0.5;
+const RUBBER_BAND_MIN_SECONDS = 0.024;
+const PAGE_SLIDE_MIN_SECONDS = 0.1;
+const PAGE_SLIDE_MAX_SECONDS = 0.4;
+const PAGE_SLIDE_VELOCITY_SCALE = 1;
+
+function rubberBandAt(initial: number, velocity: number, seconds: number): number {
+  return (
+    (initial + velocity * seconds * RUBBER_BAND_AMPLITUDE) * Math.exp(-RUBBER_BAND_DECAY * seconds)
+  );
+}
+
+/** First frame where the rounded offset is zero, with the platform's 24 ms guard. */
+function rubberBandReleaseSeconds(initial: number, velocity: number): number {
+  let seconds = RUBBER_BAND_MIN_SECONDS;
+  while (seconds < 1.2 && Math.abs(rubberBandAt(initial, velocity, seconds)) > RUBBER_BAND_STOP)
+    seconds += 0.008;
+  return seconds;
+}
+
+function easeOutCubic(progress: number): number {
+  const shifted = progress - 1;
+  return shifted * shifted * shifted + 1;
 }
 
 function Page({
@@ -89,8 +130,8 @@ export function TabPanels(props: Props) {
   });
   const [visualId, setVisualId] = useState(props.activeId);
   const visualRef = useRef(visualId);
-  const elasticTarget = useMotionValue(0);
-  const elastic = useSpring(elasticTarget, { stiffness: 500, damping: 35, mass: 0.5 });
+  const elastic = useMotionValue(0);
+  const elasticAnimation = useRef<ReturnType<typeof animate> | null>(null);
   const animation = useRef<ReturnType<typeof animate> | null>(null);
   const generation = useRef(0);
   const wheelTimer = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
@@ -121,6 +162,40 @@ export function TabPanels(props: Props) {
   } | null>(null);
   const reducedMotion = useReducedMotion();
 
+  // Release the band along the platform curve, seeded with the stretch velocity it has right now.
+  const releaseElastic = useCallback(() => {
+    elasticAnimation.current?.stop();
+    elasticAnimation.current = null;
+    const initial = elastic.get();
+    if (reducedMotion || Math.abs(initial) < RUBBER_BAND_STOP) {
+      elastic.set(0);
+      return;
+    }
+    const velocity = elastic.getVelocity();
+    const duration = rubberBandReleaseSeconds(initial, velocity);
+    const token = generation.current;
+    elasticAnimation.current = animate(elastic, 0, {
+      duration,
+      // Follow the closed form exactly: progress = 1 - x(t) / x0.
+      ease: (progress) => 1 - rubberBandAt(initial, velocity, progress * duration) / initial,
+      onComplete: () => {
+        if (generation.current === token) elastic.set(0);
+      },
+    });
+  }, [elastic, reducedMotion]);
+
+  // While the finger drives the stroke the band tracks it with a spring, so the value never jumps.
+  const trackElastic = useCallback(
+    (target: number) => {
+      if (reducedMotion) return;
+      elasticAnimation.current?.stop();
+      elasticAnimation.current = animate(elastic, target, { type: 'spring', ...REBOUND_SPRING });
+    },
+    [elastic, reducedMotion],
+  );
+
+  // Note: only the page position animation. The band owns its own lifecycle (track, release), and
+  // stopping it here would freeze the band whenever a page retargets.
   const stop = useCallback(() => {
     generation.current++;
     animation.current?.stop();
@@ -129,8 +204,8 @@ export function TabPanels(props: Props) {
   const endGesture = useCallback(() => {
     wheelTimer.current = undefined;
     gesture.current = null;
-    elasticTarget.set(0);
-  }, [elasticTarget]);
+    releaseElastic();
+  }, [releaseElastic]);
   const paint = useCallback((cursor: number, moving: boolean) => {
     const { tabs, onProgress } = propsRef.current;
     if (!tabs.length) return;
@@ -158,11 +233,8 @@ export function TabPanels(props: Props) {
     propsRef.current = props;
   });
   useLayoutEffect(() => {
-    if (reducedMotion) {
-      elasticTarget.set(0);
-      elastic.jump(0);
-    }
-  }, [reducedMotion, elasticTarget, elastic]);
+    if (reducedMotion) releaseElastic();
+  }, [reducedMotion, releaseElastic]);
 
   useLayoutEffect(() => {
     const viewport = viewportRef.current;
@@ -211,7 +283,7 @@ export function TabPanels(props: Props) {
       }
       clearTimeout(wheelTimer.current);
       wheelTimer.current = undefined;
-      elasticTarget.set(0);
+      releaseElastic();
       if (gesture.current)
         wheelTimer.current = setTimeout(
           endGesture,
@@ -352,7 +424,12 @@ export function TabPanels(props: Props) {
       current.lastDirection = direction;
       current.lastDelta = magnitude;
       const excess = Math.max(0, current.distance - pageWidth);
-      elasticTarget.set(reducedMotion ? 0 : direction * 28 * (1 - Math.exp(-excess / pageWidth)));
+      // The band is held while the finger drives the stroke. Once the samples decay, only momentum
+      // is left, so release it right there instead of holding it until the 150 ms input gap: the
+      // page then finishes its slide as one movement instead of passing its centre and creeping
+      // back.
+      if (reducedMotion || current.decayed) releaseElastic();
+      else trackElastic(direction * 28 * (1 - Math.exp(-excess / pageWidth)));
       clearTimeout(wheelTimer.current);
       wheelTimer.current = setTimeout(endGesture, 150);
     };
@@ -366,7 +443,7 @@ export function TabPanels(props: Props) {
       unsubscribeNative?.();
       viewport.removeEventListener('wheel', wheel);
     };
-  }, [position, elastic, elasticTarget, reducedMotion, stop, paint, endGesture]);
+  }, [position, elastic, reducedMotion, stop, paint, endGesture, releaseElastic, trackElastic]);
 
   useLayoutEffect(() => {
     const order = props.tabs.join(',');
@@ -394,12 +471,20 @@ export function TabPanels(props: Props) {
     // Retarget the continuous position, including the pages already on screen.
     // Never replace an entering page or reset to an integer during interruption.
     paint(position.get(), true);
+    const remaining = Math.abs(destination - position.get());
+    const speed = Math.abs(position.getVelocity());
+    const seconds = reducedMotion
+      ? 0
+      : Math.min(
+          PAGE_SLIDE_MAX_SECONDS,
+          Math.max(
+            PAGE_SLIDE_MIN_SECONDS,
+            speed > 1 ? (remaining / speed) * PAGE_SLIDE_VELOCITY_SCALE : PAGE_SLIDE_MAX_SECONDS,
+          ),
+        );
     animation.current = animate(position, destination, {
-      type: 'spring',
-      stiffness: 420,
-      damping: 42,
-      mass: 1,
-      ...(reducedMotion ? { duration: 0 } : {}),
+      duration: seconds,
+      ease: easeOutCubic,
       onComplete: () => {
         if (generation.current === token) paint(destination, false);
       },
