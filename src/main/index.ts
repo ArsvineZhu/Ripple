@@ -12,6 +12,7 @@ import {
   setWindowBackgroundMode,
 } from './window';
 import { hasTray, setTrayVisible } from './tray';
+import { shouldQuitAfterLastWindow } from './appLifecycle';
 import { configureSettingsWindow, openSettingsWindow } from './settingsWindow';
 import { createAppStateStore } from './services/appStateStore';
 import { createSecretStore } from './services/secretStore';
@@ -118,16 +119,16 @@ async function startApplication() {
   const assistant = createAssistantService(stateStore, secretStore, {
     getAppVersion: () => app.getVersion(),
   });
-  let backgroundMode = false;
-  const applyBackgroundMode = (enabled: boolean) => {
-    backgroundMode = enabled;
+  // backgroundMode still persists in settings until step 5; it no longer hides the tray
+  // or puts the island on the taskbar.
+  const applyBackgroundMode = (_enabled: boolean) => {
     try {
-      setWindowBackgroundMode(enabled);
+      setWindowBackgroundMode(_enabled);
     } catch (error) {
       reportBackgroundModeError(error);
     }
     try {
-      setTrayVisible(!enabled);
+      setTrayVisible(true);
     } catch (error) {
       reportBackgroundModeError(error);
     }
@@ -233,6 +234,7 @@ async function startApplication() {
   });
   app.on('window-all-closed', () => {
     diagnosticsService.record({ kind: 'app-lifecycle', phase: 'window-all-closed' });
-    if (process.platform === 'linux' && !backgroundMode && !hasTray()) app.quit();
+    // Island stays alive in the background; quit only when nothing is left to interact with.
+    if (shouldQuitAfterLastWindow({ platform: process.platform, hasTray: hasTray() })) app.quit();
   });
 }

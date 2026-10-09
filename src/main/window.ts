@@ -22,7 +22,6 @@ let mainWindow: BrowserWindow | null = null;
 let activeDiagnostics: DiagnosticsService | null = null;
 let mainWindowReady = false;
 let rendererIsReady = false;
-let backgroundMode = false;
 let displaySyncInstalled = false;
 let windowsInputRegion: ReturnType<typeof createWindowsInputRegion> | undefined;
 const syncWindowToDisplay = () => {
@@ -57,8 +56,9 @@ const installDisplaySync = () => {
 };
 const applySkipTaskbar = () => {
   if (!mainWindow) return;
-  if (process.platform === 'linux') inputShape.setSkipTaskbar(backgroundMode);
-  else mainWindow.setSkipTaskbar(backgroundMode);
+  // Island stays off the taskbar on every platform; settings uses its own window.
+  if (process.platform === 'linux') inputShape.setSkipTaskbar(true);
+  else mainWindow.setSkipTaskbar(true);
 };
 export const showMainWindow = (focus = false) => {
   if (!mainWindow || !mainWindowReady || !rendererIsReady) return;
@@ -113,7 +113,7 @@ export const createWindow = (
     frame: false,
     ...(isWindows ? {} : { thickFrame: false }),
     hasShadow: false,
-    skipTaskbar: backgroundMode,
+    skipTaskbar: true,
     icon: getIconPath(),
     ...(isMac ? { hiddenInMissionControl: true } : {}),
     ...(windowType ? { type: windowType } : {}),
@@ -173,8 +173,8 @@ export const createWindow = (
 };
 
 export const getMainWindow = () => mainWindow;
-export const setWindowBackgroundMode = (enabled: boolean) => {
-  backgroundMode = enabled;
+/** Kept until backgroundMode is removed; island taskbar visibility no longer follows it. */
+export const setWindowBackgroundMode = (_enabled: boolean) => {
   applySkipTaskbar();
 };
 const inputShape = createLinuxInputShape(() => mainWindow, showMainWindow);

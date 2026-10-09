@@ -24,6 +24,7 @@ type MockWindow = {
 const mock = vi.hoisted(() => {
   const windows: MockWindow[] = [];
   let nextId = 1;
+  let lastOptions: Record<string, unknown> | undefined;
   class MockBrowserWindow {
     id = nextId++;
     #destroyed = false;
@@ -52,7 +53,8 @@ const mock = vi.hoisted(() => {
     loadFile = vi.fn(async () => {
       for (const cb of this.#ready) cb();
     });
-    constructor() {
+    constructor(options: Record<string, unknown> = {}) {
+      lastOptions = options;
       windows.push(this as unknown as MockWindow);
     }
     isDestroyed() {
@@ -72,7 +74,13 @@ const mock = vi.hoisted(() => {
       for (const cb of this.#closed) cb();
     }
   }
-  return { windows, BrowserWindow: MockBrowserWindow };
+  return {
+    windows,
+    BrowserWindow: MockBrowserWindow,
+    get lastOptions() {
+      return lastOptions;
+    },
+  };
 });
 
 vi.mock('electron', () => ({
@@ -113,6 +121,11 @@ describe('settings window singleton', () => {
     expect(mock.windows).toHaveLength(1);
     expect(getSettingsWindow()).toBe(first);
     expect(getWindowRole(first.webContents as unknown as WebContents)).toBe('settings');
+    expect(mock.lastOptions?.skipTaskbar).toBe(false);
+    expect(mock.lastOptions).not.toHaveProperty('type');
+    expect('transparent' in (mock.lastOptions ?? {}) ? mock.lastOptions?.transparent : false).toBe(
+      false,
+    );
     const second = openSettingsWindow();
     expect(mock.windows).toHaveLength(1);
     expect(second).toBe(first);

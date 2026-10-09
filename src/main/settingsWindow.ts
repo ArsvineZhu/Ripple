@@ -68,6 +68,8 @@ export function openSettingsWindow(): BrowserWindow {
     autoHideMenuBar: true,
     title: 'Ripple Next',
     backgroundColor: '#111111',
+    // Settings is a normal window: on the taskbar while open, never click-through.
+    skipTaskbar: false,
     icon: getIconPath(),
     webPreferences: {
       contextIsolation: true,
