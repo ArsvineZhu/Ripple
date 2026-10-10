@@ -101,6 +101,9 @@ export function openSettingsWindow(): BrowserWindow {
     backgroundColor: settingsWindowBackgroundColor(),
     // Settings is a normal window: on the taskbar while open, never click-through.
     skipTaskbar: false,
+    // HIG: a settings window accommodates the size of the current pane, so its minimize and zoom
+    // buttons are dimmed (macOS only; the option has no meaning on Windows or Linux).
+    ...(process.platform === 'darwin' ? { minimizable: false, maximizable: false } : {}),
     icon: getIconPath(),
     webPreferences: {
       contextIsolation: true,

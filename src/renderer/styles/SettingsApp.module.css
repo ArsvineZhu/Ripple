@@ -14,12 +14,10 @@
   --settings-danger-soft: color-mix(in srgb, #ff3b30 12%, transparent);
 
   /* Type scale */
-  --settings-font-title: 22px;
   --settings-font-nav: 13px;
   --settings-font-body: 13px;
   --settings-font-label: 13px;
-  --settings-font-caption: 12px;
-  --settings-font-brand: 12px;
+  --settings-font-caption: 11px;
 
   /* Spacing */
   --settings-space-1: 4px;
@@ -29,10 +27,13 @@
   --settings-space-5: 20px;
   --settings-space-6: 28px;
 
+  /* Corner shape — the Island's native superellipse K (see useIslandGeometry: 1.62 expanded). */
+  --settings-corner-k: 1.62;
+
   /* Radius */
-  --settings-radius-sm: 6px;
-  --settings-radius-md: 8px;
-  --settings-radius-lg: 10px;
+  --settings-radius-sm: 10px;
+  --settings-radius-md: 12px;
+  --settings-radius-lg: 16px;
 
   /*
    * Bridge shared Select/SearchableSelect/inputs away from island theme tokens.
@@ -87,22 +88,9 @@
   flex-direction: column;
   gap: var(--settings-space-3);
   min-height: 0;
-  padding: var(--settings-space-4) var(--settings-space-3);
+  padding: var(--settings-space-3);
   background: var(--settings-sidebar);
   border-right: 1px solid var(--settings-border);
-}
-
-.brand {
-  padding: var(--settings-space-1) 10px var(--settings-space-2);
-}
-
-.brandTitle {
-  margin: 0;
-  font-size: var(--settings-font-brand);
-  font-weight: 600;
-  letter-spacing: 0.04em;
-  color: var(--settings-muted);
-  text-transform: uppercase;
 }
 
 .nav {
@@ -133,12 +121,13 @@
 
 .navItemActive {
   font-weight: 600;
-  background: var(--settings-accent-soft);
-  color: var(--settings-accent);
+  background: var(--settings-accent);
+  color: #ffffff;
 }
 
 .navItemActive:hover {
-  background: var(--settings-accent-soft);
+  /* Keep the accent fill while hovering: the pale hover tint reads as a different selection. */
+  background: color-mix(in srgb, var(--settings-accent) 88%, #000000);
 }
 
 .pane {
@@ -147,18 +136,6 @@
   min-width: 0;
   min-height: 0;
   background: var(--settings-bg);
-}
-
-.header {
-  flex-shrink: 0;
-  padding: var(--settings-space-5) var(--settings-space-6) var(--settings-space-3);
-}
-
-.title {
-  margin: 0;
-  font-size: var(--settings-font-title);
-  font-weight: 650;
-  letter-spacing: -0.02em;
 }
 
 .main {
@@ -171,4 +148,16 @@
   inset: 0;
   pointer-events: none;
   z-index: 10000;
+}
+
+/*
+ * Match the Island's native superellipse corners. `border-radius` still supplies each corner's
+ * size; `corner-shape` only changes the contour. Every button, field, row, card and menu in this
+ * window therefore follows the same curve as the Island. Browsers without `corner-shape` keep the
+ * rounded rectangles above, which is the documented Island fallback.
+ */
+@supports (corner-shape: superellipse(1.3)) {
+  :global([data-settings]) * {
+    corner-shape: superellipse(var(--settings-corner-k));
+  }
 }
