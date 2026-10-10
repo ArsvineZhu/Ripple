@@ -11,6 +11,7 @@ import {
   initializeLinuxInputShape,
 } from './window';
 import { hasTray, setTrayVisible } from './tray';
+import { installAppMenu } from './appMenu';
 import { shouldQuitAfterLastWindow } from './appLifecycle';
 import { configureSettingsWindow, openSettingsWindow } from './settingsWindow';
 import { createAppStateStore } from './services/appStateStore';
@@ -128,6 +129,7 @@ async function startApplication() {
   };
 
   void app.whenReady().then(async () => {
+    installAppMenu(openSettingsWindow);
     installBackgroundImageProtocol(
       async () => (await stateStore.load()).settings.backgroundImage,
       (error) => diagnosticsService.recordError('application', error),
