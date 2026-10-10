@@ -36,6 +36,8 @@ Click, Up/Down/Home/End and vertical wheel gestures select pages. Each continuou
 
 ## Launching, clipboard and feedback
 
+Data-empty feature pages use the search page as their size and hint-style standard. `expandedTabSize` supplies that shared target. An empty workflow page uses it and centers its hint with the search field's 20px, medium-weight typography; adding a workflow restores the list size. The quick-app strip appears only when both workflows and quick apps exist, so the empty page has no footer or separator.
+
 `lib/launch.ts` classifies workflow targets and browser input. Bare localhost/IPv4 addresses, including a trailing slash, are classified before path targets. Explicit URLs and app/file targets use their corresponding bridge calls. Workflows await launches in order, pause briefly between targets and continue after failures. Quick-app targets use the typed installed-app/command/URL contract.
 
 Clipboard text uses validated native reads/writes. The hook polls every two seconds and on focus; empty/image-only values are skipped. History remains in renderer memory for the current run. Copy buttons own their success/failure state. Clipboard and device polling continues while Island is collapsed.

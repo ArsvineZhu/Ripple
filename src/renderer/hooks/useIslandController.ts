@@ -207,7 +207,8 @@ export function useIslandController() {
   const nowPlayingText = mediaTrack ? `${trackTitle} • ${trackArtist}` : '';
   const textWidth = measureTextWidth(nowPlayingText) || nowPlayingText.length * 7;
   const nowPlayingWidth = Math.min(300, Math.max(122, Math.ceil(textWidth + 24 + 6 + 20)));
-  const getExpandedTabSize = (id: number) => expandedTabSize(id);
+  const getExpandedTabSize = (id: number) =>
+    expandedTabSize(id, id === 1 && workflows.length === 0);
   const expandedSize = getExpandedTabSize(currentTab);
   let width =
     mode === 'large'

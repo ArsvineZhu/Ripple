@@ -49,7 +49,7 @@ it('shows a failed quick launch on its own app item and clears it on retry', asy
   await act(async () =>
     root.render(
       createElement(WorkflowsTab, {
-        workflows: [],
+        workflows: [{ name: 'Daily', urls: ['https://example.com'] }],
         openWorkflow: vi.fn(),
         bgColor: '#000',
         textColor: '#fff',
@@ -60,7 +60,9 @@ it('shows a failed quick launch on its own app item and clears it on retry', asy
       }),
     ),
   );
-  const [first, second] = Array.from(container.querySelectorAll('button'));
+  const [first, second] = Array.from(
+    container.querySelectorAll<HTMLButtonElement>('#quick-apps button'),
+  );
   await act(async () => first.click());
   expect(first.parentElement?.querySelector('[role="alert"]')?.textContent).toContain(
     'appLaunchFailed',
