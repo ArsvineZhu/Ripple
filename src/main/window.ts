@@ -9,6 +9,10 @@ import { createWindowsInputRegion } from './platform/windows/inputRegion';
 import type { InputRect } from '../shared/contracts';
 import { getWindowBoundsForDisplay } from './windowBounds';
 import { registerWindowRole } from './windowRoles';
+import {
+  applyIslandCollectionBehavior,
+  ISLAND_WINDOW_TITLE,
+} from './platform/macos/islandWindowBehavior';
 import { installScrollGestureBridge } from './services/scrollGestures';
 declare const MAIN_WINDOW_VITE_DEV_SERVER_URL: string | undefined;
 declare const MAIN_WINDOW_VITE_NAME: string;
@@ -133,6 +137,7 @@ export const createWindow = (
   });
   attachWindowDiagnostics(mainWindow, diagnostics);
   registerWindowRole(mainWindow.webContents, 'island');
+  if (isMac) mainWindow.setTitle(ISLAND_WINDOW_TITLE);
   const closeScrollGestureBridge = installScrollGestureBridge(mainWindow.webContents);
   diagnostics.record({
     kind: 'window-lifecycle',
@@ -154,6 +159,16 @@ export const createWindow = (
     mainWindowReady = true;
     syncWindowToDisplay();
     showMainWindow();
+    // macOS: replace Electron's Transient-only Mission Control bit with the intentional whole mask.
+    if (isMac && mainWindow && !mainWindow.isDestroyed()) {
+      const result = applyIslandCollectionBehavior(mainWindow);
+      if (!result.ok) {
+        diagnostics.recordError(
+          'window',
+          new Error(`island collectionBehavior apply failed: ${result.reason}`),
+        );
+      }
+    }
   });
 
   mainWindow.on('closed', () => {

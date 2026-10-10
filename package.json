@@ -23,7 +23,8 @@
     "deadcode": "knip --config .config/knip.json",
     "duplicates": "jscpd --config .config/duplication.json src",
     "check": "pnpm run typecheck && pnpm run lint && pnpm run format:check && pnpm run deadcode && pnpm run duplicates",
-    "test": "vitest run --config .config/vitest.config.mts"
+    "test": "vitest run --config .config/vitest.config.mts",
+    "build:native": "node scripts/build-native.mjs"
   },
   "keywords": [
     "dynamic island",

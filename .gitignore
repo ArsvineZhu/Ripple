@@ -28,3 +28,7 @@ out/
 coverage/
 reports/
 *.tsbuildinfo
+
+# Native addon build products (generated; rebuild with `node scripts/build-native.mjs`)
+native/macos-window/build/
+*.node
