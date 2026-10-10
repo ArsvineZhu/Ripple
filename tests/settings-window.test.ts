@@ -135,7 +135,7 @@ describe('settings window singleton', () => {
     expect(getSettingsWindow()).toBe(first);
     expect(getWindowRole(first.webContents as unknown as WebContents)).toBe('settings');
     expect(mock.lastOptions?.skipTaskbar).toBe(false);
-    expect(mock.lastOptions?.backgroundColor).toBe('#f2f2f7');
+    expect(mock.lastOptions?.backgroundColor).toBe('#ffffff');
     expect(mock.lastOptions).not.toHaveProperty('type');
     expect('transparent' in (mock.lastOptions ?? {}) ? mock.lastOptions?.transparent : false).toBe(
       false,

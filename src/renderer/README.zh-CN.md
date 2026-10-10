@@ -6,6 +6,8 @@ Renderer 负责 Island 展示、交互和各功能反馈，系统访问通过 [p
 
 ## 状态、语言与样式
 
+独立设置窗口随系统明暗偏好使用黑白配色。位置选项保留圆形单选指示器，不受窗口超椭圆样式影响。文本输入框最小高度为 36 CSS 像素，与通用 Select 控件保持一致。
+
 `AppStateProvider` 在渲染前加载主进程快照，再发送类型化补丁。设置和持久化功能数据由主进程状态服务保存。`SettingsProvider` 管理 renderer 语言偏好；内置 i18n 在渲染前初始化，并将实际语言同步到托盘。`Intl` 按所选语言和系统／保存的 IANA 时区格式化日期、数字。
 
 `styles/base.css` 负责透明文档、字体和共享动画，`styles/tokens.css` 负责主题／字体 token。Island、通用控件和功能视图各自拥有 CSS Modules。静态展示写入对应模块，动态颜色／几何和 Motion 参数留在所属模块。`OverlayProvider` 将 Select 菜单挂载在 Island 内，`useIslandInteraction` 管理移动、焦点、指针离开与菜单保护。

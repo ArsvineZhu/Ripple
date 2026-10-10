@@ -6,6 +6,8 @@ The renderer owns Island presentation, interaction and feature feedback. OS acce
 
 ## State, language and style
 
+The dedicated settings window uses a monochrome palette following the OS light/dark preference. Position choices retain round radio indicators, including inside the superellipse shell. Text fields have a 36 CSS pixel minimum height, matching the shared Select control.
+
 `AppStateProvider` loads the main-owned snapshot before rendering and sends typed patches. Settings and saved feature data live in the main state service. `SettingsProvider` owns the renderer language preference; bundled i18n initializes before rendering and synchronizes the resolved language to the tray. `Intl` formats dates/numbers in the selected locale and system or saved IANA time zone.
 
 `styles/base.css` owns the transparent document, fonts and shared animation; `styles/tokens.css` owns theme/font tokens. Island, shared controls and feature views own their CSS Modules. Keep static presentation there and runtime color/geometry and Motion values with their owners. `OverlayProvider` mounts Select menus inside the Island; `useIslandInteraction` owns movement, focus, pointer departure and menu guards.

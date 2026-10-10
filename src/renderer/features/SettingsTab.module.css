@@ -147,7 +147,7 @@
 .quitButton {
   min-height: 24px;
   padding: 3px 12px;
-  color: #ffffff;
+  color: var(--settings-bg, var(--island-bg-color));
   background: var(--settings-danger, #ff3b30);
   border-radius: var(--settings-radius-md, 8px);
 }
@@ -271,13 +271,14 @@
   width: 100%;
   min-width: 0;
   max-width: 100%;
-  padding: 3px 8px;
+  min-height: 36px;
+  padding: 7px 12px;
   color: var(--settings-fg, var(--island-text-color));
   background: var(--control-bg);
   border: 1px solid var(--control-border);
   border-radius: var(--control-radius);
   outline: none;
-  font-size: 13px;
+  font-size: 14px;
 }
 
 .input:focus {
@@ -292,12 +293,12 @@
 
 .input.invalidInput,
 .input.invalidInput:focus {
-  border-color: color-mix(in srgb, #ff6969, transparent 35%);
+  border-color: var(--settings-fg, var(--island-text-color));
 }
 
 .fieldError {
   margin: -4px 0 0;
-  color: #ff8b8b;
+  color: var(--settings-fg, var(--island-text-color));
   font-size: 11px;
   line-height: 1.4;
   overflow-wrap: anywhere;
@@ -388,7 +389,7 @@
 }
 
 .dangerButton {
-  color: #ff4d4d;
+  color: var(--settings-danger, var(--island-text-color));
   font-size: 13px;
 }
 
@@ -433,8 +434,16 @@
   height: 1px;
 }
 
-.radioCustom {
-  display: none;
+.radioLabel .radioCustom {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 16px;
+  width: 16px;
+  height: 16px;
+  border: 2px solid color-mix(in srgb, var(--island-text-color) 40%, transparent);
+  border-radius: 50%;
+  corner-shape: round;
 }
 
 .radioLabel input:checked + .radioCustom::after {
@@ -442,6 +451,7 @@
   width: 6px;
   height: 6px;
   border-radius: 50%;
+  corner-shape: round;
   background: var(--island-text-color);
 }
 
@@ -563,7 +573,7 @@
   gap: 6px;
   min-height: 24px;
   padding: 3px 10px;
-  color: #ffffff;
+  color: var(--settings-bg, var(--island-bg-color));
   background: var(--settings-accent, var(--island-text-color));
   border: 0;
   border-radius: var(--control-radius);
@@ -696,11 +706,12 @@
 .appName {
   flex: 1;
   min-width: 0;
-  padding: 6px 0;
+  min-height: 36px;
+  padding: 7px 0;
   color: var(--settings-fg, var(--island-text-color));
   border: 0;
   background: none;
-  font-size: 13px;
+  font-size: 14px;
   outline: none;
 }
 

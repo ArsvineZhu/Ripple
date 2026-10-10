@@ -16,7 +16,7 @@ let configured: {
 
 /** Match the settings shell OS light/dark tokens (not island themes). */
 function settingsWindowBackgroundColor(): string {
-  return nativeTheme.shouldUseDarkColors ? '#1c1c1e' : '#f2f2f7';
+  return nativeTheme.shouldUseDarkColors ? '#000000' : '#ffffff';
 }
 
 export function configureSettingsWindow(options: {

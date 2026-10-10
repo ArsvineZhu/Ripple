@@ -1,17 +1,19 @@
 .app {
   /* Color — OS light/dark via prefers-color-scheme only (not island themes) */
-  --settings-fg: #1d1d1f;
-  --settings-muted: #6e6e73;
-  --settings-bg: #f2f2f7;
-  --settings-sidebar: #ebebf0;
+  --settings-fg: #000000;
+  --settings-muted: #707070;
+  --settings-bg: #ffffff;
+  --settings-sidebar: #ffffff;
   --settings-card: #ffffff;
   --settings-panel: #ffffff;
-  --settings-border: rgba(60, 60, 67, 0.12);
-  --settings-divider: rgba(60, 60, 67, 0.1);
-  --settings-accent: #007aff;
-  --settings-accent-soft: color-mix(in srgb, #007aff 14%, transparent);
-  --settings-danger: #ff3b30;
-  --settings-danger-soft: color-mix(in srgb, #ff3b30 12%, transparent);
+  --settings-border: rgba(0, 0, 0, 0.12);
+  --settings-divider: rgba(0, 0, 0, 0.1);
+  --settings-accent: var(--settings-fg);
+  --settings-accent-soft: color-mix(in srgb, var(--settings-fg) 14%, transparent);
+  --settings-danger: var(--settings-fg);
+  --settings-danger-soft: color-mix(in srgb, var(--settings-fg) 12%, transparent);
+  --notice-warning-color: var(--settings-fg);
+  --notice-error-color: var(--settings-fg);
 
   /* Type scale */
   --settings-font-nav: 13px;
@@ -68,18 +70,14 @@
 
 @media (prefers-color-scheme: dark) {
   .app {
-    --settings-fg: #f5f5f7;
-    --settings-muted: #98989d;
-    --settings-bg: #1c1c1e;
-    --settings-sidebar: #232326;
-    --settings-card: #2c2c2e;
-    --settings-panel: #2c2c2e;
+    --settings-fg: #ffffff;
+    --settings-muted: #989898;
+    --settings-bg: #000000;
+    --settings-sidebar: #000000;
+    --settings-card: #0d0d0d;
+    --settings-panel: #0d0d0d;
     --settings-border: rgba(255, 255, 255, 0.1);
     --settings-divider: rgba(255, 255, 255, 0.08);
-    --settings-accent: #0a84ff;
-    --settings-accent-soft: color-mix(in srgb, #0a84ff 22%, transparent);
-    --settings-danger: #ff453a;
-    --settings-danger-soft: color-mix(in srgb, #ff453a 18%, transparent);
   }
 }
 
@@ -122,12 +120,11 @@
 .navItemActive {
   font-weight: 600;
   background: var(--settings-accent);
-  color: #ffffff;
+  color: var(--settings-bg);
 }
 
 .navItemActive:hover {
-  /* Keep the accent fill while hovering: the pale hover tint reads as a different selection. */
-  background: color-mix(in srgb, var(--settings-accent) 88%, #000000);
+  background: color-mix(in srgb, var(--settings-accent) 88%, var(--settings-bg));
 }
 
 .pane {
