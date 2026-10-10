@@ -111,7 +111,7 @@ export type ScrollGestureStart = z.infer<typeof ScrollGestureStartSchema>;
 export type NoticeCode =
   | 'appLaunchFailed'
   | 'autoLaunchFailed'
-  | 'backgroundModeFailed'
+  | 'showTrayFailed'
   | 'stateSaveFailed'
   | 'stateLoadFailed'
   | 'diagnosticsFolderOpenFailed'
@@ -147,7 +147,7 @@ export function noticeAreaForCode(code: NoticeCode): NoticeArea {
     case 'searchOpenFailed':
       return 'browser-search';
     case 'autoLaunchFailed':
-    case 'backgroundModeFailed':
+    case 'showTrayFailed':
     case 'stateSaveFailed':
     case 'diagnosticsFolderOpenFailed':
     case 'secretStorageUnavailable':
@@ -204,7 +204,10 @@ export interface InvokeMap {
     result: void;
   };
   'get-system-media': { args: []; result: MediaSnapshot };
-  'select-media-session': { args: [id: string | null]; result: MediaOperationResult };
+  'select-media-session': {
+    args: [id: string | null];
+    result: MediaOperationResult;
+  };
   'open-media-session': { args: [id: string]; result: MediaOperationResult };
   'get-bluetooth-status': { args: []; result: boolean };
   'get-camera-status': { args: []; result: boolean };
@@ -220,6 +223,8 @@ export interface InvokeMap {
   'set-display': { args: [id: string | number]; result: void };
   'set-auto-launch': { args: [enable: boolean]; result: void };
   'focus-window': { args: []; result: void };
+  'open-settings': { args: []; result: void };
+  'quit-app': { args: []; result: void };
 }
 export interface ElectronAPI {
   getAppBootstrap(): Promise<AppBootstrap>;
@@ -234,6 +239,7 @@ export interface ElectronAPI {
   startAssistant(requestId: string, prompt: string): Promise<string | null>;
   cancelAssistant(requestId: string): Promise<void>;
   onAppNotice(callback: (notice: AppNotice) => void): () => void;
+  onAppStateChanged(callback: (state: AppState) => void): () => void;
   onAssistantEvent(callback: (event: AssistantEvent) => void): () => void;
   onScrollGestureStart(callback: (event: ScrollGestureStart) => void): () => void;
   getSystemLocale(): Promise<string>;
@@ -255,4 +261,6 @@ export interface ElectronAPI {
   setDisplay(id: string | number): Promise<void>;
   setAutoLaunch(enable: boolean): Promise<void>;
   focusWindow(): Promise<void>;
+  openSettings(): Promise<void>;
+  quitApp(): Promise<void>;
 }

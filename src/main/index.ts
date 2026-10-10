@@ -1,7 +1,6 @@
 import { app, powerMonitor, safeStorage, screen } from 'electron';
-import fs from 'node:fs';
-import path from 'node:path';
 import os from 'node:os';
+import { configureApplicationProfile } from './appProfile';
 import { defaultAppState } from '../shared/appState';
 import { registerIPC } from './ipc';
 import {
@@ -9,10 +8,11 @@ import {
   createWindow,
   getMainWindow,
   initializeLinuxInputShape,
-  setWindowBackgroundMode,
-  showMainWindow,
 } from './window';
 import { hasTray, setTrayVisible } from './tray';
+import { installAppMenu } from './appMenu';
+import { shouldQuitAfterLastWindow } from './appLifecycle';
+import { configureSettingsWindow, openSettingsWindow } from './settingsWindow';
 import { createAppStateStore } from './services/appStateStore';
 import { createSecretStore } from './services/secretStore';
 import { createAssistantService } from './services/assistant';
@@ -29,7 +29,10 @@ import {
 
 registerBackgroundImageScheme();
 app.setName('Ripple Next');
+const userDataPath = configureApplicationProfile(app);
 if (process.platform === 'win32') app.setAppUserModelId('com.arsvinezhu.ripple-next');
+// LSUIElement agent: start accessory; Settings open switches to regular (LuLu-style).
+if (process.platform === 'darwin') app.setActivationPolicy('accessory');
 
 if (!app.requestSingleInstanceLock()) {
   app.quit();
@@ -38,10 +41,6 @@ if (!app.requestSingleInstanceLock()) {
 }
 
 async function startApplication() {
-  const userDataPath = path.join(app.getPath('appData'), 'Ripple Next');
-  fs.mkdirSync(userDataPath, { recursive: true, mode: 0o700 });
-  app.setPath('userData', userDataPath);
-
   const notices = createNoticeBus();
   let diagnostics: DiagnosticsService | null = null;
   let startupComplete = false;
@@ -55,20 +54,21 @@ async function startApplication() {
     const detail = error instanceof Error ? error.message : String(error);
     notices.report('inputShapeFailed', detail);
   }
-  function reportBackgroundModeError(error: unknown) {
+  function reportShowTrayError(error: unknown) {
     diagnostics?.recordError('application', error);
     const detail = error instanceof Error ? error.message : String(error);
-    notices.report('backgroundModeFailed', detail, 'warning', 'settings');
+    notices.report('showTrayFailed', detail, 'warning', 'settings');
   }
 
   app.on('second-instance', () => {
     if (!startupComplete || !diagnostics) return;
-    if (getMainWindow()) showMainWindow(true);
-    else createWindow(diagnostics, reportWindowLoadError);
+    if (!getMainWindow()) createWindow(diagnostics, reportWindowLoadError);
+    openSettingsWindow();
   });
   app.on('activate', () => {
     if (!startupComplete || !diagnostics) return;
     if (!getMainWindow()) createWindow(diagnostics, reportWindowLoadError);
+    openSettingsWindow();
   });
 
   const diagnosticsService = await initializeDiagnostics(userDataPath);
@@ -115,30 +115,17 @@ async function startApplication() {
   const assistant = createAssistantService(stateStore, secretStore, {
     getAppVersion: () => app.getVersion(),
   });
-  let backgroundMode = false;
-  const applyBackgroundMode = (enabled: boolean) => {
-    backgroundMode = enabled;
+  // macOS honors showTray; Windows/Linux always keep the tray.
+  const applyShowTray = (visible: boolean) => {
     try {
-      setWindowBackgroundMode(enabled);
+      setTrayVisible(process.platform === 'darwin' ? visible : true);
     } catch (error) {
-      reportBackgroundModeError(error);
-    }
-    try {
-      setTrayVisible(!enabled);
-    } catch (error) {
-      reportBackgroundModeError(error);
-    }
-    if (process.platform === 'darwin' && app.dock) {
-      try {
-        if (enabled) app.dock.hide();
-        else void app.dock.show().catch(reportBackgroundModeError);
-      } catch (error) {
-        reportBackgroundModeError(error);
-      }
+      reportShowTrayError(error);
     }
   };
 
   void app.whenReady().then(async () => {
+    installAppMenu(openSettingsWindow);
     installBackgroundImageProtocol(
       async () => (await stateStore.load()).settings.backgroundImage,
       (error) => diagnosticsService.recordError('application', error),
@@ -171,10 +158,14 @@ async function startApplication() {
               : process.env.DISPLAY
                 ? 'x11'
                 : 'unknown',
-      secureStorage: await safeStorage.isAsyncEncryptionAvailable().catch((error) => {
-        diagnosticsService.recordError('application', error);
-        return false;
-      }),
+      // Never probe the OS keychain while starting. On macOS isAsyncEncryptionAvailable() reads (and
+      // creates) the "Safe Storage" keychain item, so macOS asks for the login password on every
+      // launch. Availability is checked when a key is actually saved or read
+      // (secretStore.ensureSecureStorage) and a failure is reported to Settings from there.
+      secureStorage:
+        process.platform === 'linux'
+          ? safeStorage.getSelectedStorageBackend() !== 'basic_text'
+          : true,
     });
     powerMonitor.on('suspend', () =>
       diagnosticsService.record({ kind: 'app-lifecycle', phase: 'suspend' }),
@@ -183,13 +174,22 @@ async function startApplication() {
       diagnosticsService.record({ kind: 'app-lifecycle', phase: 'resume' }),
     );
     screen.on('display-added', () =>
-      diagnosticsService.record({ kind: 'app-lifecycle', phase: 'display-added' }),
+      diagnosticsService.record({
+        kind: 'app-lifecycle',
+        phase: 'display-added',
+      }),
     );
     screen.on('display-removed', () =>
-      diagnosticsService.record({ kind: 'app-lifecycle', phase: 'display-removed' }),
+      diagnosticsService.record({
+        kind: 'app-lifecycle',
+        phase: 'display-removed',
+      }),
     );
     screen.on('display-metrics-changed', () =>
-      diagnosticsService.record({ kind: 'app-lifecycle', phase: 'display-metrics-changed' }),
+      diagnosticsService.record({
+        kind: 'app-lifecycle',
+        phase: 'display-metrics-changed',
+      }),
     );
     let initialState = defaultAppState;
     try {
@@ -212,14 +212,18 @@ async function startApplication() {
       );
     }
 
-    applyBackgroundMode(initialState.settings.backgroundMode);
+    applyShowTray(initialState.settings.showTray);
+    configureSettingsWindow({
+      diagnostics: diagnosticsService,
+      onLoadError: reportWindowLoadError,
+    });
     closeMedia = registerIPC({
       stateStore,
       secretStore,
       assistant,
       notices,
       diagnostics: diagnosticsService,
-      applyBackgroundMode,
+      applyShowTray,
     });
     initializeLinuxInputShape(diagnosticsService, reportInputShapeError);
     createWindow(diagnosticsService, reportWindowLoadError);
@@ -233,7 +237,17 @@ async function startApplication() {
     stateStore.close();
   });
   app.on('window-all-closed', () => {
-    diagnosticsService.record({ kind: 'app-lifecycle', phase: 'window-all-closed' });
-    if (process.platform === 'linux' && !backgroundMode && !hasTray()) app.quit();
+    diagnosticsService.record({
+      kind: 'app-lifecycle',
+      phase: 'window-all-closed',
+    });
+    // Island stays alive in the background; quit only when nothing is left to interact with.
+    if (
+      shouldQuitAfterLastWindow({
+        platform: process.platform,
+        hasTray: hasTray(),
+      })
+    )
+      app.quit();
   });
 }

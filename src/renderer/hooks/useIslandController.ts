@@ -1,6 +1,6 @@
 import { useTranslation } from 'react-i18next';
 import { useIslandInteraction } from './useIslandInteraction';
-import { useEffect, useLayoutEffect, useReducer, useState } from 'react';
+import { useEffect, useLayoutEffect, useReducer } from 'react';
 
 import { measureTextWidth } from '../lib/text';
 import { useAssistant } from './useAssistant';
@@ -25,7 +25,6 @@ export function useIslandController() {
   const { t } = useTranslation();
   const { state: appState, updateState } = useAppState();
   const [requestedMode, setMode] = useReducer(modeReducer, 'still');
-  const [settingsContentWidth, setSettingsContentWidth] = useState<number | null>(null);
   const {
     batteryAlertsEnabled,
     islandBorderEnabled,
@@ -209,7 +208,7 @@ export function useIslandController() {
   const textWidth = measureTextWidth(nowPlayingText) || nowPlayingText.length * 7;
   const nowPlayingWidth = Math.min(300, Math.max(122, Math.ceil(textWidth + 24 + 6 + 20)));
   const getExpandedTabSize = (id: number) =>
-    expandedTabSize(id, settingsContentWidth, positionMode === 'free');
+    expandedTabSize(id, id === 1 && workflows.length === 0);
   const expandedSize = getExpandedTabSize(currentTab);
   let width =
     mode === 'large'
@@ -300,7 +299,6 @@ export function useIslandController() {
     sideStyles,
     width,
     getExpandedTabSize,
-    onSettingsContentWidthChange: setSettingsContentWidth,
     height,
     hideNotActiveIslandEnabled,
     bgColor,

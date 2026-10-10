@@ -3,14 +3,157 @@
   flex-direction: column;
   width: 100%;
   height: 100%;
-  padding: 20px 25px;
+  padding: var(--settings-space-5, 20px) var(--settings-space-6, 28px) var(--settings-space-6, 28px);
   overflow: hidden;
+  color: var(--settings-fg, inherit);
+  background: transparent;
 }
 
 .container :global(.scroll-content) {
   display: flex;
   flex-direction: column;
-  gap: 40px;
+  gap: var(--settings-space-5, 20px);
+}
+
+/* Continuous preference group (sample chrome for General) */
+.prefGroupBlock {
+  display: flex;
+  flex-direction: column;
+  gap: var(--settings-space-2, 8px);
+  min-width: 0;
+}
+
+.prefGroupCaption {
+  margin: 0;
+  padding: 0 2px;
+  color: var(--settings-muted, inherit);
+  font-size: var(--settings-font-caption, 11px);
+  font-weight: 600;
+  letter-spacing: 0.02em;
+  text-transform: uppercase;
+}
+
+.prefGroup {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
+  background: var(--settings-card, var(--settings-panel, #fff));
+  border: 1px solid var(--settings-border, rgba(60, 60, 67, 0.12));
+  border-radius: var(--settings-radius-lg, 10px);
+}
+
+.prefRow {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: var(--settings-space-4, 16px);
+  min-width: 0;
+  min-height: 32px;
+  padding: 7px var(--settings-space-4, 16px);
+  border-bottom: 1px solid var(--settings-divider, rgba(60, 60, 67, 0.1));
+}
+
+.prefRow:last-child {
+  border-bottom: none;
+}
+
+.prefRowStacked {
+  flex-direction: column;
+  align-items: stretch;
+  gap: var(--settings-space-2, 8px);
+  padding-top: 12px;
+  padding-bottom: 12px;
+}
+
+.prefRowText {
+  display: flex;
+  flex: 1;
+  flex-direction: column;
+  gap: 2px;
+  min-width: 0;
+}
+
+.prefRowLabel {
+  font-size: var(--settings-font-label, 13px);
+  font-weight: 500;
+  color: var(--settings-fg, inherit);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+
+.prefRowHint {
+  margin: 0;
+  color: var(--settings-muted, inherit);
+  font-size: var(--settings-font-caption, 11px);
+  line-height: 1.35;
+}
+
+.prefRowControl {
+  display: flex;
+  flex-shrink: 0;
+  align-items: center;
+  justify-content: flex-end;
+  max-width: 60%;
+  min-width: 0;
+}
+
+.prefCard {
+  display: flex;
+  flex-direction: column;
+  min-width: 0;
+  overflow: hidden;
+  background: var(--settings-card, var(--settings-panel, #fff));
+  border: 1px solid var(--settings-border, rgba(60, 60, 67, 0.12));
+  border-radius: var(--settings-radius-lg, 10px);
+}
+
+.prefCardHint {
+  margin: 0;
+  padding: 12px 16px 0;
+  color: var(--settings-muted, inherit);
+  font-size: var(--settings-font-caption, 11px);
+  line-height: 1.4;
+}
+
+.prefStack {
+  display: flex;
+  flex-direction: column;
+  gap: var(--settings-space-3, 12px);
+  min-width: 0;
+  padding: 12px 16px 14px;
+}
+
+.prefStack > .prefRow {
+  margin: 0 -16px;
+  padding-left: 16px;
+  padding-right: 16px;
+  border-bottom: 1px solid var(--settings-divider, rgba(60, 60, 67, 0.1));
+}
+
+.prefStack > .prefRow:last-child {
+  border-bottom: none;
+}
+
+.prefStack > .prefRow:first-child {
+  margin-top: -12px;
+}
+
+.prefStack > .prefRow:last-child {
+  margin-bottom: -14px;
+}
+
+.quitButton {
+  min-height: 24px;
+  padding: 3px 12px;
+  color: var(--settings-bg, var(--island-bg-color));
+  background: var(--settings-danger, #ff3b30);
+  border-radius: var(--settings-radius-md, 8px);
+}
+
+.quitButton:hover {
+  filter: brightness(1.05);
 }
 
 .section {
@@ -29,10 +172,9 @@
 .aboutValue {
   flex: 0 1 auto;
   min-width: 0;
-  max-width: 70%;
   overflow-wrap: anywhere;
-  font-size: 12px;
-  opacity: 0.7;
+  color: var(--settings-muted, inherit);
+  font-size: var(--settings-font-caption, 11px);
   text-align: right;
 }
 
@@ -43,13 +185,12 @@
   flex: 0 1 auto;
   gap: 5px;
   min-width: 0;
-  max-width: 70%;
   padding: 0;
-  color: var(--island-text-color);
+  color: var(--settings-accent, var(--island-text-color));
   background: transparent;
   border: 0;
   font: inherit;
-  font-size: 12px;
+  font-size: 13px;
   opacity: 0.75;
   overflow-wrap: anywhere;
   text-align: right;
@@ -75,7 +216,9 @@
 }
 
 .sectionHeading {
+  color: var(--settings-muted, inherit);
   font-size: 13px;
+  font-weight: 600;
   text-transform: uppercase;
   opacity: 0.5;
   letter-spacing: 0.05em;
@@ -103,7 +246,7 @@
 }
 
 .label {
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 500;
   opacity: 0.9;
   min-width: 0;
@@ -126,8 +269,9 @@
   width: 100%;
   min-width: 0;
   max-width: 100%;
-  padding: 10px 14px;
-  color: var(--island-text-color);
+  min-height: 36px;
+  padding: 7px 12px;
+  color: var(--settings-fg, var(--island-text-color));
   background: var(--control-bg);
   border: 1px solid var(--control-border);
   border-radius: var(--control-radius);
@@ -141,18 +285,18 @@
 }
 
 .input::placeholder {
-  color: var(--island-text-color);
+  color: var(--settings-fg, var(--island-text-color));
   opacity: 0.45;
 }
 
 .input.invalidInput,
 .input.invalidInput:focus {
-  border-color: color-mix(in srgb, #ff6969, transparent 35%);
+  border-color: var(--settings-fg, var(--island-text-color));
 }
 
 .fieldError {
   margin: -4px 0 0;
-  color: #ff8b8b;
+  color: var(--settings-fg, var(--island-text-color));
   font-size: 11px;
   line-height: 1.4;
   overflow-wrap: anywhere;
@@ -166,18 +310,25 @@
 .tabList {
   display: flex;
   flex-direction: column;
-  gap: 6px;
+  gap: 0;
+  margin: 8px 0 0;
+  border-top: 1px solid var(--settings-divider, rgba(60, 60, 67, 0.1));
 }
 
 .tabItem {
   display: flex;
   align-items: center;
   gap: 10px;
-  padding: 10px 12px;
-  border-radius: 14px;
-  background: var(--control-bg);
-  border: 1px solid var(--control-border);
+  padding: 10px 16px;
+  border-radius: 0;
+  background: transparent;
+  border: none;
+  border-bottom: 1px solid var(--settings-divider, rgba(60, 60, 67, 0.1));
   cursor: grab;
+}
+
+.tabItem:last-child {
+  border-bottom: none;
 }
 
 .tabItem svg {
@@ -192,7 +343,6 @@
 
 .hidden {
   opacity: 0.45;
-  border-style: dashed;
 }
 
 .tabItem[data-dragging] {
@@ -217,7 +367,7 @@
   gap: 4px;
   flex-shrink: 0;
   padding: 6px;
-  color: var(--island-text-color);
+  color: var(--settings-danger, var(--island-text-color));
   background: transparent;
   border: none;
   cursor: pointer;
@@ -237,8 +387,8 @@
 }
 
 .dangerButton {
-  color: #ff4d4d;
-  font-size: 12px;
+  color: var(--settings-danger, var(--island-text-color));
+  font-size: 13px;
 }
 
 .positionCard {
@@ -246,14 +396,13 @@
   flex-direction: column;
   align-items: center;
   gap: 12px;
-  padding: 15px;
-  border-radius: 18px;
-  border: 1px solid var(--control-border);
-  background: var(--control-bg);
+  padding: 14px 16px 16px;
+  border: none;
+  background: transparent;
 }
 
 .positionHeading {
-  font-size: 14px;
+  font-size: 13px;
   font-weight: 500;
   text-align: center;
 }
@@ -272,7 +421,7 @@
   position: relative;
   gap: 6px;
   cursor: pointer;
-  font-size: 12px;
+  font-size: 13px;
   min-width: 0;
 }
 
@@ -283,14 +432,16 @@
   height: 1px;
 }
 
-.radioCustom {
-  width: 14px;
-  height: 14px;
-  border: 2px solid var(--control-focus);
+.radioLabel .radioCustom {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  flex: 0 0 16px;
+  width: 16px;
+  height: 16px;
+  border: 2px solid color-mix(in srgb, var(--island-text-color) 40%, transparent);
   border-radius: 50%;
-  flex-shrink: 0;
-  display: grid;
-  place-items: center;
+  corner-shape: round;
 }
 
 .radioLabel input:checked + .radioCustom::after {
@@ -298,6 +449,7 @@
   width: 6px;
   height: 6px;
   border-radius: 50%;
+  corner-shape: round;
   background: var(--island-text-color);
 }
 
@@ -315,8 +467,17 @@
 .manualPosition {
   display: flex;
   flex-direction: column;
-  gap: 12px;
+  gap: 4px;
+  width: 100%;
   overflow: hidden;
+}
+
+.positionCard .prefRow {
+  width: 100%;
+  min-height: 0;
+  padding-left: 0;
+  padding-right: 0;
+  border-bottom: none;
 }
 
 .range {
@@ -388,18 +549,6 @@
   background: var(--island-text-color);
 }
 
-.range::-moz-range-thumb {
-  width: 12px;
-  height: 12px;
-  border: 2px solid var(--island-bg-color);
-  border-radius: 50%;
-  background: var(--island-text-color);
-  box-shadow: 0 1px 6px color-mix(in srgb, var(--island-text-color), transparent 58%);
-  transition:
-    transform 150ms cubic-bezier(0.22, 1, 0.36, 1),
-    box-shadow 150ms ease;
-}
-
 .range:hover::-moz-range-thumb {
   transform: scale(1.12);
 }
@@ -420,10 +569,10 @@
   justify-content: center;
   flex-shrink: 0;
   gap: 6px;
-  min-height: 36px;
-  padding: 8px 12px;
-  color: var(--island-bg-color);
-  background: var(--island-text-color);
+  min-height: 24px;
+  padding: 3px 10px;
+  color: var(--settings-bg, var(--island-bg-color));
+  background: var(--settings-accent, var(--island-text-color));
   border: 0;
   border-radius: var(--control-radius);
   font-weight: 600;
@@ -463,8 +612,8 @@
 }
 
 .keyActions .dangerButton {
-  min-height: 36px;
-  padding: 8px 10px;
+  min-height: 24px;
+  padding: 3px 8px;
   white-space: nowrap;
 }
 
@@ -503,12 +652,12 @@
   display: flex;
   flex-direction: column;
   width: 100%;
-  padding: 8px 12px;
+  padding: 3px 10px;
   gap: 2px;
   background: none;
   border: 0;
   border-bottom: 1px solid var(--control-border);
-  color: var(--island-text-color);
+  color: var(--settings-fg, var(--island-text-color));
   text-align: left;
   font-size: 13px;
   cursor: pointer;
@@ -530,7 +679,9 @@
 .appList {
   display: flex;
   flex-direction: column;
-  gap: 5px;
+  gap: 0;
+  margin: 0 -16px -14px;
+  border-top: 1px solid var(--settings-divider, rgba(60, 60, 67, 0.1));
 }
 
 .appRow {
@@ -538,18 +689,24 @@
   align-items: center;
   justify-content: space-between;
   gap: 8px;
-  padding: 5px 12px;
-  border: 1px solid var(--control-border);
-  border-radius: var(--control-radius);
-  background: var(--control-bg);
+  padding: 8px 16px;
+  border: none;
+  border-bottom: 1px solid var(--settings-divider, rgba(60, 60, 67, 0.1));
+  border-radius: 0;
+  background: transparent;
   min-width: 0;
+}
+
+.appRow:last-child {
+  border-bottom: none;
 }
 
 .appName {
   flex: 1;
   min-width: 0;
-  padding: 6px 0;
-  color: var(--island-text-color);
+  min-height: 36px;
+  padding: 7px 0;
+  color: var(--settings-fg, var(--island-text-color));
   border: 0;
   background: none;
   font-size: 14px;
@@ -594,7 +751,12 @@
   justify-content: space-between;
   gap: 10px;
   padding: 10px 0;
-  border-bottom: 1px solid var(--control-border);
+  border-bottom: 1px solid var(--settings-divider, var(--control-border));
+}
+
+.workflowRow:last-child {
+  border-bottom: none;
+  padding-bottom: 0;
 }
 
 .workflowSummary {
@@ -612,4 +774,12 @@
 .iconButton:disabled {
   opacity: 0.25;
   cursor: default;
+}
+
+.aboutQuit {
+  display: flex;
+  flex-direction: column;
+  align-items: flex-start;
+  gap: 10px;
+  padding: 14px 16px 16px;
 }

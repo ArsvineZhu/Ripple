@@ -17,6 +17,8 @@ Linux 开发时可能需要与 Electron 构建匹配、root 所有且权限为 `
 
 ## 工具职责
 
+`pnpm start` 使用 Electron 应用数据目录下的 `Ripple Next Development`，打包版继续使用 `Ripple Next`。数据、Chromium 缓存和单实例锁相互独立，开发版与已安装的正式版可以同时运行。开发版使用自己的设置和凭据。
+
 工具配置集中在 [.config](../.config/README.zh-CN.md)，由 package scripts 显式选择。
 
 | 命令                      | 契约                                                                                           |
@@ -49,7 +51,7 @@ Ripple Next 将 `ripple-next.log` 写入 `<userData>/diagnostics/`，Electron mi
 
 崩溃报告不会上传。AI 日志记录请求 ID、阶段耗时、增量数量和回答字符数，不记录提示词或回答正文。错误记录包含错误类型和堆栈帧，不包含自由格式的错误消息。minidump 是二进制进程快照，应作为敏感的本机诊断数据处理。
 
-Linux 使用透明 XWayland 窗口，并限制在所选显示器的工作区内，以保留桌面面板。仅让 X11 `ShapeInput` 跟随动画中的 Island；修改 `ShapeBounding` 可能出现黑边。X11 客户端保持静态导入并打入安装包。后台模式通过同一 X11 客户端请求 `_NET_WM_STATE_SKIP_TASKBAR`。窗口需等 renderer ready 且首次输入区域得到确认后才显示。边界说明见[主进程](../src/main/README.zh-CN.md)、[preload](../src/preload/README.zh-CN.md)和[renderer](../src/renderer/README.zh-CN.md)。
+Linux 使用透明 XWayland 窗口，并限制在所选显示器的工作区内，以保留桌面面板。仅让 X11 `ShapeInput` 跟随动画中的 Island；修改 `ShapeBounding` 可能出现黑边。X11 客户端保持静态导入并打入安装包。Island 始终通过同一 X11 客户端请求 `_NET_WM_STATE_SKIP_TASKBAR`。设置窗口是独立的普通 BrowserWindow。Island 需等 renderer ready 且首次输入区域得到确认后才显示。边界说明见[主进程](../src/main/README.zh-CN.md)、[preload](../src/preload/README.zh-CN.md)和[renderer](../src/renderer/README.zh-CN.md)。
 
 Forge 在启动和打包前清理 `.vite`；`.vite`、`out`、报告和 `node_modules` 不纳入 Git。各类读者的说明见[文档目录](INDEX.zh-CN.md)。
 

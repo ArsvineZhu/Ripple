@@ -35,7 +35,10 @@ describe('Ripple Next app state database', () => {
     const userDataPath = await createTemporaryDirectory();
     const legacyState = {
       ...defaultAppState,
-      settings: { ...defaultAppState.settings, weatherLocation: 'Legacy location' },
+      settings: {
+        ...defaultAppState.settings,
+        weatherLocation: 'Legacy location',
+      },
     };
     await writeFile(path.join(userDataPath, 'app-state.json'), JSON.stringify(legacyState));
     const store = trackStore(createAppStateStore(userDataPath));
@@ -43,7 +46,7 @@ describe('Ripple Next app state database', () => {
     expect(await store.load()).toEqual(defaultAppState);
     expect(existsSync(path.join(userDataPath, 'ripple-next.sqlite'))).toBe(true);
     expect(defaultAppState.quickApps).toEqual([]);
-    expect(defaultAppState.settings.backgroundMode).toBe(false);
+    expect(defaultAppState.settings.showTray).toBe(true);
   });
 
   it('persists partial state updates after the database is reopened', async () => {
@@ -53,31 +56,33 @@ describe('Ripple Next app state database', () => {
 
     await Promise.all([
       store.update({ tasks: ['Review the build'] }),
-      store.update({ settings: { weatherLocation: 'Tokyo', backgroundMode: true } }),
-      store.update({ workflows: [{ name: 'Work', urls: ['https://example.com'] }] }),
+      store.update({ settings: { weatherLocation: 'Tokyo', showTray: false } }),
+      store.update({
+        workflows: [{ name: 'Work', urls: ['https://example.com'] }],
+      }),
     ]);
 
     const restored = trackStore(createAppStateStore(userDataPath));
     expect(await restored.load()).toMatchObject({
       tasks: ['Review the build'],
-      settings: { weatherLocation: 'Tokyo', backgroundMode: true },
+      settings: { weatherLocation: 'Tokyo', showTray: false },
       workflows: [{ name: 'Work', urls: ['https://example.com'] }],
     });
   });
 
-  it('reads background mode from the persisted setting row', async () => {
+  it('reads showTray from the persisted setting row', async () => {
     const userDataPath = await createTemporaryDirectory();
     const store = trackStore(createAppStateStore(userDataPath));
     await store.load();
 
     const database = new Database(path.join(userDataPath, 'ripple-next.sqlite'));
     const fixture = await readFile(
-      path.join(process.cwd(), 'tests/fixtures/sqlite/enable-background-mode.sql'),
+      path.join(process.cwd(), 'tests/fixtures/sqlite/disable-show-tray.sql'),
       'utf8',
     );
     database.exec(fixture);
 
-    expect((await store.load()).settings.backgroundMode).toBe(true);
+    expect((await store.load()).settings.showTray).toBe(false);
     database.close();
   });
 

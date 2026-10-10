@@ -31,6 +31,8 @@ const config: ForgeConfig = {
           extendInfo: {
             NSAppleEventsUsageDescription:
               'Ripple Next needs to control media players like Spotify and Apple Music.',
+            // Agent like LuLu: Dock appears only via runtime setActivationPolicy('regular').
+            LSUIElement: true,
           },
         }
       : {}),

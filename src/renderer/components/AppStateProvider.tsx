@@ -1,7 +1,7 @@
 import { normalizeHiddenTabs } from '../../shared/appState';
 import type { AppState, AppStatePatch } from '../../shared/appState';
 import { noticeAreaForPatch } from '../../shared/contracts';
-import { createContext, useCallback, useContext, useMemo, useState } from 'react';
+import { createContext, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import type { ReactNode } from 'react';
 import { useNotifications } from './NotificationProvider';
 
@@ -54,6 +54,17 @@ export function AppStateProvider({
     },
     [notify],
   );
+  useEffect(() => {
+    return window.electronAPI?.onAppStateChanged?.((next) => {
+      setState({
+        ...next,
+        settings: {
+          ...next.settings,
+          hiddenTabs: normalizeHiddenTabs(next.settings.hiddenTabs),
+        },
+      });
+    });
+  }, []);
   const value = useMemo(() => ({ state, updateState }), [state, updateState]);
   return <AppStateContext.Provider value={value}>{children}</AppStateContext.Provider>;
 }

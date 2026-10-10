@@ -1,8 +1,10 @@
+import { useTranslation } from 'react-i18next';
 import styles from './styles/Island.module.css';
 import { useOverlay } from './components/OverlayProvider';
-import { animate, motion, useMotionValue } from 'motion/react';
+import { motion } from 'motion/react';
 import { TabPanels } from './components/TabPanels';
 import { useIslandController } from './hooks/useIslandController';
+import { useIslandGeometry } from './hooks/useIslandGeometry';
 import { QuickView } from './components/QuickView';
 import { BrowserSearchTab } from './features/BrowserSearchTab';
 import { WorkflowsTab } from './features/WorkflowsTab';
@@ -11,10 +13,10 @@ import { NowPlayingTab } from './features/NowPlayingTab';
 import { AssistantTab } from './features/AssistantTab';
 import { ClipboardTab } from './features/ClipboardTab';
 import { TasksTab } from './features/TasksTab';
-import { SettingsTab } from './features/SettingsTab';
-import { useCallback, useEffect, useRef, useState } from 'react';
+import { useCallback, useEffect, useState } from 'react';
 import { recordIslandContext } from './lib/diagnostics';
 export default function Island() {
+  const { t } = useTranslation();
   const controller = useIslandController();
   const [assistantAnswerHeight, setAssistantAnswerHeight] = useState(0);
   const resetAssistantAnswerHeight = useCallback(() => setAssistantAnswerHeight(0), []);
@@ -80,25 +82,26 @@ export default function Island() {
     mode === 'large' && currentTab === 4 && controller.asked
       ? Math.min(Math.max(height, window.innerHeight - 80), Math.max(height, assistantAnswerHeight))
       : height;
-  const visualWidth = useMotionValue(width);
-  const visualHeight = useMotionValue(animatedHeight);
-  const tabMoving = useRef(false);
-  const dimensionAnimation = useRef<{
-    width: ReturnType<typeof animate>;
-    height: ReturnType<typeof animate>;
-  } | null>(null);
-  useEffect(() => {
-    if (mode !== 'large') tabMoving.current = false;
-    if (mode === 'large' && tabMoving.current) return;
-    const transition = { type: 'spring' as const, stiffness: 400, damping: 40, mass: 2.5 };
-    const horizontal = animate(visualWidth, width, transition);
-    const vertical = animate(visualHeight, animatedHeight, transition);
-    dimensionAnimation.current = { width: horizontal, height: vertical };
-    return () => {
-      horizontal.stop();
-      vertical.stop();
-    };
-  }, [mode, width, animatedHeight, visualWidth, visualHeight]);
+  const geometry = useIslandGeometry({
+    width,
+    height: animatedHeight,
+    expanded: mode === 'large',
+    tab: currentTab,
+    getTabSize: (id) => {
+      const size = controller.getExpandedTabSize(id);
+      return {
+        ...size,
+        height:
+          id === 4 && controller.asked
+            ? Math.min(
+                Math.max(size.height, window.innerHeight - 80),
+                Math.max(size.height, assistantAnswerHeight),
+              )
+            : size.height,
+      };
+    },
+  });
+  const { width: visualWidth, height: visualHeight, radius, cornerK, fallbackRadius } = geometry;
   useEffect(() => {
     let frame: number | undefined;
     const sync = () => {
@@ -110,28 +113,18 @@ export default function Island() {
     };
     const stopWidth = visualWidth.on('change', sync);
     const stopHeight = visualHeight.on('change', sync);
+    const stopRadius = radius.on('change', sync);
+    const stopCorner = cornerK.on('change', sync);
     return () => {
       stopWidth();
       stopHeight();
+      stopRadius();
+      stopCorner();
       if (frame !== undefined) cancelAnimationFrame(frame);
     };
-  }, [visualWidth, visualHeight, syncWindowInputRegion]);
+  }, [visualWidth, visualHeight, radius, cornerK, syncWindowInputRegion]);
   const handleTabProgress = (from: number, to: number, progress: number, moving: boolean) => {
-    tabMoving.current = moving;
-    // Navigation takes over the size values even if opening was still animating
-    // and the requested tabs happen to have identical dimensions.
-    dimensionAnimation.current?.width.stop();
-    dimensionAnimation.current?.height.stop();
-    dimensionAnimation.current = null;
-    const source = controller.getExpandedTabSize(from);
-    const target = controller.getExpandedTabSize(to);
-    const answerHeight = (id: number, base: number) =>
-      id === 4 && controller.asked
-        ? Math.min(Math.max(base, window.innerHeight - 80), Math.max(base, assistantAnswerHeight))
-        : base;
-    visualWidth.set(source.width + (target.width - source.width) * progress);
-    const fromHeight = answerHeight(from, source.height);
-    visualHeight.set(fromHeight + (answerHeight(to, target.height) - fromHeight) * progress);
+    geometry.followTabs(from, to, progress, moving);
     syncWindowInputRegion();
   };
   return (
@@ -197,16 +190,6 @@ export default function Island() {
         color: hideNotActiveIslandEnabled && mode === 'still' ? 'rgba(0,0,0,0)' : textColor,
         scale: isHovered ? 1.05 : 1,
         x: sideStyles.x,
-        borderRadius:
-          mode === 'large' && theme === 'win95'
-            ? 0
-            : mode === 'large'
-              ? currentTab === 0
-                ? 28
-                : 30
-              : theme === 'win95'
-                ? 0
-                : 14,
       }}
       onUpdate={syncWindowInputRegion}
       onAnimationComplete={() => {
@@ -255,56 +238,71 @@ export default function Island() {
         ...({
           '--island-text-color': textColor,
           '--island-bg-color': bgColor,
+          '--island-radius': radius,
+          '--island-corner-k': cornerK,
+          '--island-fallback-radius': fallbackRadius,
         } as import('motion/react').MotionStyle),
       }}
     >
-      {/*Quickview*/}
-      <QuickView {...controller} />
+      <div className={styles.content}>
+        {/*Quickview*/}
+        <QuickView {...controller} />
 
-      {mode === 'large' && (
-        <TabPanels
-          tabs={visibleTabs}
-          activeId={currentTabId}
-          width={visualWidth}
-          direction={direction}
-          disabled={isOverlayOpen}
-          onProgress={handleTabProgress}
-          onSelect={selectTab}
-          renderTab={(tab) => (
-            <>
-              {/*Browser Search*/}
-              {tab === 0 && <BrowserSearchTab {...controller} />}
-              {/* Workflows & Quick Apps */}
-              {tab === 1 && <WorkflowsTab {...controller} />}
+        {mode === 'large' && (
+          <TabPanels
+            tabs={visibleTabs}
+            activeId={currentTabId}
+            width={visualWidth}
+            direction={direction}
+            disabled={isOverlayOpen}
+            onProgress={handleTabProgress}
+            onSelect={selectTab}
+            renderTab={(tab) => (
+              <>
+                {/*Browser Search*/}
+                {tab === 0 && <BrowserSearchTab {...controller} />}
+                {/* Workflows & Quick Apps */}
+                {tab === 1 && <WorkflowsTab {...controller} />}
 
-              {/*Overview tab*/}
-              {tab === 2 && <OverviewTab {...controller} />}
+                {/*Overview tab*/}
+                {tab === 2 && <OverviewTab {...controller} />}
 
-              {/* Now Playing*/}
-              {tab === 3 && <NowPlayingTab {...controller} />}
+                {/* Now Playing*/}
+                {tab === 3 && <NowPlayingTab {...controller} />}
 
-              {/* AI tab container */}
-              {tab === 4 && (
-                <AssistantTab
-                  {...controller}
-                  onAnswerContentSizeChange={setAssistantAnswerHeight}
-                  resetAnswerContentSize={resetAssistantAnswerHeight}
-                />
-              )}
+                {/* AI tab container */}
+                {tab === 4 && (
+                  <AssistantTab
+                    {...controller}
+                    onAnswerContentSizeChange={setAssistantAnswerHeight}
+                    resetAnswerContentSize={resetAssistantAnswerHeight}
+                  />
+                )}
 
-              {/*Clipboard*/}
-              {tab === 5 && <ClipboardTab {...controller} />}
+                {/*Clipboard*/}
+                {tab === 5 && <ClipboardTab {...controller} />}
 
-              {/*Tasks*/}
-              {tab === 6 && <TasksTab {...controller} />}
+                {/*Tasks*/}
+                {tab === 6 && <TasksTab {...controller} />}
 
-              {/*Settings Overhaul*/}
-              {tab === 7 && <SettingsTab {...controller} />}
-            </>
-          )}
-        />
-      )}
-      <div ref={setContainer} data-island-overlay className={styles.overlay} />
+                {/* Settings opens the dedicated window; the tab stays as the entry. */}
+                {tab === 7 && (
+                  <div className={styles.settingsLaunch}>
+                    <button
+                      type="button"
+                      className={styles.settingsLaunchButton}
+                      onClick={() => void window.electronAPI.openSettings()}
+                    >
+                      {t('openSettings')}
+                    </button>
+                  </div>
+                )}
+              </>
+            )}
+          />
+        )}
+        <div ref={setContainer} data-island-overlay className={styles.overlay} />
+      </div>
     </motion.div>
   );
 }

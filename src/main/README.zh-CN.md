@@ -9,6 +9,8 @@ MPRIS 本地封面文件没有可识别的图片扩展名时，按 PNG／JPEG／
 
 Main 管理应用生命周期、托盘、透明窗口、IPC 校验和系统能力。`index.ts` 设置 Ripple Next 专用用户数据目录，并在创建 renderer 窗口前载入类型化状态和安全凭据服务。
 
+`appProfile.ts` 为打包版选择 `Ripple Next`，为开发版选择 `Ripple Next Development`。它在获取单实例锁之前设置 `userData` 与 `sessionData`，将开发配置和 Chromium 缓存与已安装的正式版分开。
+
 服务负责原子状态存储、加密 API key、应用内通知、AI 请求、应用发现与启动、开机启动；平台适配器封装 Linux、macOS 和 Windows 差异。`ipc.ts` 校验发送方和 payload，共享类型见[shared 说明](../shared/README.zh-CN.md)。
 
 随应用打包的系统提示词位于 `prompts/default-assistant.md`。每次 AI 请求前，由 `prompts/injections.ts` 解析 `{{product}}`、`{{developer}}`、`{{version}}`、`{{license}}`、`{{repository}}`、`{{issues}}`、`{{timezone}}` 和 `{{current_time}}`。静态信息来自 `package.json`，`{{version}}` 使用 Electron 的 `app.getVersion()`。时间信息遵循应用设置的时区；选择“跟随系统”时使用操作系统时区，`{{current_time}}` 格式为 `YYYY-MM-DD HH:mm:ss`。未知变量保持原文，用户输入不会经过模板替换。

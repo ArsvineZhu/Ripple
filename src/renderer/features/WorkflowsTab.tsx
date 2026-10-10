@@ -27,13 +27,17 @@ export function WorkflowsTab({ workflows, openWorkflow, bgColor, textColor, quic
   }
   return (
     <div className={styles.container}>
-      <ElasticScrollArea className={styles.workflowList} id="workflows">
+      <ElasticScrollArea
+        className={styles.workflowList}
+        id="workflows"
+        data-empty={workflows.length === 0 || undefined}
+      >
         <AnimatePresence propagate>
           {workflows.length === 0 ? (
             <motion.p
               className={styles.emptyState}
               initial={{ opacity: 0 }}
-              animate={{ opacity: 0.5 }}
+              animate={{ opacity: 0.6 }}
               exit={{ opacity: 0 }}
             >
               {t('workflowsEmpty')}
@@ -74,47 +78,49 @@ export function WorkflowsTab({ workflows, openWorkflow, bgColor, textColor, quic
 
       <InlineNotices area="workflows" />
 
-      <div
-        className={styles.quickAppStrip}
-        onWheel={(event) => event.stopPropagation()}
-        onPointerDownCapture={(event) => event.stopPropagation()}
-        data-island-interactive
-        style={{
-          borderTop: `1px solid color-mix(in srgb, ${textColor}, transparent 90%)`,
-          background: `color-mix(in srgb, ${textColor}, transparent 98%)`,
-        }}
-      >
-        <div className={styles.quickAppList} id="quick-apps">
-          <AnimatePresence propagate>
-            {quickApps.map((app) => (
-              <motion.div
-                key={`main-qa-${app.id}`}
-                className={styles.appItem}
-                initial={{ opacity: 0 }}
-                animate={{ opacity: 1 }}
-                exit={{ opacity: 0, width: 0 }}
-              >
-                <button
-                  className={styles.appButton}
-                  onClick={() => {
-                    void launch(app.id, () => window.electronAPI?.launchQuickApp(app.id));
-                  }}
-                  disabled={pending[app.id]}
-                  aria-describedby={failures[app.id] ? 'app-error-' + app.id : undefined}
-                  style={{ color: bgColor, backgroundColor: textColor }}
+      {workflows.length > 0 && quickApps.length > 0 && (
+        <div
+          className={styles.quickAppStrip}
+          onWheel={(event) => event.stopPropagation()}
+          onPointerDownCapture={(event) => event.stopPropagation()}
+          data-island-interactive
+          style={{
+            borderTop: `1px solid color-mix(in srgb, ${textColor}, transparent 90%)`,
+            background: `color-mix(in srgb, ${textColor}, transparent 98%)`,
+          }}
+        >
+          <div className={styles.quickAppList} id="quick-apps">
+            <AnimatePresence propagate>
+              {quickApps.map((app) => (
+                <motion.div
+                  key={`main-qa-${app.id}`}
+                  className={styles.appItem}
+                  initial={{ opacity: 0 }}
+                  animate={{ opacity: 1 }}
+                  exit={{ opacity: 0, width: 0 }}
                 >
-                  {app.name}
-                </button>
-                {failures[app.id] && (
-                  <p className={styles.launchError} id={'app-error-' + app.id} role="alert">
-                    {t('appLaunchFailed')}
-                  </p>
-                )}
-              </motion.div>
-            ))}
-          </AnimatePresence>
+                  <button
+                    className={styles.appButton}
+                    onClick={() => {
+                      void launch(app.id, () => window.electronAPI?.launchQuickApp(app.id));
+                    }}
+                    disabled={pending[app.id]}
+                    aria-describedby={failures[app.id] ? 'app-error-' + app.id : undefined}
+                    style={{ color: bgColor, backgroundColor: textColor }}
+                  >
+                    {app.name}
+                  </button>
+                  {failures[app.id] && (
+                    <p className={styles.launchError} id={'app-error-' + app.id} role="alert">
+                      {t('appLaunchFailed')}
+                    </p>
+                  )}
+                </motion.div>
+              ))}
+            </AnimatePresence>
+          </div>
         </div>
-      </div>
+      )}
     </div>
   );
 }

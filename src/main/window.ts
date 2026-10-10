@@ -8,6 +8,11 @@ import { attachWindowDiagnostics, recordRendererReady } from './services/windowD
 import { createWindowsInputRegion } from './platform/windows/inputRegion';
 import type { InputRect } from '../shared/contracts';
 import { getWindowBoundsForDisplay } from './windowBounds';
+import { registerWindowRole } from './windowRoles';
+import {
+  applyIslandCollectionBehavior,
+  ISLAND_WINDOW_TITLE,
+} from './platform/macos/islandWindowBehavior';
 import { installScrollGestureBridge } from './services/scrollGestures';
 declare const MAIN_WINDOW_VITE_DEV_SERVER_URL: string | undefined;
 declare const MAIN_WINDOW_VITE_NAME: string;
@@ -21,7 +26,6 @@ let mainWindow: BrowserWindow | null = null;
 let activeDiagnostics: DiagnosticsService | null = null;
 let mainWindowReady = false;
 let rendererIsReady = false;
-let backgroundMode = false;
 let displaySyncInstalled = false;
 let windowsInputRegion: ReturnType<typeof createWindowsInputRegion> | undefined;
 const syncWindowToDisplay = () => {
@@ -56,8 +60,9 @@ const installDisplaySync = () => {
 };
 const applySkipTaskbar = () => {
   if (!mainWindow) return;
-  if (process.platform === 'linux') inputShape.setSkipTaskbar(backgroundMode);
-  else mainWindow.setSkipTaskbar(backgroundMode);
+  // Island stays off the taskbar on every platform; settings uses its own window.
+  if (process.platform === 'linux') inputShape.setSkipTaskbar(true);
+  else mainWindow.setSkipTaskbar(true);
 };
 export const showMainWindow = (focus = false) => {
   if (!mainWindow || !mainWindowReady || !rendererIsReady) return;
@@ -112,7 +117,7 @@ export const createWindow = (
     frame: false,
     ...(isWindows ? {} : { thickFrame: false }),
     hasShadow: false,
-    skipTaskbar: backgroundMode,
+    skipTaskbar: true,
     icon: getIconPath(),
     ...(isMac ? { hiddenInMissionControl: true } : {}),
     ...(windowType ? { type: windowType } : {}),
@@ -131,6 +136,8 @@ export const createWindow = (
     show: false,
   });
   attachWindowDiagnostics(mainWindow, diagnostics);
+  registerWindowRole(mainWindow.webContents, 'island');
+  if (isMac) mainWindow.setTitle(ISLAND_WINDOW_TITLE);
   const closeScrollGestureBridge = installScrollGestureBridge(mainWindow.webContents);
   diagnostics.record({
     kind: 'window-lifecycle',
@@ -152,6 +159,16 @@ export const createWindow = (
     mainWindowReady = true;
     syncWindowToDisplay();
     showMainWindow();
+    // macOS: replace Electron's Transient-only Mission Control bit with the intentional whole mask.
+    if (isMac && mainWindow && !mainWindow.isDestroyed()) {
+      const result = applyIslandCollectionBehavior(mainWindow);
+      if (!result.ok) {
+        diagnostics.recordError(
+          'window',
+          new Error(`island collectionBehavior apply failed: ${result.reason}`),
+        );
+      }
+    }
   });
 
   mainWindow.on('closed', () => {
@@ -171,10 +188,6 @@ export const createWindow = (
 };
 
 export const getMainWindow = () => mainWindow;
-export const setWindowBackgroundMode = (enabled: boolean) => {
-  backgroundMode = enabled;
-  applySkipTaskbar();
-};
 const inputShape = createLinuxInputShape(() => mainWindow, showMainWindow);
 export const initializeLinuxInputShape = (
   diagnostics: DiagnosticsService,

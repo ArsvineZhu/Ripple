@@ -32,7 +32,34 @@
   margin: 0;
   transition: box-shadow 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   pointer-events: auto;
+  border-radius: calc(var(--island-fallback-radius, 14) * 1px);
 }
+
+@supports (corner-shape: superellipse(1.3)) {
+  .Island {
+    border-radius: calc(var(--island-radius) * 1px);
+    corner-shape: superellipse(var(--island-corner-k));
+  }
+}
+
+.Island[data-theme='win95'] {
+  border-radius: 0;
+  corner-shape: round;
+}
+
+.content {
+  position: relative;
+  display: flex;
+  align-items: inherit;
+  justify-content: inherit;
+  width: 100%;
+  height: 100%;
+  border-radius: inherit;
+  corner-shape: inherit;
+  /* Native box geometry also clips hit testing of transformed tab descendants. */
+  clip-path: border-box;
+}
+
 .overlay {
   position: absolute;
   inset: 0;
@@ -43,4 +70,27 @@
 .Island button {
   white-space: nowrap;
   flex-shrink: 0;
+}
+
+.settingsLaunch {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  width: 100%;
+  height: 100%;
+  padding: 12px;
+}
+
+.settingsLaunchButton {
+  padding: 10px 18px;
+  color: inherit;
+  font: inherit;
+  background: color-mix(in srgb, currentColor 12%, transparent);
+  border: 1px solid color-mix(in srgb, currentColor 24%, transparent);
+  border-radius: 12px;
+  cursor: pointer;
+}
+
+.settingsLaunchButton:hover {
+  background: color-mix(in srgb, currentColor 18%, transparent);
 }

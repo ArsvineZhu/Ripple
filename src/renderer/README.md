@@ -6,9 +6,13 @@ The renderer owns Island presentation, interaction and feature feedback. OS acce
 
 ## State, language and style
 
+The dedicated settings window uses a monochrome palette following the OS light/dark preference. Windows accent border highlighting is disabled. Static interface text is not selectable; editable fields retain selection and clipboard editing. Position choices retain round radio indicators, including inside the superellipse shell. Text fields have a 36 CSS pixel minimum height, matching the shared Select control.
+
 `AppStateProvider` loads the main-owned snapshot before rendering and sends typed patches. Settings and saved feature data live in the main state service. `SettingsProvider` owns the renderer language preference; bundled i18n initializes before rendering and synchronizes the resolved language to the tray. `Intl` formats dates/numbers in the selected locale and system or saved IANA time zone.
 
 `styles/base.css` owns the transparent document, fonts and shared animation; `styles/tokens.css` owns theme/font tokens. Island, shared controls and feature views own their CSS Modules. Keep static presentation there and runtime color/geometry and Motion values with their owners. `OverlayProvider` mounts Select menus inside the Island; `useIslandInteraction` owns movement, focus, pointer departure and menu guards.
+
+`useIslandGeometry` owns the live width, height and corner transition. Native CSS `corner-shape: superellipse()` uses K=1.62 when expanded and K=1.30 when collapsed. The collapsed radius is half the shorter live dimension; the expanded radius is one quarter of that dimension, capped at 30 CSS pixels. One spring clock coordinates size and curvature; tab navigation inherits the visible geometry and decays any unfinished opening offset without resetting it. Background, status border, shadow and overflow clipping follow the same CSS contour. The content wrapper inherits the corners and uses native `clip-path: border-box` geometry to exclude transformed descendants from corner hit testing, while the outer shadow remains unclipped. Reduced motion applies target geometry immediately. Browsers without `corner-shape` keep the former rounded corners, and Win95 stays square.
 
 Select uses nonmodal radio menus. Settings remains scrollable with a menu open; dismissal inside Island preserves expansion. Position commits keep settings content and scroll intact. The clock schedules minute boundaries and refreshes after focus/visibility returns. Battery/device notices preserve an expanded page.
 
@@ -33,6 +37,8 @@ Click, Up/Down/Home/End and vertical wheel gestures select pages. Each continuou
 `MediaArtwork` owns decoding failure and hover for each expanded/QuickView cover. Failure shows a music placeholder; a changed session or URL resets failure. Hover changes remain local to the cover component.
 
 ## Launching, clipboard and feedback
+
+Data-empty feature pages use the search page as their size and hint-style standard. `expandedTabSize` supplies that shared target. An empty workflow page uses it and centers its hint with the search field's 20px, medium-weight typography; adding a workflow restores the list size. The quick-app strip appears only when both workflows and quick apps exist, so the empty page has no footer or separator.
 
 `lib/launch.ts` classifies workflow targets and browser input. Bare localhost/IPv4 addresses, including a trailing slash, are classified before path targets. Explicit URLs and app/file targets use their corresponding bridge calls. Workflows await launches in order, pause briefly between targets and continue after failures. Quick-app targets use the typed installed-app/command/URL contract.
 

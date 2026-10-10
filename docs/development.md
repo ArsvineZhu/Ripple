@@ -17,6 +17,8 @@ On Linux, development may need a matching Chromium sandbox helper owned by root 
 
 ## Tool ownership
 
+`pnpm start` uses the `Ripple Next Development` directory under Electron's app-data directory. Packaged builds keep `Ripple Next`. Data, Chromium caches and single-instance locks are separate, so development and the installed application can run together. Development starts with its own settings and credentials.
+
 Tool configuration is centralized in [.config](../.config/README.md); package scripts select each file explicitly.
 
 | Command                   | Contract                                                                                                                                            |
@@ -49,7 +51,7 @@ Ripple Next writes `ripple-next.log` under `<userData>/diagnostics/` and stores 
 
 Crash-report uploads are disabled. Assistant logs record request IDs, lifecycle timing, delta counts and answer length, but never the prompt or answer text. Error records contain the error type and stack frames, not the free-form error message. Treat minidumps as sensitive local data because they are binary process snapshots.
 
-Linux uses a transparent XWayland window sized to the selected display's work area so desktop panels remain visible. Only X11 `ShapeInput` follows the animated Island rectangle; changing `ShapeBounding` can introduce black flashes. The X11 client remains statically imported and bundled. Background mode requests `_NET_WM_STATE_SKIP_TASKBAR` through the existing X11 client. The window is shown only after renderer readiness and confirmation of the first input region. See [main](../src/main/README.md), [preload](../src/preload/README.md) and [renderer](../src/renderer/README.md).
+Linux uses a transparent XWayland window sized to the selected display's work area so desktop panels remain visible. Only X11 `ShapeInput` follows the animated Island rectangle; changing `ShapeBounding` can introduce black flashes. The X11 client remains statically imported and bundled. The Island always requests `_NET_WM_STATE_SKIP_TASKBAR` through the existing X11 client. The settings window is a separate normal BrowserWindow. The Island is shown only after renderer readiness and confirmation of the first input region. See [main](../src/main/README.md), [preload](../src/preload/README.md) and [renderer](../src/renderer/README.md).
 
 Forge cleans `.vite` before starting and packaging. Generated `.vite`, `out`, reports and `node_modules` are excluded from Git. The [documentation catalog](INDEX.md) links guides for each audience.
 

@@ -107,11 +107,11 @@ Clipboard history and tasks take care of two different kinds of loose ends: text
 - **Choose the appearance.** Default, Sleek Black and Windows 95 themes; custom colors, an image URL or a local background file; an optional border.
 - **Keep the pages you use.** Reorder or hide feature pages and choose the default page. Settings remains available.
 - **Control when it stays visible.** Compact, hover and expanded modes; inactive hiding, Quick Standby, Large Standby and a configurable 0–2000 ms pointer-leave delay.
-- **Fit your desktop routine.** Startup control and background mode, with platform-specific behavior described in the guides.
+- **Fit your desktop routine.** Startup control and, on macOS, a menu bar icon toggle; Windows and Linux always keep the tray. Platform specifics are in the guides.
 - **Use your language.** 简体中文, 繁體中文, English and 日本語. The interface follows the system by default; a manual choice applies immediately and is remembered.
 
 <p align="center">
-  <img src="docs/assets/screenshots/settings.png" width="440" alt="Settings for language, hour format, time zone, startup, background mode and display">
+  <img src="docs/assets/screenshots/settings.png" width="440" alt="Settings for language, hour format, time zone, startup, menu bar icon and display">
 </p>
 
 ## Try Ripple Next
