@@ -1,7 +1,6 @@
 import { app, powerMonitor, safeStorage, screen } from 'electron';
-import fs from 'node:fs';
-import path from 'node:path';
 import os from 'node:os';
+import { configureApplicationProfile } from './appProfile';
 import { defaultAppState } from '../shared/appState';
 import { registerIPC } from './ipc';
 import {
@@ -30,6 +29,7 @@ import {
 
 registerBackgroundImageScheme();
 app.setName('Ripple Next');
+const userDataPath = configureApplicationProfile(app);
 if (process.platform === 'win32') app.setAppUserModelId('com.arsvinezhu.ripple-next');
 // LSUIElement agent: start accessory; Settings open switches to regular (LuLu-style).
 if (process.platform === 'darwin') app.setActivationPolicy('accessory');
@@ -41,10 +41,6 @@ if (!app.requestSingleInstanceLock()) {
 }
 
 async function startApplication() {
-  const userDataPath = path.join(app.getPath('appData'), 'Ripple Next');
-  fs.mkdirSync(userDataPath, { recursive: true, mode: 0o700 });
-  app.setPath('userData', userDataPath);
-
   const notices = createNoticeBus();
   let diagnostics: DiagnosticsService | null = null;
   let startupComplete = false;

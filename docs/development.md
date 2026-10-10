@@ -17,6 +17,8 @@ On Linux, development may need a matching Chromium sandbox helper owned by root 
 
 ## Tool ownership
 
+`pnpm start` uses the `Ripple Next Development` directory under Electron's app-data directory. Packaged builds keep `Ripple Next`. Data, Chromium caches and single-instance locks are separate, so development and the installed application can run together. Development starts with its own settings and credentials.
+
 Tool configuration is centralized in [.config](../.config/README.md); package scripts select each file explicitly.
 
 | Command                   | Contract                                                                                                                                            |
