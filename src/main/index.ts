@@ -162,10 +162,14 @@ async function startApplication() {
               : process.env.DISPLAY
                 ? 'x11'
                 : 'unknown',
-      secureStorage: await safeStorage.isAsyncEncryptionAvailable().catch((error) => {
-        diagnosticsService.recordError('application', error);
-        return false;
-      }),
+      // Never probe the OS keychain while starting. On macOS isAsyncEncryptionAvailable() reads (and
+      // creates) the "Safe Storage" keychain item, so macOS asks for the login password on every
+      // launch. Availability is checked when a key is actually saved or read
+      // (secretStore.ensureSecureStorage) and a failure is reported to Settings from there.
+      secureStorage:
+        process.platform === 'linux'
+          ? safeStorage.getSelectedStorageBackend() !== 'basic_text'
+          : true,
     });
     powerMonitor.on('suspend', () =>
       diagnosticsService.record({ kind: 'app-lifecycle', phase: 'suspend' }),
