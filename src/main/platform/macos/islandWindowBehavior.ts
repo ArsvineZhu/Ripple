@@ -6,15 +6,12 @@ import type { BrowserWindow } from 'electron';
 export const ISLAND_WINDOW_TITLE = 'Ripple Island';
 
 /** Intentional whole mask — not an OR onto Electron's Transient-only Mission Control bit. */
-export const ISLAND_COLLECTION_BEHAVIOR = {
+const ISLAND_COLLECTION_BEHAVIOR = {
   canJoinAllSpaces: true,
   fullScreenAuxiliary: true,
   stationary: true,
   transient: true,
 } as const;
-
-/** Expected AppKit mask: CanJoinAllSpaces(1) | Transient(8) | Stationary(16) | FullScreenAuxiliary(256) = 281 */
-export const EXPECTED_ISLAND_COLLECTION_BEHAVIOR = 281;
 
 type MacosWindowNative = {
   describeAppWindows: () => Array<{
@@ -72,14 +69,6 @@ function loadNative(): MacosWindowNative | null {
   }
   nativeModule = null;
   return null;
-}
-
-export function describeAppWindows() {
-  return loadNative()?.describeAppWindows() ?? [];
-}
-
-export function readIslandCollectionBehavior(title = ISLAND_WINDOW_TITLE): number | null {
-  return loadNative()?.readIslandBehavior(title) ?? null;
 }
 
 /**
