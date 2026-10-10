@@ -17,6 +17,8 @@ Linux 开发时可能需要与 Electron 构建匹配、root 所有且权限为 `
 
 ## 工具职责
 
+`pnpm start` 使用 Electron 应用数据目录下的 `Ripple Next Development`，打包版继续使用 `Ripple Next`。数据、Chromium 缓存和单实例锁相互独立，开发版与已安装的正式版可以同时运行。开发版使用自己的设置和凭据。
+
 工具配置集中在 [.config](../.config/README.zh-CN.md)，由 package scripts 显式选择。
 
 | 命令                      | 契约                                                                                           |

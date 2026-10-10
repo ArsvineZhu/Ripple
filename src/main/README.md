@@ -7,6 +7,8 @@ Local MPRIS artwork with an unrecognized filename extension is identified by PNG
 
 Main owns the app lifecycle, tray, transparent window, IPC validation and system effects. `index.ts` sets Ripple Next's user-data directory and loads typed state and secure credential storage before opening the renderer.
 
+`appProfile.ts` selects `Ripple Next` for packaged builds and `Ripple Next Development` for development. It sets `userData` and `sessionData` before the single-instance lock, keeping development state and Chromium caches separate from the installed application.
+
 `services/backgroundImage.ts` serves the configured local background through `ripple-background:` in development and packaged builds. It accepts absolute paths and file URLs, encodes filenames through `pathToFileURL`, and limits file requests to the current configured image. Network images remain direct renderer resources.
 
 Services own atomic state persistence, encrypted API keys, notices, AI requests, app discovery and launch, and autostart. Platform adapters contain Linux, macOS and Windows behavior. `ipc.ts` validates sender identity and payloads against [shared contracts](../shared/README.md).
