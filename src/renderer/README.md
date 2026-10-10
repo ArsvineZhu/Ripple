@@ -10,6 +10,8 @@ The renderer owns Island presentation, interaction and feature feedback. OS acce
 
 `styles/base.css` owns the transparent document, fonts and shared animation; `styles/tokens.css` owns theme/font tokens. Island, shared controls and feature views own their CSS Modules. Keep static presentation there and runtime color/geometry and Motion values with their owners. `OverlayProvider` mounts Select menus inside the Island; `useIslandInteraction` owns movement, focus, pointer departure and menu guards.
 
+`useIslandGeometry` owns the live width, height and corner transition. Native CSS `corner-shape: superellipse()` uses K=1.62 when expanded and K=1.30 when collapsed. The collapsed radius is half the shorter live dimension; the expanded radius is one quarter of that dimension, capped at 30 CSS pixels. One spring clock coordinates size and curvature; tab navigation inherits the visible geometry and decays any unfinished opening offset without resetting it. Background, status border, shadow and overflow clipping follow the same CSS contour. The content wrapper inherits the corners and uses native `clip-path: border-box` geometry to exclude transformed descendants from corner hit testing, while the outer shadow remains unclipped. Reduced motion applies target geometry immediately. Browsers without `corner-shape` keep the former rounded corners, and Win95 stays square.
+
 Select uses nonmodal radio menus. Settings remains scrollable with a menu open; dismissal inside Island preserves expansion. Position commits keep settings content and scroll intact. The clock schedules minute boundaries and refreshes after focus/visibility returns. Battery/device notices preserve an expanded page.
 
 ## Feature navigation and scrolling

@@ -1,7 +1,8 @@
 import { useCallback, useLayoutEffect, useRef, useState } from 'react';
 import type { ReactNode } from 'react';
-import { animate, motion, useMotionValue, useReducedMotion, useTransform } from 'motion/react';
+import { animate, motion, useMotionValue, useTransform } from 'motion/react';
 import type { MotionValue } from 'motion/react';
+import { useReducedMotionPreference } from '../hooks/useReducedMotionPreference';
 import { nextTabId } from '../lib/navigation';
 import {
   isClearVerticalSample,
@@ -165,7 +166,7 @@ export function TabPanels(props: Props) {
     quiet: boolean;
     risingSamples: number;
   } | null>(null);
-  const reducedMotion = useReducedMotion();
+  const reducedMotion = useReducedMotionPreference();
 
   // Release the band along the platform curve, seeded with the stretch velocity it has right now.
   const releaseElastic = useCallback(() => {
@@ -238,8 +239,12 @@ export function TabPanels(props: Props) {
     propsRef.current = props;
   });
   useLayoutEffect(() => {
-    if (reducedMotion) releaseElastic();
-  }, [reducedMotion, releaseElastic]);
+    if (!reducedMotion) return;
+    stop();
+    position.jump(requested.current.position);
+    paint(requested.current.position, false);
+    releaseElastic();
+  }, [reducedMotion, releaseElastic, stop, position, paint]);
 
   useLayoutEffect(() => {
     const viewport = viewportRef.current;

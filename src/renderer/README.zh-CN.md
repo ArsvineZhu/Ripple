@@ -10,6 +10,8 @@ Renderer 负责 Island 展示、交互和各功能反馈，系统访问通过 [p
 
 `styles/base.css` 负责透明文档、字体和共享动画，`styles/tokens.css` 负责主题／字体 token。Island、通用控件和功能视图各自拥有 CSS Modules。静态展示写入对应模块，动态颜色／几何和 Motion 参数留在所属模块。`OverlayProvider` 将 Select 菜单挂载在 Island 内，`useIslandInteraction` 管理移动、焦点、指针离开与菜单保护。
 
+`useIslandGeometry` 管理实时宽高和圆角过渡。原生 CSS `corner-shape: superellipse()` 在展开时使用 K=1.62，收起时使用 K=1.30。收起半径是当前短边的一半；展开半径是短边的四分之一，最大 30 CSS 像素。宽高与曲率共用一个弹簧进度；切换 Tab 从当前可见几何接续，未完成展开的尺寸差平滑消退。背景、状态边框、阴影与 overflow 裁剪共用 CSS 轮廓。内容容器继承圆角，使用原生 `clip-path: border-box` 几何排除变换后子元素的角落命中，外层阴影保持完整。减少动态效果时直接采用目标几何；不支持 `corner-shape` 的浏览器保留原有圆角，Win95 保持方角。
+
 Select 使用非模态单选菜单；打开时设置仍可滚动，岛内关闭菜单保留展开状态。位置提交保留设置内容与滚动。时钟按分钟边界调度，重新获得焦点／可见性后刷新；电池与设备提醒保留用户已展开的页面。
 
 ## 页面导航与滚动
