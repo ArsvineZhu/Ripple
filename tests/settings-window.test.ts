@@ -155,6 +155,21 @@ describe('settings window singleton', () => {
     expect(mock.windows).toHaveLength(2);
   });
 
+  it('disables Windows accent highlighting without changing other platforms', () => {
+    const previousPlatform = process.platform;
+    try {
+      for (const platform of ['win32', 'darwin', 'linux']) {
+        Object.defineProperty(process, 'platform', { configurable: true, value: platform });
+        clearSettingsWindow();
+        openSettingsWindow();
+        if (platform === 'win32') expect(mock.lastOptions?.accentColor).toBe(false);
+        else expect(mock.lastOptions).not.toHaveProperty('accentColor');
+      }
+    } finally {
+      Object.defineProperty(process, 'platform', { configurable: true, value: previousPlatform });
+    }
+  });
+
   it('uses LuLu-style activation policy for the Dock without dock.show/hide', () => {
     const previousPlatform = process.platform;
     Object.defineProperty(process, 'platform', { configurable: true, value: 'darwin' });

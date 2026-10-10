@@ -99,6 +99,8 @@ export function openSettingsWindow(): BrowserWindow {
     autoHideMenuBar: true,
     title: 'Ripple Next',
     backgroundColor: settingsWindowBackgroundColor(),
+    // Keep Windows' active-window border neutral even when the OS accent color is enabled.
+    ...(process.platform === 'win32' ? { accentColor: false } : {}),
     // Settings is a normal window: on the taskbar while open, never click-through.
     skipTaskbar: false,
     // HIG: a settings window accommodates the size of the current pane, so its minimize and zoom

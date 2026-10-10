@@ -68,6 +68,17 @@
   line-height: 1.35;
 }
 
+.app,
+.app * {
+  user-select: none;
+}
+
+.app input,
+.app textarea,
+.app [contenteditable='true'] {
+  user-select: text;
+}
+
 @media (prefers-color-scheme: dark) {
   .app {
     --settings-fg: #ffffff;
