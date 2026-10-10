@@ -172,7 +172,6 @@
 .aboutValue {
   flex: 0 1 auto;
   min-width: 0;
-  max-width: 70%;
   overflow-wrap: anywhere;
   color: var(--settings-muted, inherit);
   font-size: var(--settings-font-caption, 11px);
@@ -186,7 +185,6 @@
   flex: 0 1 auto;
   gap: 5px;
   min-width: 0;
-  max-width: 70%;
   padding: 0;
   color: var(--settings-accent, var(--island-text-color));
   background: transparent;
